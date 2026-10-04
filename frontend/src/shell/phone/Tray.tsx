@@ -99,7 +99,7 @@ function SampleTray({ hash }: EntityTrayProps): ReactElement {
                     {preview.status === "success" && preview.data.thumbnail !== null ? (
                         <MiniWaveform peaks={preview.data.thumbnail} />
                     ) : (
-                        <span aria-hidden>▶</span>
+                        <Icon name="play" label={null} />
                     )}
                 </button>
                 <TrayIdentity entity={{ kind: "sample", hash }}>

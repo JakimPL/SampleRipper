@@ -16,6 +16,7 @@ import {
 import { WavePanel } from "../samples/WavePanel";
 import { DownloadLink } from "../shared/DownloadLink";
 import { formatDuration, shortHash } from "../shared/format";
+import { Icon } from "../shared/icons/Icon";
 import { useThemeSignal } from "../theme/useThemeSignal";
 import { readMorphColors } from "./morphColors";
 import { morphPreview } from "./morphPreview";
@@ -59,7 +60,8 @@ function traceOf(
  * geometric path between the two ends' own lengths, so it always falls between them, and each end
  * keeps the length it is heard at in the pair's frame. Every contour therefore stands where it
  * really falls in time, all three decoded in the browser at the same detail, so a render reads
- * against its ends as one drawing rather than against a coarser sketch of them.
+ * against its ends as one drawing rather than against a coarser sketch of them. The frame shows
+ * the drawing as pending until all three are read, and again while a newly let-go point decodes.
  *
  * A pair just completed is drawn at the slider's point before it is heard, so the ends themselves
  * are heard first. The render sounds through the one preview element every sample plays through,
@@ -94,6 +96,7 @@ export function MorphWaveform({
     const firstAudio = useAudioPeaks(sampleAudioUrl(first), TRACE_BUCKET_COUNT);
     const secondAudio = useAudioPeaks(sampleAudioUrl(second), TRACE_BUCKET_COUNT);
     const render = useAudioPeaks(renderUrl, TRACE_BUCKET_COUNT);
+    const pending = firstAudio.pending || secondAudio.pending || render.pending;
 
     const traces = useMemo((): readonly WaveformTrace[] => {
         if (axisSeconds === null) {
@@ -132,13 +135,14 @@ export function MorphWaveform({
                     onClick={replay}
                     disabled={!canPlay}
                 >
-                    ▶
+                    <Icon name="play" label={null} />
                 </button>
             }
             view={
                 <WaveformView
                     containerRef={null}
                     isPlaying={sounding}
+                    pending={pending}
                     traces={traces}
                     playheadFraction={playheadFraction}
                     notice={notice}

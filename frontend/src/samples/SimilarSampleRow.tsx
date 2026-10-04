@@ -5,6 +5,7 @@ import type { SimilarSample } from "../api/samples";
 import { useLayoutMode } from "../layout/useLayoutMode";
 import { classNames } from "../shared/classNames";
 import { shortHash } from "../shared/format";
+import { Icon } from "../shared/icons/Icon";
 import { UNNAMED_SAMPLE_LABEL } from "../shared/labels";
 import { OptionalLabel } from "../shared/OptionalLabel";
 import { RowOpenLink } from "../workspace/RowOpenLink";
@@ -58,7 +59,7 @@ export function SimilarSampleRow({ similar }: SimilarSampleRowProps): ReactEleme
             <td>
                 {similar.thumbnail === null ? (
                     <PlayButton sampleHash={similar.hash} playbackRateHz={similar.playback_rate_hz}>
-                        ▶
+                        <Icon name="play" label={null} />
                     </PlayButton>
                 ) : (
                     <Thumbnail

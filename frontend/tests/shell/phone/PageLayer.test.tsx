@@ -194,7 +194,7 @@ describe("PageBody", () => {
         useSelectionStore.getState().focusSample("b");
         renderHeaderAt(["/samples/b"], { kind: "sample", sampleHash: "b" }, true);
 
-        expect(await screen.findByRole("button", { name: "▶" })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: "Play sample" })).toBeInTheDocument();
         expect(document.querySelector(".wave-panel-compact > :last-child")).toBe(
             screen.getByRole("link", { name: "Save this sample" }),
         );

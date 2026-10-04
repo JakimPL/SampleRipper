@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { createRef } from "react";
+import { createRef, type ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 
 import { NO_TRACES, type WaveformNotice, type WaveformTrace, WaveformView } from "../../src/samples/WaveformView";
@@ -14,20 +14,33 @@ const TRACES: readonly WaveformTrace[] = [
     { peaks: PEAKS, share: 0.5, color: "rgb(255 255 255 / 1)", style: "filled" },
 ];
 
+/** The pending layer as the stylesheet shows it: inside a frame marked busy. */
+const SHOWN_PENDING_LAYER = ".wave-canvas-wrap[aria-busy='true'] > .wave-pending";
+
+function viewOf(
+    traces: readonly WaveformTrace[],
+    playheadFraction: number | null,
+    notice: WaveformNotice | null,
+    pending: boolean,
+): ReactElement {
+    return (
+        <WaveformView
+            containerRef={createRef<HTMLDivElement>()}
+            isPlaying={false}
+            pending={pending}
+            traces={traces}
+            playheadFraction={playheadFraction}
+            notice={notice}
+        />
+    );
+}
+
 function renderView(
     traces: readonly WaveformTrace[],
     playheadFraction: number | null,
     notice: WaveformNotice | null = null,
 ): HTMLElement {
-    const { container } = render(
-        <WaveformView
-            containerRef={createRef<HTMLDivElement>()}
-            isPlaying={false}
-            traces={traces}
-            playheadFraction={playheadFraction}
-            notice={notice}
-        />,
-    );
+    const { container } = render(viewOf(traces, playheadFraction, notice, false));
     return container;
 }
 
@@ -68,5 +81,21 @@ describe("WaveformView", () => {
         const container = renderView(TRACES, null);
 
         expect(container.querySelector(".wave-playhead")).toBeNull();
+    });
+
+    it("marks the frame busy under its pending line while the waveform is on its way, in silence", () => {
+        const { container, rerender } = render(viewOf(NO_TRACES, null, null, true));
+        const frame = container.querySelector(".wave-canvas-wrap");
+
+        expect(frame).toHaveAttribute("aria-busy", "true");
+        expect(container.querySelector(SHOWN_PENDING_LAYER)).toBeInTheDocument();
+        expect(frame).toHaveTextContent("");
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+        rerender(viewOf(TRACES, null, null, false));
+
+        expect(frame).not.toHaveAttribute("aria-busy");
+        expect(container.querySelector(SHOWN_PENDING_LAYER)).toBeNull();
+        expect(container.querySelector(".wave-traces")).toBeInTheDocument();
     });
 });

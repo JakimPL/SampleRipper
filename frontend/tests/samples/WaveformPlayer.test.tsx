@@ -60,6 +60,18 @@ interface PlayerOverrides {
     readonly onRateChange?: (rateHz: number) => void;
 }
 
+/** What settles a waveform on its way: the event wavesurfer raises and what it carries. */
+interface SettleCase {
+    readonly name: string;
+    readonly event: string;
+    readonly payload: unknown;
+}
+
+const SETTLE_CASES: readonly SettleCase[] = [
+    { name: "once wavesurfer reports ready", event: "ready", payload: 1.0 },
+    { name: "once wavesurfer cannot load the audio", event: "error", payload: new Error("404") },
+];
+
 function renderPlayer(overrides: PlayerOverrides = {}): RenderResult {
     return render(
         <WaveformPlayer
@@ -96,11 +108,12 @@ describe("WaveformPlayer", () => {
         expect(screen.getByRole("button")).toBeEnabled();
     });
 
-    it("plays and shows the pause glyph once playing, toggling back on a second click", () => {
+    it("plays and offers to pause once playing, toggling back on a second click", () => {
         renderPlayer();
         act(() => {
             latestInstance().emit("ready", 1.0);
         });
+        expect(screen.getByRole("button", { name: "Play sample" })).toHaveAttribute("aria-pressed", "false");
 
         fireEvent.click(screen.getByRole("button"));
         expect(latestInstance().play).toHaveBeenCalled();
@@ -108,11 +121,26 @@ describe("WaveformPlayer", () => {
         act(() => {
             latestInstance().emit("play");
         });
-        expect(screen.getByRole("button")).toHaveTextContent("⏸");
+        expect(screen.getByRole("button", { name: "Pause sample" })).toHaveAttribute("aria-pressed", "true");
 
         fireEvent.click(screen.getByRole("button"));
         expect(latestInstance().pause).toHaveBeenCalled();
     });
+
+    it.each(SETTLE_CASES)(
+        "shows the waveform as on its way until it settles, $name",
+        ({ event, payload }: SettleCase) => {
+            const { container } = renderPlayer();
+            const frame = container.querySelector(".wave-canvas-wrap");
+            expect(frame).toHaveAttribute("aria-busy", "true");
+
+            act(() => {
+                latestInstance().emit(event, payload);
+            });
+
+            expect(frame).not.toHaveAttribute("aria-busy");
+        },
+    );
 
     it("annotates each rate option with how often the library plays it there", () => {
         renderPlayer({
@@ -264,7 +292,7 @@ describe("WaveformPlayer on a phone", () => {
         act(() => {
             latestInstance().emit("play");
         });
-        expect(screen.getByRole("button")).toHaveTextContent("⏸");
+        expect(screen.getByRole("button", { name: "Pause sample" })).toHaveAttribute("aria-pressed", "true");
     });
 
     it("says in the frame itself when the audio cannot be loaded", () => {

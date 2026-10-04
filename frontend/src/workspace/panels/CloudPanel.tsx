@@ -366,7 +366,7 @@ export function CloudPanel(): ReactElement {
                                     }
                                 }}
                             >
-                                ⌖
+                                <Icon name="locate" label={null} />
                             </Button>
                             <Button
                                 variant="secondary"
@@ -391,7 +391,7 @@ export function CloudPanel(): ReactElement {
                                     issue({ kind: "zoom", factor: ZOOM_STEP_FACTOR });
                                 }}
                             >
-                                +
+                                <Icon name="plus" label={null} />
                             </Button>
                             <Button
                                 variant="secondary"
@@ -402,7 +402,7 @@ export function CloudPanel(): ReactElement {
                                     issue({ kind: "zoom", factor: 1 / ZOOM_STEP_FACTOR });
                                 }}
                             >
-                                −
+                                <Icon name="minus" label={null} />
                             </Button>
                         </div>
                     </>

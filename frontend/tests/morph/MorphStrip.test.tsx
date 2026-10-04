@@ -161,6 +161,26 @@ function watchFetches(): Mock<typeof fetch> {
     return fetching;
 }
 
+/** Holds every request the waveform makes until the returned call lets them all fail, each contour then read as missing. */
+function holdEveryFetch(fetching: Mock<typeof fetch>): () => void {
+    const held: ((reason: TypeError) => void)[] = [];
+    fetching.mockImplementation(
+        () =>
+            new Promise<Response>((_resolve, reject) => {
+                held.push(reject);
+            }),
+    );
+    return () => {
+        for (const reject of held.splice(0)) {
+            reject(new TypeError("no network in a test"));
+        }
+    };
+}
+
+function waveFrame(): Element | null {
+    return document.querySelector(".morph-strip-wave .wave-canvas-wrap");
+}
+
 function urlOf(input: RequestInfo | URL): string {
     if (typeof input === "string") {
         return input;
@@ -418,6 +438,31 @@ describe("MorphStrip opened out", () => {
         }
         expect(playAnswered).toHaveBeenCalledTimes(released && available ? 1 : 0);
         expect(askedForARender(fetching)).toBe(available);
+    });
+
+    it("shows the drawing as on its way until the ends and the render are read, and again for a point let go", async () => {
+        const fetching = watchFetches();
+        const settleFetches = holdEveryFetch(fetching);
+        await showPairOpened(true);
+        await waitFor(() => {
+            expect(askedForARender(fetching)).toBe(true);
+        });
+        expect(waveFrame()).toHaveAttribute("aria-busy", "true");
+
+        settleFetches();
+        await waitFor(() => {
+            expect(waveFrame()).not.toHaveAttribute("aria-busy");
+        });
+
+        letTheSliderGo(MOVED_WEIGHT);
+        await waitFor(() => {
+            expect(waveFrame()).toHaveAttribute("aria-busy", "true");
+        });
+
+        settleFetches();
+        await waitFor(() => {
+            expect(waveFrame()).not.toHaveAttribute("aria-busy");
+        });
     });
 
     it("draws the point the marker on the cloud let go at", async () => {

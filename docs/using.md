@@ -48,15 +48,16 @@ and one of them is always selected:
    first, and B as soon as A has a sample, so the first two samples you choose make a pair.
 2. Click or tap a slot to hear its sample and select it. The samples you choose next replace that
    end, and the other end stays. A sample that is already A or B stays where it is.
-3. ⇄ swaps the ends and mirrors the weight.
+3. The swap button swaps the ends and mirrors the weight.
 4. Once both ends are chosen, a slider stands under them. The morph is drawn at the slider's point
    right away and plays when you let the slider or the cloud's marker go. The waveform button opens
    the morph's waveform drawn over both ends.
 5. The history button opens a column for A and one for B: the samples each end has held, the
-   newest at the top, the one it holds now marked. A click on a row makes it that end again. ↶ and
-   ↷ undo and redo the last change, as Ctrl+Z and Ctrl+Y do anywhere in the app; they move the
-   marks and leave the rows where they are. Forget all empties both columns but for the samples
-   held now. The columns are kept for your next visit, when the slots start empty.
+   newest at the top, the one it holds now marked. A click on a row makes it that end again. The
+   undo and redo buttons in the history take back or repeat the last change, as Ctrl+Z and Ctrl+Y
+   do anywhere in the app; they move the marks and leave the rows where they are. Forget all empties
+   both columns but for the samples held now. The columns are kept for your next visit, when the
+   slots start empty.
 
 The morph moves one sample's tone color into the other's. Both samples' harmonics sound along the
 way and glide from the first sample's pitch to the second's; drums and noise keep their own pitch.
@@ -101,7 +102,7 @@ controls sized for a finger. Your browser's "Add to Home Screen" installs the ap
 | Cloud | Tap empty space | Lets go of the point in hand |
 | Cloud | Drag, pinch | Move and zoom the cloud |
 | Cloud | Hold a point | Opens its actions |
-| Cloud | ⌖ | Centers the cloud on the point in hand |
+| Cloud | The center button | Centers the cloud on the point in hand |
 | Cloud | The history button | Opens the samples each end has held; a tap on one makes it that end again |
 
 SampleRipper answers on its own computer. To open your library on a phone or another computer on

@@ -72,6 +72,8 @@ interface WaveformViewProps {
     /** The host a waveform library draws into, or `null` for a frame whose contours are all drawn here. */
     readonly containerRef: RefObject<HTMLDivElement | null> | null;
     readonly isPlaying: boolean;
+    /** Whether the waveform is still on its way. */
+    readonly pending: boolean;
     readonly traces: readonly WaveformTrace[];
     readonly playheadFraction: number | null;
     readonly notice: WaveformNotice | null;
@@ -87,10 +89,15 @@ interface WaveformViewProps {
  * frame is resized, since a canvas holds the pixels it was given. A notice stands in the frame
  * itself where a contour is missing, so the reason is read where the contour would have been
  * rather than in a row of its own.
+ *
+ * While the waveform is on its way the frame is marked busy and its pending layer shows a faint
+ * zero line with a highlight sweeping along it, the drawing standing dimmed beneath; the stylesheet
+ * crossfades the two as the waveform arrives. The layer stays mounted, so it can fade out.
  */
 export function WaveformView({
     containerRef,
     isPlaying,
+    pending,
     traces,
     playheadFraction,
     notice,
@@ -121,7 +128,11 @@ export function WaveformView({
     }, [traces, size, themeSignal.preference, themeSignal.systemVersion]);
 
     return (
-        <div className={classNames("wave-canvas-wrap", isPlaying && "is-playing")} ref={wrapRef}>
+        <div
+            className={classNames("wave-canvas-wrap", isPlaying && "is-playing")}
+            ref={wrapRef}
+            aria-busy={pending ? true : undefined}
+        >
             {traces.length > 0 && (
                 <canvas
                     className="wave-traces"
@@ -132,6 +143,7 @@ export function WaveformView({
                 />
             )}
             {containerRef !== null && <div className="wave-host" ref={containerRef} />}
+            <div className="wave-pending" aria-hidden />
             {notice !== null && (
                 <p
                     className={classNames("wave-notice", notice.failed && "wave-notice-failed")}

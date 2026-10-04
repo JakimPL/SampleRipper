@@ -5,6 +5,7 @@ import { sampleAudioUrl } from "../api/samples";
 import { useLayoutMode } from "../layout/useLayoutMode";
 import { DownloadLink } from "../shared/DownloadLink";
 import { formatDuration } from "../shared/format";
+import { Icon } from "../shared/icons/Icon";
 import { useAudioPreview } from "./useAudioPreview";
 import { useWaveformPlayer } from "./useWaveformPlayer";
 import { NO_TRACES, type WaveformNotice, WaveformView } from "./WaveformView";
@@ -23,6 +24,9 @@ interface WaveformPlayerProps {
     readonly rateOptions: readonly RateOption[];
     readonly onRateChange: (rateHz: number) => void;
 }
+
+const PLAY_LABEL = "Play sample";
+const PAUSE_LABEL = "Pause sample";
 
 const AUDIO_UNAVAILABLE_NOTICE: WaveformNotice = {
     text: "Audio unavailable: the file this sample is read from may be gone or changed since its scan.",
@@ -77,8 +81,15 @@ export function WaveformPlayer({
 
     const readout = `${formatDuration(player.currentTimeSeconds)} / ${formatDuration(player.durationSeconds)}`;
     const playButton = (
-        <button type="button" className="play-btn" onClick={handleTogglePlay} disabled={!player.isReady}>
-            {player.isPlaying ? "⏸" : "▶"}
+        <button
+            type="button"
+            className="play-btn"
+            aria-label={player.isPlaying ? PAUSE_LABEL : PLAY_LABEL}
+            aria-pressed={player.isPlaying}
+            onClick={handleTogglePlay}
+            disabled={!player.isReady}
+        >
+            <Icon name={player.isPlaying ? "pause" : "play"} label={null} />
         </button>
     );
 
@@ -90,6 +101,7 @@ export function WaveformPlayer({
                 <WaveformView
                     containerRef={player.containerRef}
                     isPlaying={player.isPlaying}
+                    pending={!player.isReady && !player.hasFailed}
                     traces={NO_TRACES}
                     playheadFraction={null}
                     notice={compact && player.hasFailed ? AUDIO_UNAVAILABLE_NOTICE : null}

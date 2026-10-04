@@ -1334,7 +1334,9 @@ themes fill from their surfaces and the OpenMPT theme fills with Windows 10 lite
 buttons with a blue ring on the default one and gray text when disabled, sunken white fields, square
 black-on-white checks, a green bar, etched group captions and a flat menu bar. A page wanting larger
 controls, as the setup page does, sets `--button-height` and `--field-height` on itself, since
-`--control-height` is resolved on `:root`.
+`--control-height` is resolved on `:root`. The controls' icons are shapes drawn on one grid in
+`frontend/src/shared/icons`, outlined or filled, the play triangle centered on its own centroid,
+so every browser renders them alike.
 
 ## Morphs in the application
 

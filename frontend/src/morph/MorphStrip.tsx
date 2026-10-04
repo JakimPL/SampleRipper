@@ -151,7 +151,7 @@ export function MorphStrip(): ReactElement {
             <div className="morph-strip-row">
                 <MorphSlot end="first" hash={first} />
                 <Button variant="secondary" icon aria-label="Swap the two ends" disabled={pair === null} onClick={swap}>
-                    ⇄
+                    <Icon name="swap" label={null} />
                 </Button>
                 <MorphSlot end="second" hash={second} />
                 <Button

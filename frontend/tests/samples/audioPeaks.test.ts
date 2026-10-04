@@ -1,9 +1,16 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { normalized, peaksFrom, useAudioPeaks } from "../../src/samples/audioPeaks";
 
 const REFUSAL = "the two ends are heard 9.2 times apart in rate, and a morph spans at most 4";
+const AUDIO_URL = "/api/morph/audio?first=a&second=b&weight=0.625";
+
+class FailingDecoder {
+    decodeAudioData(): Promise<never> {
+        throw new Error("no audio to decode in this case");
+    }
+}
 
 /** One waveform reduced to buckets: what it holds, how many are asked for, and the extremes each one reaches. */
 interface PeaksCase {
@@ -70,14 +77,7 @@ describe("useAudioPeaks", () => {
     });
 
     it("reads back the server's own words about audio it would not serve", async () => {
-        vi.stubGlobal(
-            "AudioContext",
-            class {
-                decodeAudioData(): Promise<never> {
-                    throw new Error("no audio to decode in this case");
-                }
-            },
-        );
+        vi.stubGlobal("AudioContext", FailingDecoder);
         vi.stubGlobal(
             "fetch",
             vi.fn().mockResolvedValue(
@@ -88,11 +88,47 @@ describe("useAudioPeaks", () => {
             ),
         );
 
-        const { result } = renderHook(() => useAudioPeaks("/api/morph/audio?first=a&second=b&weight=0.625", 8));
+        const { result } = renderHook(() => useAudioPeaks(AUDIO_URL, 8));
 
         await waitFor(() => {
             expect(result.current.refusal).toBe(REFUSAL);
         });
         expect(result.current.peaks).toBeNull();
+        expect(result.current.pending).toBe(false);
+    });
+
+    it("holds the audio asked for as pending until its request settles, a failed one included", async () => {
+        const held: ((reason: TypeError) => void)[] = [];
+        vi.stubGlobal("AudioContext", FailingDecoder);
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(
+                () =>
+                    new Promise<Response>((_resolve, reject) => {
+                        held.push(reject);
+                    }),
+            ),
+        );
+
+        const { result } = renderHook(() => useAudioPeaks(AUDIO_URL, 8));
+        await waitFor(() => {
+            expect(held).toHaveLength(1);
+        });
+        expect(result.current.pending).toBe(true);
+
+        act(() => {
+            held[0]?.(new TypeError("no network in a test"));
+        });
+
+        await waitFor(() => {
+            expect(result.current.pending).toBe(false);
+        });
+        expect(result.current.peaks).toBeNull();
+    });
+
+    it("waits on nothing while no audio is asked for", () => {
+        const { result } = renderHook(() => useAudioPeaks(null, 8));
+
+        expect(result.current.pending).toBe(false);
     });
 });

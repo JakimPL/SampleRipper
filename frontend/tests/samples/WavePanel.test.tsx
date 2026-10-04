@@ -2,8 +2,21 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { WavePanel } from "../../src/samples/WavePanel";
+import { Icon } from "../../src/shared/icons/Icon";
 
 const READOUT = "0.00 s / 0.93 s";
+
+const PLAY_BUTTON = (
+    <button type="button" aria-label="Play">
+        <Icon name="play" label={null} />
+    </button>
+);
+
+const DOWNLOAD = (
+    <a href="/a.wav" download="a.wav" aria-label="Save">
+        <Icon name="download" label={null} />
+    </a>
+);
 
 function tagsOf(panel: Element | null): readonly string[] {
     return panel === null ? [] : [...panel.children].map((child) => child.tagName);
@@ -14,16 +27,12 @@ describe("WavePanel", () => {
         const { container } = render(
             <WavePanel
                 compact
-                playButton={<button type="button">▶</button>}
+                playButton={PLAY_BUTTON}
                 view={<p>the frame</p>}
                 readout={READOUT}
                 failure={null}
                 controls={<span>a rate to choose</span>}
-                download={
-                    <a href="/a.wav" download="a.wav">
-                        ⤓
-                    </a>
-                }
+                download={DOWNLOAD}
             />,
         );
 
@@ -38,7 +47,7 @@ describe("WavePanel", () => {
         const { container } = render(
             <WavePanel
                 compact
-                playButton={<button type="button">▶</button>}
+                playButton={PLAY_BUTTON}
                 view={<p>the frame</p>}
                 readout={READOUT}
                 failure="the audio is gone"
@@ -57,16 +66,12 @@ describe("WavePanel", () => {
         const { container } = render(
             <WavePanel
                 compact={false}
-                playButton={<button type="button">▶</button>}
+                playButton={PLAY_BUTTON}
                 view={<p>the frame</p>}
                 readout={READOUT}
                 failure={null}
                 controls={<span>a rate to choose</span>}
-                download={
-                    <a href="/a.wav" download="a.wav">
-                        ⤓
-                    </a>
-                }
+                download={DOWNLOAD}
             />,
         );
 
@@ -82,7 +87,7 @@ describe("WavePanel", () => {
         const { container } = render(
             <WavePanel
                 compact={false}
-                playButton={<button type="button">▶</button>}
+                playButton={PLAY_BUTTON}
                 view={<p>the frame</p>}
                 readout={READOUT}
                 failure="the audio is gone"

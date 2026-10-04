@@ -1691,6 +1691,10 @@ table.data td .annotation-editor-input {
     outline: 2px solid var(--accent);
 }
 
+.thumbnail-button .icon {
+    display: block;
+}
+
 /* The canvas pans, so the overlays reaching past its edge are clipped. */
 .cloud-body {
     position: relative;
@@ -2337,6 +2341,88 @@ table.data td .annotation-editor-input {
     opacity: 1;
 }
 
+/* A busy frame: a faint zero line with a highlight sweeping along it, and the drawing dimmed beneath
+   until the waveform arrives, when the two crossfade. The highlight rests past the left edge, so
+   under reduced motion the line stands alone. */
+.wave-pending {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        opacity 200ms ease-out,
+        visibility 0s linear 200ms;
+}
+
+.wave-canvas-wrap[aria-busy="true"] .wave-pending {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 200ms ease-out;
+}
+
+.wave-pending::before,
+.wave-pending::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+}
+
+.wave-pending::before {
+    height: 1px;
+    transform: translateY(-50%);
+    background: color-mix(in srgb, var(--wave-fill) 60%, transparent);
+}
+
+.wave-pending::after {
+    height: 12px;
+    transform: translate(-100%, -50%);
+    background: radial-gradient(
+        20% 50% at 50% 50%,
+        color-mix(in srgb, var(--wave-progress) 55%, transparent),
+        transparent
+    );
+}
+
+.wave-canvas-wrap[aria-busy="true"] .wave-pending::after {
+    animation: wave-pending-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes wave-pending-sweep {
+    from {
+        transform: translate(-100%, -50%);
+    }
+
+    to {
+        transform: translate(100%, -50%);
+    }
+}
+
+.wave-host,
+.wave-traces {
+    transition: opacity 200ms ease-out;
+}
+
+.wave-canvas-wrap[aria-busy="true"] .wave-host,
+.wave-canvas-wrap[aria-busy="true"] .wave-traces {
+    opacity: 0.35;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wave-pending,
+    .wave-host,
+    .wave-traces {
+        transition: none;
+    }
+
+    .wave-canvas-wrap[aria-busy="true"] .wave-pending::after {
+        animation: none;
+    }
+}
+
 .transport {
     flex: 0 0 auto;
     display: flex;
@@ -2357,11 +2443,18 @@ table.data td .annotation-editor-input {
     background: var(--accent);
     color: var(--accent-ink);
     border: none;
+    padding: 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
+}
+
+/* The icon is a box of its own at a share of the button, so the button's text metrics leave it centered. */
+.play-btn .icon {
+    display: block;
+    font-size: calc(var(--play-button-size) * 0.45);
 }
 
 .play-btn:hover {

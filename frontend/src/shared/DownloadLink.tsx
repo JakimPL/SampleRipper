@@ -1,8 +1,7 @@
 import type { ReactElement } from "react";
 
 import { buttonClassName } from "./controls/buttonClassName";
-
-const SAVE_GLYPH = "⤓";
+import { Icon } from "./icons/Icon";
 
 interface DownloadLinkProps {
     readonly href: string;
@@ -27,7 +26,7 @@ export function DownloadLink({ href, fileName, label }: DownloadLinkProps): Reac
             aria-label={label}
             title={label}
         >
-            {SAVE_GLYPH}
+            <Icon name="download" label={null} />
         </a>
     );
 }

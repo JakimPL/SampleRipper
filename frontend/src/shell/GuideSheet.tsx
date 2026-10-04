@@ -59,14 +59,14 @@ const TOUCH_GUIDE: readonly GuideSection[] = [
                 gesture: "A or B under the cloud",
                 meaning: "plays that end and selects it: every sample you tap next becomes that end",
             },
-            { gesture: "⇄", meaning: "swaps the ends and mirrors the weight" },
+            { gesture: "The swap button", meaning: "swaps the ends and mirrors the weight" },
             { gesture: "The waveform button", meaning: "opens the morph's waveform under the slider" },
             {
                 gesture: "The history button",
                 meaning: "opens the samples each end has held, newest first; a tap on one makes it that end again",
             },
-            { gesture: "↶ ↷ in the history", meaning: "undo and redo the ends" },
-            { gesture: "⌖", meaning: "centers the cloud on the point in hand" },
+            { gesture: "The undo and redo buttons in the history", meaning: "undo and redo the ends" },
+            { gesture: "The center button", meaning: "centers the cloud on the point in hand" },
         ],
     },
 ];
@@ -97,7 +97,7 @@ const POINTER_GUIDE: readonly GuideSection[] = [
                 gesture: "A or B under the cloud",
                 meaning: "plays that end and selects it: every sample you click next becomes that end",
             },
-            { gesture: "⇄", meaning: "swaps the ends and mirrors the weight" },
+            { gesture: "The swap button", meaning: "swaps the ends and mirrors the weight" },
             { gesture: "The waveform button", meaning: "opens the morph's waveform under the slider" },
             {
                 gesture: "The history button",
