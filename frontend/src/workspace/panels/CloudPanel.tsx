@@ -62,8 +62,8 @@ interface HoveredPoint {
     readonly y: number;
 }
 
-/** At or below this panel width the legend leaves its row for a sheet, as the stylesheet's narrow panel rules do. */
 const LEGEND_SHEET_WIDTH_PX = 480;
+const LEGEND_WITH_COLORING_SHEET_WIDTH_PX = 720;
 const ZOOM_STEP_FACTOR = 1.5;
 const MORPH_SWITCH_LABEL = "Morph";
 const BOTTOM_INSET_PROPERTY = "--cloud-bottom-inset";
@@ -179,14 +179,16 @@ function useSampleColoring(mode: ColoringMode): {
  * The cloud with its controls: one toolbar row holding the tab, then the coloring and its legend --
  * the painted tags on the Samples tab, the formats on the Modules tab -- or, on a narrow panel's
  * Samples tab, a Legend button whose sheet holds the coloring and the tags together; and the tools
- * that move the view. Under touch a tapped point shows a card
- * in place of the hover tooltip, except on a phone, where the tray names it; a held point opens
- * its menu. The strip lying over the bottom edge of the samples cloud holds the morph's two ends:
- * a selected end takes every tapped point, a right click gives a point to the other end, and the
- * slider and the waveform slide open above the row once the pair is whole. The Morph switch at
- * the top of the tools turns the morph off and on: off, the strip and the link leave, and a tap
- * only takes a point in hand and plays it. The strip's height lifts the tools and the tap card
- * above it, and the view's moves aim at the part of the cloud it leaves uncovered.
+ * that move the view. The legend stands in the row once the panel is wider than 480 pixels, or 720
+ * where the choice of coloring stands before it, which leaves the tags room for a few chips. Under
+ * touch a tapped point shows a card in place of the hover tooltip, except on a phone, where the
+ * tray names it; a held point opens its menu. The strip lying over the bottom edge of the samples
+ * cloud holds the morph's two ends: a selected end takes every tapped point, a right click gives a
+ * point to the other end, and the slider and the waveform slide open above the row once the pair is
+ * whole. The Morph switch at the top of the tools turns the morph off and on: off, the strip and
+ * the link leave, and a tap only takes a point in hand and plays it. The strip's height lifts the
+ * tools and the tap card above it, and the view's moves aim at the part of the cloud it leaves
+ * uncovered.
  */
 export function CloudPanel(): ReactElement {
     const [tab, setTab] = useState<CloudTab>("samples");
@@ -199,9 +201,10 @@ export function CloudPanel(): ReactElement {
     const stripHeightRef = useRef(NO_INSET_PX);
     const panelRef = useRef<HTMLDivElement | null>(null);
     const width = useContainerWidth(panelRef);
-    const legendAsSheet = width !== null && width <= LEGEND_SHEET_WIDTH_PX;
     const { input, layout } = useLayoutMode();
     const { curationShown } = useCurationAccess();
+    const legendSheetWidthPx = curationShown ? LEGEND_WITH_COLORING_SHEET_WIDTH_PX : LEGEND_SHEET_WIDTH_PX;
+    const legendAsSheet = width !== null && width <= legendSheetWidthPx;
     const state = useActiveCloudPoints(tab);
     const { coloring, tags, painted, togglePainted } = useSampleColoring(mode);
     const moduleColoring = useModuleColoring();

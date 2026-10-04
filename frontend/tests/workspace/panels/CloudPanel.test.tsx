@@ -135,29 +135,43 @@ vi.mock("../../../src/api/modules", async () => {
 });
 
 const NARROW_PANEL_WIDTH_PX = 300;
-const NARROW_PANEL_HEIGHT_PX = 600;
-const NARROW_RECT: DOMRect = {
-    x: 0,
-    y: 0,
-    width: NARROW_PANEL_WIDTH_PX,
-    height: NARROW_PANEL_HEIGHT_PX,
-    top: 0,
-    right: NARROW_PANEL_WIDTH_PX,
-    bottom: NARROW_PANEL_HEIGHT_PX,
-    left: 0,
-    toJSON: () => ({}),
-};
+const WIDE_PANEL_WIDTH_PX = 960;
+const PANEL_HEIGHT_PX = 600;
 
-/** The panel measured at a phone's width for the rest of the test, the setup's wide box back after it. */
-function narrowThePanel(): void {
+function panelRect(width: number): DOMRect {
+    return {
+        x: 0,
+        y: 0,
+        width,
+        height: PANEL_HEIGHT_PX,
+        top: 0,
+        right: width,
+        bottom: PANEL_HEIGHT_PX,
+        left: 0,
+        toJSON: () => ({}),
+    };
+}
+
+/** The panel measured `width` wide for the rest of the test, the setup's box back after it. */
+function measureThePanel(width: number): void {
     const spy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
-    const wide = spy.getMockImplementation();
-    spy.mockReturnValue(NARROW_RECT);
+    const setupBox = spy.getMockImplementation();
+    spy.mockReturnValue(panelRect(width));
     onTestFinished(() => {
-        if (wide !== undefined) {
-            spy.mockImplementation(wide);
+        if (setupBox !== undefined) {
+            spy.mockImplementation(setupBox);
         }
     });
+}
+
+/** The panel at a phone's width. */
+function narrowThePanel(): void {
+    measureThePanel(NARROW_PANEL_WIDTH_PX);
+}
+
+/** The panel wide enough for the coloring's choice and the legend to share the toolbar's row. */
+function widenThePanel(): void {
+    measureThePanel(WIDE_PANEL_WIDTH_PX);
 }
 
 /** What every test starts from: a renderer that answers, and a catalog that names any sample the strip offers. */
@@ -335,6 +349,7 @@ describe("CloudPanel", () => {
     });
 
     it("colors by category from the start, each sample by its first pick under a legend of the tags picked first", async () => {
+        widenThePanel();
         const sampleHash = "3".repeat(64);
         getCloud.mockResolvedValue([{ sample_hash: sampleHash, x: 0, y: 0 }]);
         getModuleCloud.mockResolvedValue([]);
@@ -514,6 +529,7 @@ describe("CloudPanel", () => {
     });
 
     it("captions the toolbar row while the scoring names no sample", async () => {
+        widenThePanel();
         getCloud.mockResolvedValue([{ sample_hash: "4".repeat(64), x: 0, y: 0 }]);
         getModuleCloud.mockResolvedValue([]);
         getCloudCategories.mockResolvedValue([]);
@@ -526,6 +542,7 @@ describe("CloudPanel", () => {
     });
 
     it("drops the expanded legend over the cloud, leaving the toolbar one row", async () => {
+        widenThePanel();
         const sampleHash = "5".repeat(64);
         getCloud.mockResolvedValue([{ sample_hash: sampleHash, x: 0, y: 0 }]);
         getModuleCloud.mockResolvedValue([]);
@@ -667,6 +684,7 @@ describe("CloudPanel", () => {
     });
 
     it("asks for the hand labels and their tags only once the Labels mode is chosen", async () => {
+        widenThePanel();
         const sampleHash = "8".repeat(64);
         getCloud.mockResolvedValue([{ sample_hash: sampleHash, x: 0, y: 0 }]);
         getModuleCloud.mockResolvedValue([]);
@@ -808,6 +826,18 @@ describe("CloudPanel on touch", () => {
         tap(5, 595);
 
         expect(await screen.findByText("module route")).toBeInTheDocument();
+    });
+
+    it("moves the legend into its sheet in a panel too narrow for the coloring's choice beside it", async () => {
+        getCloudCategories.mockResolvedValue([{ sample_hash: FIRST_HASH, path: ["BASS DRUM"], score: 0.8 }]);
+        getCategoryTags.mockResolvedValue([{ path: ["BASS DRUM"], sample_count: 1, rank: 0 }]);
+        await renderedPanel();
+
+        const legend = await screen.findByRole("button", { name: "Legend" });
+
+        expect(toolbarOf(legend)).toBe(toolbarOf(screen.getByRole("button", { name: "Samples" })));
+        expect(screen.queryByRole("button", { name: "Category" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("group", { name: "Painted tags" })).not.toBeInTheDocument();
     });
 
     it("keeps the format chips in the row of a narrow panel's Modules tab", async () => {

@@ -1161,7 +1161,8 @@ coloring: the painted tags fill the rest of the row and scroll sideways, and the
 tag into a panel of at most three rows over the cloud's top edge, so the cloud keeps its size. The
 Cloud panel opens in the category mode, painted from the categories, with the labels one click away;
 a panel 480 pixels wide or narrower, a phone's among them, keeps its toolbar to the tabs and a Legend
-button, whose sheet holds that choice above the painted tags.
+button, whose sheet holds that choice above the painted tags; where that choice is offered, a panel
+up to 720 pixels wide does the same, so the tags keep room for a few chips beside it.
 Every point outside the painted tags joins the substrate, on its recessive tone, and while a
 mode's sources load every point waits there.
 
