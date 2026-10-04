@@ -10,7 +10,7 @@ describe("GuideSheet", () => {
 
         expect(screen.getByRole("dialog", { name: "Gestures" })).toBeInTheDocument();
         expect(screen.getByText("Pinch")).toBeInTheDocument();
-        expect(screen.getByText("A or B under the cloud")).toBeInTheDocument();
+        expect(screen.getByText("A or B along the bottom of the cloud")).toBeInTheDocument();
         expect(screen.queryByText("Alt+← Alt+→")).not.toBeInTheDocument();
     });
 

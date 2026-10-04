@@ -64,7 +64,8 @@ ends, A and B, and one of them is always selected:
    slots start empty.
 8. The **Morph** button at the top of the cloud's buttons turns the morph off and on. While it is
    off, the strip and the line between the ends go away, and the samples you choose leave A and B
-   as they are until you turn it back on.
+   as they are until you turn it back on, with this button or by right-clicking a point (on a phone
+   or tablet, **Use as A** or **Use as B**).
 
 The morph moves one sample's tone color into the other's. Both samples' harmonics sound along the
 way and glide from the first sample's pitch to the second's; drums and noise keep their own pitch.

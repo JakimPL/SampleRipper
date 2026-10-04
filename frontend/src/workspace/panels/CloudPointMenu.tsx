@@ -1,14 +1,14 @@
 import type { ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { END_LETTERS, OTHER_END, useMorphStore } from "../../morph/morphStore";
+import { type MorphEnd, OTHER_END, useMorphStore } from "../../morph/morphStore";
 import { samplePreview, useAudioPreview } from "../../samples/useAudioPreview";
 import { shortHash } from "../../shared/format";
 import { ActionSheet, type SheetAction } from "../../shared/overlay/ActionSheet";
 import type { EntityRef } from "../selectionStore";
 import { entityRoute } from "../useEntityRowInteractions";
 
-const USE_AS_LABEL = "Use as";
+const USE_AS_LABELS: Readonly<Record<MorphEnd, string>> = { first: "Use as A", second: "Use as B" };
 
 interface CloudPointMenuProps {
     readonly entity: EntityRef;
@@ -34,7 +34,7 @@ export function CloudPointMenu({
 }: CloudPointMenuProps): ReactElement {
     const navigate = useNavigate();
     const { play } = useAudioPreview();
-    const otherLetter = useMorphStore((state) => END_LETTERS[OTHER_END[state.selectedEnd]]);
+    const otherEnd = useMorphStore((state) => OTHER_END[state.selectedEnd]);
 
     const sampleActions: readonly SheetAction[] =
         entity.kind === "sample"
@@ -49,7 +49,7 @@ export function CloudPointMenu({
                   },
                   {
                       id: "use-at-other-end",
-                      label: `${USE_AS_LABEL} ${otherLetter}`,
+                      label: USE_AS_LABELS[otherEnd],
                       disabled: false,
                       run: () => {
                           onSelectAtOtherEnd(entity);

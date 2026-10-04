@@ -146,7 +146,6 @@ interface RenderOverrides {
     readonly onContextMenu?: (entity: EntityRef, position: readonly [number, number]) => void;
     readonly onSelectAtOtherEnd?: (entity: EntityRef) => void;
     readonly command?: CloudCommand | null;
-    readonly bottomInsetPx?: number;
     readonly link?: CloudLink | null;
 }
 
@@ -179,7 +178,6 @@ function viewProps(overrides: RenderOverrides = {}): Parameters<typeof CloudView
         onContextMenu: overrides.onContextMenu ?? vi.fn(),
         onSelectAtOtherEnd: overrides.onSelectAtOtherEnd ?? vi.fn(),
         command: overrides.command ?? null,
-        bottomInsetPx: overrides.bottomInsetPx ?? 0,
         link: overrides.link ?? null,
         onWeightChange: vi.fn(),
         onWeightCommit: vi.fn(),
@@ -200,7 +198,6 @@ async function renderCloudView(overrides: RenderOverrides = {}): Promise<ReturnT
             onContextMenu={overrides.onContextMenu ?? vi.fn()}
             onSelectAtOtherEnd={overrides.onSelectAtOtherEnd ?? vi.fn()}
             command={overrides.command ?? null}
-            bottomInsetPx={overrides.bottomInsetPx ?? 0}
             link={overrides.link ?? null}
             onWeightChange={vi.fn()}
             onWeightCommit={vi.fn()}
@@ -271,7 +268,6 @@ describe("CloudView", () => {
                 onContextMenu={vi.fn()}
                 onSelectAtOtherEnd={vi.fn()}
                 command={null}
-                bottomInsetPx={0}
                 link={null}
                 onWeightChange={vi.fn()}
                 onWeightCommit={vi.fn()}
@@ -364,7 +360,6 @@ describe("CloudView", () => {
                 onContextMenu={vi.fn()}
                 onSelectAtOtherEnd={vi.fn()}
                 command={null}
-                bottomInsetPx={0}
                 link={null}
                 onWeightChange={vi.fn()}
                 onWeightCommit={vi.fn()}
@@ -396,7 +391,6 @@ describe("CloudView", () => {
                 onContextMenu={vi.fn()}
                 onSelectAtOtherEnd={vi.fn()}
                 command={null}
-                bottomInsetPx={0}
                 link={null}
                 onWeightChange={vi.fn()}
                 onWeightCommit={vi.fn()}
@@ -440,7 +434,6 @@ describe("CloudView", () => {
                     onContextMenu={vi.fn()}
                     onSelectAtOtherEnd={vi.fn()}
                     command={null}
-                    bottomInsetPx={0}
                     link={null}
                     onWeightChange={vi.fn()}
                     onWeightCommit={vi.fn()}
@@ -519,7 +512,6 @@ describe("CloudView", () => {
                 onContextMenu={vi.fn()}
                 onSelectAtOtherEnd={vi.fn()}
                 command={null}
-                bottomInsetPx={0}
                 link={null}
                 onWeightChange={vi.fn()}
                 onWeightCommit={vi.fn()}
@@ -550,7 +542,6 @@ describe("CloudView", () => {
                 onContextMenu={vi.fn()}
                 onSelectAtOtherEnd={vi.fn()}
                 command={null}
-                bottomInsetPx={0}
                 link={null}
                 onWeightChange={vi.fn()}
                 onWeightCommit={vi.fn()}
@@ -1142,6 +1133,21 @@ describe("CloudView touch", () => {
         expect(onSelect).toHaveBeenCalledTimes(2);
     });
 
+    it("takes two taps in one place with a pan between them as two single taps", async () => {
+        const onSelect = vi.fn();
+        const onFocus = vi.fn();
+        await renderCloudView({ points: TWO_POINTS, onSelect, onFocus });
+
+        tap(5, 595);
+        fingerDown(100, 100);
+        fingerMove(130, 115);
+        fingerUp(130, 115);
+        tap(5, 595);
+
+        expect(onFocus).not.toHaveBeenCalled();
+        expect(onSelect).toHaveBeenCalledTimes(2);
+    });
+
     it("clears on each of two taps on empty space, opening nothing", async () => {
         const onClear = vi.fn();
         const onFocus = vi.fn();
@@ -1230,7 +1236,7 @@ describe("CloudView touch", () => {
             <CloudView
                 {...viewProps({
                     points: TWO_POINTS,
-                    command: { sequence: 1, action: { kind: "locate", hash: SAMPLE_REF.hash } },
+                    command: { sequence: 1, action: { kind: "locate", hash: SAMPLE_REF.hash }, bottomInsetPx: 0 },
                 })}
             />,
         );
@@ -1244,7 +1250,10 @@ describe("CloudView touch", () => {
 
         rerender(
             <CloudView
-                {...viewProps({ points: TWO_POINTS, command: { sequence: 2, action: { kind: "zoom", factor: 1.5 } } })}
+                {...viewProps({
+                    points: TWO_POINTS,
+                    command: { sequence: 2, action: { kind: "zoom", factor: 1.5 }, bottomInsetPx: 0 },
+                })}
             />,
         );
 
@@ -1262,6 +1271,7 @@ describe("CloudView touch", () => {
                     command: {
                         sequence: 1,
                         action: { kind: "frame", first: SAMPLE_REF.hash, second: MODULE_REF.hash },
+                        bottomInsetPx: 0,
                     },
                 })}
             />,
@@ -1276,14 +1286,13 @@ describe("CloudView touch", () => {
     });
 
     it("centers a located point in the part of the view above the bottom inset", async () => {
-        const { rerender } = await renderCloudView({ points: TWO_POINTS, bottomInsetPx: 200 });
+        const { rerender } = await renderCloudView({ points: TWO_POINTS });
 
         rerender(
             <CloudView
                 {...viewProps({
                     points: TWO_POINTS,
-                    bottomInsetPx: 200,
-                    command: { sequence: 1, action: { kind: "locate", hash: SAMPLE_REF.hash } },
+                    command: { sequence: 1, action: { kind: "locate", hash: SAMPLE_REF.hash }, bottomInsetPx: 200 },
                 })}
             />,
         );

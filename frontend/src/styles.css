@@ -1621,9 +1621,9 @@ table.data td .annotation-editor-input {
     }
 }
 
-/* A section opening from no height and closing back to none, fading as it goes. Its one grid row
-   grows from 0fr to 1fr, which a transition can follow where a height of auto gives it nothing;
-   the closing duration stays within the fallback `Collapsible` waits on. */
+/* A section opening from no height and closing back to none, fading as it goes: its one grid row
+   grows from 0fr to 1fr, a size a transition follows, and the closing duration stays within the
+   fallback `Collapsible` waits on. */
 .collapsible {
     display: grid;
     grid-template-rows: 1fr;
@@ -2859,7 +2859,7 @@ table.data td .annotation-editor-input {
 }
 
 /* The row of slots along the bottom, and above it a drawer whose sections slide open: each keeps
-   a margin inside its own sliding box, wide enough for a focus ring, so the spacing slides with it. */
+   its vertical spacing as a margin inside its own sliding box, so the spacing slides with it. */
 .morph-strip {
     display: flex;
     flex-direction: column;
@@ -2870,6 +2870,16 @@ table.data td .annotation-editor-input {
 
 .morph-strip-section {
     margin: var(--space-2) 0;
+}
+
+/* A drawer section reaches into the strip's side padding and pads its sliding box back by as much,
+   so a focus ring at the section's edge stays whole inside the box that clips it. */
+.morph-strip > .collapsible {
+    margin-inline: calc(-1 * var(--space-2));
+}
+
+.morph-strip > .collapsible > .collapsible-content {
+    padding-inline: var(--space-2);
 }
 
 .morph-strip-row {

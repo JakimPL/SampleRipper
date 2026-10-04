@@ -1,4 +1,5 @@
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement, ReactNode, RefObject } from "react";
+import { useEffect, useRef } from "react";
 
 import { SampleName } from "../samples/SampleName";
 import { samplePreview, useAudioPreview } from "../samples/useAudioPreview";
@@ -10,7 +11,7 @@ import { END_LETTERS, type MorphEnd, useMorphStore } from "./morphStore";
 import { useEndpoint } from "./useEndpoint";
 
 const EMPTY_READING = "empty";
-const CLEAR_LABEL = "Clear";
+const CLEAR_LABELS: Readonly<Record<MorphEnd, string>> = { first: "Clear A", second: "Clear B" };
 
 interface MorphSlotProps {
     readonly end: MorphEnd;
@@ -21,10 +22,14 @@ interface MorphSlotProps {
 interface ChosenEndProps {
     readonly end: MorphEnd;
     readonly hash: string;
+    readonly slotRef: RefObject<HTMLButtonElement | null>;
+    /** Called as the × empties the end, before the end's empty slot takes its place. */
+    readonly onClear: () => void;
 }
 
 interface EmptyEndProps {
     readonly end: MorphEnd;
+    readonly slotRef: RefObject<HTMLButtonElement | null>;
 }
 
 interface SlotButtonProps {
@@ -33,16 +38,18 @@ interface SlotButtonProps {
     readonly spoken: string;
     readonly empty: boolean;
     readonly onClick: () => void;
+    readonly buttonRef: RefObject<HTMLButtonElement | null>;
     readonly children: ReactNode;
 }
 
 /** The button every slot is: the end's letter and what it holds, pressed while the end is selected. */
-function SlotButton({ end, spoken, empty, onClick, children }: SlotButtonProps): ReactElement {
+function SlotButton({ end, spoken, empty, onClick, buttonRef, children }: SlotButtonProps): ReactElement {
     const selected = useMorphStore((state) => state.selectedEnd === end);
     const letter = END_LETTERS[end];
 
     return (
         <button
+            ref={buttonRef}
             type="button"
             className={classNames("morph-slot", empty && "morph-slot-empty", selected && "is-selected")}
             aria-label={`${letter}: ${spoken}`}
@@ -59,7 +66,7 @@ function SlotButton({ end, spoken, empty, onClick, children }: SlotButtonProps):
  * The end as chosen: a tap plays its sample at the sample's own rate, takes it in hand and selects
  * the end, and the × beside it empties the end.
  */
-function ChosenEnd({ end, hash }: ChosenEndProps): ReactElement {
+function ChosenEnd({ end, hash, slotRef, onClear }: ChosenEndProps): ReactElement {
     const name = useSampleName(hash);
     const reading = useEndpoint(hash);
     const selectEnd = useMorphStore((state) => state.selectEnd);
@@ -75,14 +82,21 @@ function ChosenEnd({ end, hash }: ChosenEndProps): ReactElement {
 
     return (
         <div className="morph-slot-group">
-            <SlotButton end={end} spoken={spokenNameOf(hash, name)} empty={false} onClick={handleClick}>
+            <SlotButton
+                end={end}
+                spoken={spokenNameOf(hash, name)}
+                empty={false}
+                onClick={handleClick}
+                buttonRef={slotRef}
+            >
                 <SampleName hash={hash} name={name} />
             </SlotButton>
             <button
                 type="button"
                 className="morph-slot-clear"
-                aria-label={`${CLEAR_LABEL} ${END_LETTERS[end]}`}
+                aria-label={CLEAR_LABELS[end]}
                 onClick={() => {
+                    onClear();
                     discard(end);
                 }}
             >
@@ -92,7 +106,7 @@ function ChosenEnd({ end, hash }: ChosenEndProps): ReactElement {
     );
 }
 
-function EmptyEnd({ end }: EmptyEndProps): ReactElement {
+function EmptyEnd({ end, slotRef }: EmptyEndProps): ReactElement {
     const selectEnd = useMorphStore((state) => state.selectEnd);
 
     return (
@@ -104,6 +118,7 @@ function EmptyEnd({ end }: EmptyEndProps): ReactElement {
                 onClick={() => {
                     selectEnd(end);
                 }}
+                buttonRef={slotRef}
             >
                 {EMPTY_READING}
             </SlotButton>
@@ -114,8 +129,27 @@ function EmptyEnd({ end }: EmptyEndProps): ReactElement {
 /**
  * One end of the morph pair as the strip shows it. The selected end takes every sample picked
  * next, in a list or on the cloud; a tap on a slot selects its end, and the × of a chosen end
- * empties it and selects it, a step undo takes back.
+ * empties it and selects it, a step undo takes back. Focus follows the × to the end's empty slot,
+ * so a keyboard stays on the end it just emptied.
  */
 export function MorphSlot({ end, hash }: MorphSlotProps): ReactElement {
-    return hash === null ? <EmptyEnd end={end} /> : <ChosenEnd end={end} hash={hash} />;
+    const slotRef = useRef<HTMLButtonElement | null>(null);
+    const clearingRef = useRef(false);
+
+    useEffect(() => {
+        if (hash === null && clearingRef.current) {
+            clearingRef.current = false;
+            slotRef.current?.focus();
+        }
+    }, [hash]);
+
+    function handleClear(): void {
+        clearingRef.current = true;
+    }
+
+    return hash === null ? (
+        <EmptyEnd end={end} slotRef={slotRef} />
+    ) : (
+        <ChosenEnd end={end} hash={hash} slotRef={slotRef} onClear={handleClear} />
+    );
 }

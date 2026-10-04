@@ -142,6 +142,8 @@ export type CloudAction =
 export interface CloudCommand {
     readonly sequence: number;
     readonly action: CloudAction;
+    /** The height covering the view's bottom edge as the command is given, which a locate and a frame aim above. */
+    readonly bottomInsetPx: number;
 }
 
 interface CloudViewProps {
@@ -158,8 +160,6 @@ interface CloudViewProps {
     /** A point the mouse's right button clicked, for a caller to give to the morph's other end. */
     readonly onSelectAtOtherEnd: (entity: EntityRef) => void;
     readonly command: CloudCommand | null;
-    /** How tall a strip lies over the bottom edge, in CSS pixels; the view's moves aim at the part above it. */
-    readonly bottomInsetPx: number;
     readonly link: CloudLink | null;
     readonly onWeightChange: (weight: number) => void;
     readonly onWeightCommit: () => void;
@@ -347,13 +347,14 @@ function selectHighlighted(
  * since the library keeps hit-testing beneath it.
  *
  * A finger works through its own layer (`touch/`), since the library and its camera know only the
- * mouse: a tap selects and activates the point under it within a finger's reach, synchronously,
- * so a caller's playback starts inside the gesture the browser allows sound from; a tap on empty
- * space clears; a second tap in the same place soon after focuses the point the first one took,
- * the way a double click does; a held finger reports its point through `onContextMenu`; one finger
- * pans and two pinch, each move driving the camera and asking for the frame that shows it. A
- * `command` centers the view on a point, frames a pair or steps the zoom, once per sequence number;
- * a centered point or a framed pair lands in the middle of the part above `bottomInsetPx`.
+ * mouse: a tap selects and activates the point under it within a finger's reach, synchronously, so
+ * a caller's playback starts inside the gesture the browser allows sound from; a tap on empty space
+ * clears; a second tap in the same place soon after, with the view unmoved between them, focuses
+ * the point the first one took, the way a double click does; a held finger reports its point
+ * through `onContextMenu`; one finger pans and two pinch, each move driving the camera and asking
+ * for the frame that shows it. A `command` centers the view on a point, frames a pair or steps the
+ * zoom, once per sequence number; a centered point or a framed pair lands in the middle of the part
+ * above the inset the command names.
  *
  * The selected and the hovered point each carry a marker in the theme's point shape. Every overlay
  * -- the markers, the ping and the link -- follows the library's `drawing` event, which
@@ -399,7 +400,6 @@ export function CloudView({
     onContextMenu,
     onSelectAtOtherEnd,
     command,
-    bottomInsetPx,
     link,
     onWeightChange,
     onWeightCommit,
@@ -430,8 +430,6 @@ export function CloudView({
     onContextMenuRef.current = onContextMenu;
     const onSelectAtOtherEndRef = useRef(onSelectAtOtherEnd);
     onSelectAtOtherEndRef.current = onSelectAtOtherEnd;
-    const bottomInsetRef = useRef(bottomInsetPx);
-    bottomInsetRef.current = bottomInsetPx;
     onSelectRef.current = onSelect;
     onFocusRef.current = onFocus;
     onClearRef.current = onClear;
@@ -788,12 +786,14 @@ export function CloudView({
         }
 
         function handlePan(dxPx: number, dyPx: number): void {
+            tappedEntity = null;
             moveCamera((camera, viewport) => {
                 panBy(camera, viewport, dxPx, dyPx);
             });
         }
 
         function handlePinch(factor: number, centerX: number, centerY: number, dxPx: number, dyPx: number): void {
+            tappedEntity = null;
             moveCamera((camera, viewport) => {
                 panBy(camera, viewport, dxPx, dyPx);
                 zoomAbout(camera, viewport, factor, centerX, centerY);
@@ -979,7 +979,7 @@ export function CloudView({
         if (area === null || viewport === null) {
             return;
         }
-        void scatterplot.zoomToArea(areaAboveInset(area, viewport, bottomInsetRef.current), {
+        void scatterplot.zoomToArea(areaAboveInset(area, viewport, command.bottomInsetPx), {
             transition: !prefersReducedMotion(),
             transitionDuration: LOCATE_TRANSITION_MS,
         });

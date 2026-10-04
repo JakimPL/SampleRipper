@@ -1,6 +1,5 @@
 import type { ReactElement, RefObject } from "react";
 import { useEffect, useRef } from "react";
-import { flushSync } from "react-dom";
 
 import { Collapsible } from "../shared/motion/Collapsible";
 import { useMorphStore } from "./morphStore";
@@ -14,8 +13,8 @@ interface MorphStripDockProps {
 }
 
 /**
- * Reports the border-box height of the element `ref` holds on every resize, committed within the
- * frame the resize is observed in, and 0 as the element leaves.
+ * Reports the border-box height of the element `ref` holds on every resize, as the resize is
+ * observed and so before the frame paints, and 0 as the element leaves.
  */
 function useReportedHeight(ref: RefObject<HTMLElement | null>, onHeightChange: (heightPx: number) => void): void {
     const onHeightChangeRef = useRef(onHeightChange);
@@ -33,9 +32,7 @@ function useReportedHeight(ref: RefObject<HTMLElement | null>, onHeightChange: (
                 return;
             }
             reported = size.blockSize;
-            flushSync(() => {
-                onHeightChangeRef.current(reported);
-            });
+            onHeightChangeRef.current(reported);
         });
         observer.observe(element);
         return (): void => {

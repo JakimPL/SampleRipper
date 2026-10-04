@@ -46,7 +46,7 @@ export const ICON_SHAPES: Readonly<Record<IconName, IconShape>> = {
     detail: { path: "M12 8h.01M11 12h1v4h1M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0", paint: "stroke" },
     stats: { path: "M5 20v-9M12 20V4M19 20v-6", paint: "stroke" },
     external: { path: "M14 4h6v6M20 4l-9 9M18 13v6H5V6h6", paint: "stroke" },
-    play: { path: "M8 5v14l11-7z", paint: "fill" },
+    play: { path: "M8.5 5v14L19 12z", paint: "fill" },
     pause: { path: "M7 5h2v14H7zM15 5h2v14h-2z", paint: "fill" },
     swap: { path: "M16 3l4 4-4 4M20 7H4M8 13l-4 4 4 4M4 17h16", paint: "stroke" },
     locate: {

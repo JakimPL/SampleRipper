@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactElement, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactElement, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { CloudCategory, CloudLabel, CloudPoint, ModuleCloudPoint } from "../../api/cloud";
@@ -68,9 +68,6 @@ const ZOOM_STEP_FACTOR = 1.5;
 const MORPH_SWITCH_LABEL = "Morph";
 const BOTTOM_INSET_PROPERTY = "--cloud-bottom-inset";
 const NO_INSET_PX = 0;
-
-/** The cloud's body, carrying the height the morph strip covers along its bottom edge for the controls resting there. */
-type CloudBodyStyle = CSSProperties & Readonly<Record<typeof BOTTOM_INSET_PROPERTY, string>>;
 
 interface HeldPoint {
     readonly entity: EntityRef;
@@ -198,7 +195,8 @@ export function CloudPanel(): ReactElement {
     const [held, setHeld] = useState<HeldPoint | null>(null);
     const [legendOpen, setLegendOpen] = useState(false);
     const [command, setCommand] = useState<CloudCommand | null>(null);
-    const [stripHeightPx, setStripHeightPx] = useState(NO_INSET_PX);
+    const bodyRef = useRef<HTMLDivElement | null>(null);
+    const stripHeightRef = useRef(NO_INSET_PX);
     const panelRef = useRef<HTMLDivElement | null>(null);
     const width = useContainerWidth(panelRef);
     const legendAsSheet = width !== null && width <= LEGEND_SHEET_WIDTH_PX;
@@ -245,8 +243,6 @@ export function CloudPanel(): ReactElement {
     );
     const inHandHere = highlighted !== null && hashesInView.has(highlighted.hash) ? highlighted : null;
     const tapCardShown = input === "touch" && layout === "workspace" && inHandHere !== null;
-    const bottomInsetPx = tab === "samples" ? stripHeightPx : NO_INSET_PX;
-    const bodyStyle: CloudBodyStyle = { [BOTTOM_INSET_PROPERTY]: `${String(bottomInsetPx)}px` };
 
     useEffect(() => {
         setHovered(null);
@@ -254,7 +250,18 @@ export function CloudPanel(): ReactElement {
     }, [tab]);
 
     function issue(action: CloudAction): void {
-        setCommand((current) => ({ sequence: (current?.sequence ?? 0) + 1, action }));
+        const bottomInsetPx = stripHeightRef.current;
+        setCommand((current) => ({ sequence: (current?.sequence ?? 0) + 1, action, bottomInsetPx }));
+    }
+
+    /**
+     * Keeps the height the strip covers for the view's next move, and lifts the controls resting
+     * along the bottom edge by it straight through the body's custom property, so they follow the
+     * strip's slide frame by frame while the panel itself stays as it is.
+     */
+    function handleStripHeight(heightPx: number): void {
+        stripHeightRef.current = heightPx;
+        bodyRef.current?.style.setProperty(BOTTOM_INSET_PROPERTY, `${String(heightPx)}px`);
     }
 
     function handleContextMenu(entity: EntityRef): void {
@@ -363,7 +370,7 @@ export function CloudPanel(): ReactElement {
                     </>
                 )}
             </div>
-            <div className="panel-body cloud-body" style={bodyStyle}>
+            <div className="panel-body cloud-body" ref={bodyRef}>
                 {state.status === "loading" && <Loading />}
                 {state.status === "error" && <ErrorNotice message={state.message} />}
                 {state.status === "success" && (
@@ -380,7 +387,6 @@ export function CloudPanel(): ReactElement {
                             onContextMenu={handleContextMenu}
                             onSelectAtOtherEnd={handleSelectAtOtherEnd}
                             command={command}
-                            bottomInsetPx={bottomInsetPx}
                             link={tab === "samples" ? link : null}
                             onWeightChange={setWeight}
                             onWeightCommit={playback.hearCurrentPoint}
@@ -455,7 +461,7 @@ export function CloudPanel(): ReactElement {
                         </div>
                     </>
                 )}
-                {tab === "samples" && <MorphStripDock onHeightChange={setStripHeightPx} />}
+                {tab === "samples" && <MorphStripDock onHeightChange={handleStripHeight} />}
             </div>
             {held !== null && (
                 <CloudPointMenu

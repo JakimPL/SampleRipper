@@ -431,6 +431,16 @@ describe("MorphStrip clearing an end", () => {
         expect(slider()).toBeInTheDocument();
     });
 
+    it("hands the keyboard's focus to the slot of the end it empties", async () => {
+        await showPair(true);
+        const clear = screen.getByRole("button", { name: `Clear ${END_LETTERS.second}` });
+        clear.focus();
+
+        fireEvent.click(clear);
+
+        expect(slot("B")).toHaveFocus();
+    });
+
     it("slides the slider shut over the pair it last showed once the pair breaks", async () => {
         await showPair(true);
         const body = document.querySelector(".morph-strip-body");

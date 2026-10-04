@@ -88,7 +88,6 @@ export const INITIAL_MORPH_STATE: MorphState = {
     ...EMPTY_HISTORY,
 };
 
-/** The end across the pair from each end. */
 export const OTHER_END: Readonly<Record<MorphEnd, MorphEnd>> = { first: "second", second: "first" };
 
 /**
