@@ -241,6 +241,123 @@ describe("the selected end", () => {
     });
 });
 
+describe("clearing an end", () => {
+    it("empties the end and selects it, keeping the other end and the columns", () => {
+        choosePair(A, B);
+        useMorphStore.getState().selectEnd("first");
+        const { held } = useMorphStore.getState();
+
+        useMorphStore.getState().discard("second");
+
+        expect(useMorphStore.getState()).toMatchObject({
+            first: A,
+            second: null,
+            renderedWeight: null,
+            selectedEnd: "second",
+        });
+        expect(useMorphStore.getState().held).toBe(held);
+    });
+
+    it("fills the emptied end with the next sample taken, the selection staying on it", () => {
+        choosePair(A, B);
+        useMorphStore.getState().discard("first");
+
+        useMorphStore.getState().takeSample(C);
+
+        expect(useMorphStore.getState()).toMatchObject({ first: C, second: B, selectedEnd: "first" });
+    });
+
+    it("brings the emptied end back on undo, and empties it again on redo", () => {
+        choosePair(A, B);
+        useMorphStore.getState().discard("second");
+
+        useMorphStore.getState().undo();
+        expect(useMorphStore.getState()).toMatchObject({ first: A, second: B });
+
+        useMorphStore.getState().redo();
+        expect(useMorphStore.getState()).toMatchObject({ first: A, second: null });
+    });
+});
+
+describe("turning the morph off", () => {
+    it("takes nothing while off, the pair waiting as it stands", () => {
+        choosePair(A, B);
+        useMorphStore.getState().setEnabled(false);
+        const before = useMorphStore.getState();
+
+        useMorphStore.getState().takeSample(C);
+
+        expect(useMorphStore.getState()).toBe(before);
+    });
+
+    it("takes samples again once turned back on", () => {
+        useMorphStore.getState().setEnabled(false);
+        useMorphStore.getState().setEnabled(true);
+
+        useMorphStore.getState().takeSample(A);
+
+        expect(useMorphStore.getState()).toMatchObject({ first: A, selectedEnd: "second" });
+    });
+
+    it("stays off through undo and redo", () => {
+        choosePair(A, B);
+        useMorphStore.getState().setEnabled(false);
+
+        useMorphStore.getState().undo();
+        useMorphStore.getState().redo();
+
+        expect(useMorphStore.getState().enabled).toBe(false);
+    });
+});
+
+describe("taking a sample at the other end", () => {
+    it("gives the sample to the end opposite the selected one, the selection staying", () => {
+        choosePair(A, B);
+        useMorphStore.getState().selectEnd("first");
+
+        useMorphStore.getState().takeSampleAtOtherEnd(C);
+
+        expect(useMorphStore.getState()).toMatchObject({ first: A, second: C, selectedEnd: "first" });
+    });
+
+    it("fills the empty end of a half pair, the selection staying", () => {
+        useMorphStore.getState().setEnd("second", A);
+        useMorphStore.getState().selectEnd("second");
+
+        useMorphStore.getState().takeSampleAtOtherEnd(B);
+
+        expect(useMorphStore.getState()).toMatchObject({ first: B, second: A, selectedEnd: "second" });
+    });
+
+    it("turns the morph back on", () => {
+        useMorphStore.getState().setEnabled(false);
+
+        useMorphStore.getState().takeSampleAtOtherEnd(A);
+
+        expect(useMorphStore.getState()).toMatchObject({ enabled: true, second: A });
+    });
+
+    it("trades places when the selected end holds the sample, the weight mirrored", () => {
+        choosePair(A, B);
+        useMorphStore.getState().selectEnd("first");
+        useMorphStore.getState().setWeight(0.25);
+
+        useMorphStore.getState().takeSampleAtOtherEnd(A);
+
+        expect(useMorphStore.getState()).toMatchObject({ first: B, second: A, weight: 0.75, selectedEnd: "first" });
+    });
+
+    it("leaves everything as it is when the other end holds the sample already", () => {
+        choosePair(A, B);
+        useMorphStore.getState().selectEnd("first");
+        const before = useMorphStore.getState();
+
+        useMorphStore.getState().takeSampleAtOtherEnd(B);
+
+        expect(useMorphStore.getState()).toBe(before);
+    });
+});
+
 describe("undo and redo", () => {
     const D = "d".repeat(64);
     const MOVED_WEIGHT = 0.25;
@@ -283,6 +400,21 @@ describe("undo and redo", () => {
                 useMorphStore.getState().takeSample(C);
             },
             after: { first: A, second: C },
+        },
+        {
+            name: "an end is cleared",
+            change: () => {
+                useMorphStore.getState().discard("first");
+            },
+            after: { first: null, second: B, weight: MOVED_WEIGHT },
+        },
+        {
+            name: "the end opposite the selected one takes a sample",
+            change: () => {
+                useMorphStore.getState().selectEnd("second");
+                useMorphStore.getState().takeSampleAtOtherEnd(C);
+            },
+            after: { first: C, second: B, weight: MOVED_WEIGHT },
         },
     ];
 
@@ -487,6 +619,7 @@ describe("the history under a random walk of every action", () => {
     const MODULUS = 2147483648;
     const MULTIPLIER = 1103515245;
     const INCREMENT = 12345;
+    const HALF = 0.5;
     const HASHES: readonly string[] = Array.from({ length: HASH_COUNT }, (_, index) =>
         index.toString(16).padStart(64, "0"),
     );
@@ -514,7 +647,13 @@ describe("the history under a random walk of every action", () => {
     }
 
     /** The actions that change the ends and so record a snapshot; the rest move the slider, the mark or the selection alone. */
-    const RECORDING_KINDS: ReadonlySet<string> = new Set(["setEnd", "swap", "takeSample"]);
+    const RECORDING_KINDS: ReadonlySet<string> = new Set([
+        "setEnd",
+        "swap",
+        "takeSample",
+        "takeSampleAtOtherEnd",
+        "discard",
+    ]);
 
     const STEP_KINDS: readonly Step[] = [
         {
@@ -536,9 +675,27 @@ describe("the history under a random walk of every action", () => {
             },
         },
         {
+            name: "takeSampleAtOtherEnd",
+            run: (draw) => {
+                useMorphStore.getState().takeSampleAtOtherEnd(pick(draw, HASHES));
+            },
+        },
+        {
+            name: "discard",
+            run: (draw) => {
+                useMorphStore.getState().discard(pick(draw, MORPH_ENDS));
+            },
+        },
+        {
             name: "selectEnd",
             run: (draw) => {
                 useMorphStore.getState().selectEnd(pick(draw, MORPH_ENDS));
+            },
+        },
+        {
+            name: "setEnabled",
+            run: (draw) => {
+                useMorphStore.getState().setEnabled(draw() < HALF);
             },
         },
         {

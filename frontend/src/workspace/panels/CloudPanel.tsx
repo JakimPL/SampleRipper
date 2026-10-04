@@ -1,4 +1,4 @@
-import { type ReactElement, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type ReactElement, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { CloudCategory, CloudLabel, CloudPoint, ModuleCloudPoint } from "../../api/cloud";
@@ -19,7 +19,7 @@ import { useModuleColoring } from "../../cloud/useModuleColoring";
 import { useContainerWidth } from "../../layout/useContainerWidth";
 import { useLayoutMode } from "../../layout/useLayoutMode";
 import { useMorphStore } from "../../morph/morphStore";
-import { MorphStrip } from "../../morph/MorphStrip";
+import { MorphStripDock } from "../../morph/MorphStripDock";
 import { useMorphPlayback } from "../../morph/useMorphPlayback";
 import { samplePreview, useAudioPreview } from "../../samples/useAudioPreview";
 import { useCurationAccess } from "../../samples/useCurationAccess";
@@ -65,6 +65,12 @@ interface HoveredPoint {
 /** At or below this panel width the legend leaves its row for a sheet, as the stylesheet's narrow panel rules do. */
 const LEGEND_SHEET_WIDTH_PX = 480;
 const ZOOM_STEP_FACTOR = 1.5;
+const MORPH_SWITCH_LABEL = "Morph";
+const BOTTOM_INSET_PROPERTY = "--cloud-bottom-inset";
+const NO_INSET_PX = 0;
+
+/** The cloud's body, carrying the height the morph strip covers along its bottom edge for the controls resting there. */
+type CloudBodyStyle = CSSProperties & Readonly<Record<typeof BOTTOM_INSET_PROPERTY, string>>;
 
 interface HeldPoint {
     readonly entity: EntityRef;
@@ -178,8 +184,12 @@ function useSampleColoring(mode: ColoringMode): {
  * Samples tab, a Legend button whose sheet holds the coloring and the tags together; and the tools
  * that move the view. Under touch a tapped point shows a card
  * in place of the hover tooltip, except on a phone, where the tray names it; a held point opens
- * its menu. The strip along the bottom holds the morph's two ends: a selected end takes every
- * tapped point, and the slider and the waveform open under the row once the pair is whole.
+ * its menu. The strip lying over the bottom edge of the samples cloud holds the morph's two ends:
+ * a selected end takes every tapped point, a right click gives a point to the other end, and the
+ * slider and the waveform slide open above the row once the pair is whole. The Morph switch at
+ * the top of the tools turns the morph off and on: off, the strip and the link leave, and a tap
+ * only takes a point in hand and plays it. The strip's height lifts the tools and the tap card
+ * above it, and the view's moves aim at the part of the cloud it leaves uncovered.
  */
 export function CloudPanel(): ReactElement {
     const [tab, setTab] = useState<CloudTab>("samples");
@@ -188,6 +198,7 @@ export function CloudPanel(): ReactElement {
     const [held, setHeld] = useState<HeldPoint | null>(null);
     const [legendOpen, setLegendOpen] = useState(false);
     const [command, setCommand] = useState<CloudCommand | null>(null);
+    const [stripHeightPx, setStripHeightPx] = useState(NO_INSET_PX);
     const panelRef = useRef<HTMLDivElement | null>(null);
     const width = useContainerWidth(panelRef);
     const legendAsSheet = width !== null && width <= LEGEND_SHEET_WIDTH_PX;
@@ -203,14 +214,19 @@ export function CloudPanel(): ReactElement {
     const morphFirst = useMorphStore((morph) => morph.first);
     const morphSecond = useMorphStore((morph) => morph.second);
     const weight = useMorphStore((morph) => morph.weight);
+    const morphEnabled = useMorphStore((morph) => morph.enabled);
     const takeSample = useMorphStore((morph) => morph.takeSample);
+    const takeSampleAtOtherEnd = useMorphStore((morph) => morph.takeSampleAtOtherEnd);
     const setWeight = useMorphStore((morph) => morph.setWeight);
+    const setMorphEnabled = useMorphStore((morph) => morph.setEnabled);
     const { play } = useAudioPreview();
     const playback = useMorphPlayback();
     const link = useMemo(
         (): CloudLink | null =>
-            morphFirst !== null && morphSecond !== null ? { first: morphFirst, second: morphSecond, weight } : null,
-        [morphFirst, morphSecond, weight],
+            morphEnabled && morphFirst !== null && morphSecond !== null
+                ? { first: morphFirst, second: morphSecond, weight }
+                : null,
+        [morphEnabled, morphFirst, morphSecond, weight],
     );
     const rateByHash = useMemo(() => {
         const rates = new Map<string, number>();
@@ -229,6 +245,8 @@ export function CloudPanel(): ReactElement {
     );
     const inHandHere = highlighted !== null && hashesInView.has(highlighted.hash) ? highlighted : null;
     const tapCardShown = input === "touch" && layout === "workspace" && inHandHere !== null;
+    const bottomInsetPx = tab === "samples" ? stripHeightPx : NO_INSET_PX;
+    const bodyStyle: CloudBodyStyle = { [BOTTOM_INSET_PROPERTY]: `${String(bottomInsetPx)}px` };
 
     useEffect(() => {
         setHovered(null);
@@ -254,10 +272,24 @@ export function CloudPanel(): ReactElement {
         }
     }
 
+    function playSample(hash: string): void {
+        play(samplePreview(hash, rateByHash.get(hash) ?? null));
+    }
+
     function handleActivate(entity: EntityRef): void {
         if (entity.kind === "sample") {
-            play(samplePreview(entity.hash, rateByHash.get(entity.hash) ?? null));
+            playSample(entity.hash);
         }
+    }
+
+    /** Gives a sample to the end opposite the selected one, takes it in hand and plays it; the morph holds samples alone. */
+    function handleSelectAtOtherEnd(entity: EntityRef): void {
+        if (entity.kind !== "sample") {
+            return;
+        }
+        highlightEntity(entity);
+        takeSampleAtOtherEnd(entity.hash);
+        playSample(entity.hash);
     }
 
     function handleFocus(entity: EntityRef): void {
@@ -331,7 +363,7 @@ export function CloudPanel(): ReactElement {
                     </>
                 )}
             </div>
-            <div className="panel-body cloud-body">
+            <div className="panel-body cloud-body" style={bodyStyle}>
                 {state.status === "loading" && <Loading />}
                 {state.status === "error" && <ErrorNotice message={state.message} />}
                 {state.status === "success" && (
@@ -346,7 +378,9 @@ export function CloudPanel(): ReactElement {
                             onHover={handleHover}
                             onActivate={handleActivate}
                             onContextMenu={handleContextMenu}
+                            onSelectAtOtherEnd={handleSelectAtOtherEnd}
                             command={command}
+                            bottomInsetPx={bottomInsetPx}
                             link={tab === "samples" ? link : null}
                             onWeightChange={setWeight}
                             onWeightCommit={playback.hearCurrentPoint}
@@ -354,6 +388,20 @@ export function CloudPanel(): ReactElement {
                         {hovered !== null && <CloudHoverTooltip entity={hovered.entity} x={hovered.x} y={hovered.y} />}
                         {tapCardShown && <CloudTapCard entity={inHandHere} />}
                         <div className="cloud-tools">
+                            {tab === "samples" && (
+                                <Button
+                                    variant="secondary"
+                                    icon
+                                    className="cloud-tool"
+                                    aria-label={MORPH_SWITCH_LABEL}
+                                    aria-pressed={morphEnabled}
+                                    onClick={() => {
+                                        setMorphEnabled(!morphEnabled);
+                                    }}
+                                >
+                                    <Icon name="morph" label={null} />
+                                </Button>
+                            )}
                             <Button
                                 variant="secondary"
                                 icon
@@ -380,7 +428,7 @@ export function CloudPanel(): ReactElement {
                                     }
                                 }}
                             >
-                                <Icon name="morph" label={null} />
+                                <Icon name="frame" label={null} />
                             </Button>
                             <Button
                                 variant="secondary"
@@ -407,13 +455,14 @@ export function CloudPanel(): ReactElement {
                         </div>
                     </>
                 )}
+                {tab === "samples" && <MorphStripDock onHeightChange={setStripHeightPx} />}
             </div>
-            {tab === "samples" && <MorphStrip />}
             {held !== null && (
                 <CloudPointMenu
                     entity={held.entity}
                     playbackRateHz={rateByHash.get(held.entity.hash) ?? null}
                     onLocate={handleLocate}
+                    onSelectAtOtherEnd={handleSelectAtOtherEnd}
                     onClose={() => {
                         setHeld(null);
                     }}

@@ -8,7 +8,7 @@ import type * as ModulesApi from "../../../src/api/modules";
 import type * as MorphApi from "../../../src/api/morph";
 import type * as SamplesApi from "../../../src/api/samples";
 import { COARSE_POINTER_MEDIA_QUERY } from "../../../src/layout/layoutMode";
-import { useMorphStore } from "../../../src/morph/morphStore";
+import { END_LETTERS, useMorphStore } from "../../../src/morph/morphStore";
 import type * as AudioPreview from "../../../src/samples/useAudioPreview";
 import { useCurationAccess } from "../../../src/samples/useCurationAccess";
 import { LONG_PRESS_HOLD_MS } from "../../../src/shared/gestures/gestureThresholds";
@@ -16,6 +16,7 @@ import { CloudPanel } from "../../../src/workspace/panels/CloudPanel";
 import { useSelectionStore } from "../../../src/workspace/selectionStore";
 import { stubMatchMedia } from "../../support/matchMedia";
 import { choosePair } from "../../support/morphPair";
+import { installControllableResizeObserver, resizeTo } from "../../support/resizeObserver";
 
 const {
     instances,
@@ -100,6 +101,7 @@ const {
 
 vi.mock("regl-scatterplot", () => ({
     default: createScatterplotMock,
+    createRenderer: () => ({ onFrame: () => () => undefined, destroy: vi.fn(), refresh: vi.fn(), isDestroyed: false }),
 }));
 
 vi.mock("../../../src/api/cloud", async () => {
@@ -431,7 +433,7 @@ describe("CloudPanel", () => {
         expect(playAnswered).not.toHaveBeenCalled();
     });
 
-    it("carries the morph strip under the samples cloud alone", async () => {
+    it("carries the morph strip over the samples cloud alone", async () => {
         getCloud.mockResolvedValue([{ sample_hash: "8".repeat(64), x: 0, y: 0, playback_rate_hz: 8363 }]);
         getModuleCloud.mockResolvedValue([]);
         renderPanel();
@@ -439,11 +441,34 @@ describe("CloudPanel", () => {
             expect(document.querySelector("canvas.cloud-dots")).toBeInTheDocument();
         });
 
-        expect(screen.getByRole("region", { name: "Morph" })).toBeInTheDocument();
+        expect(document.querySelector(".cloud-body")).toContainElement(screen.getByRole("region", { name: "Morph" }));
 
         fireEvent.click(screen.getByRole("button", { name: "Modules" }));
 
         expect(screen.queryByRole("region", { name: "Morph" })).not.toBeInTheDocument();
+    });
+
+    it("lifts the cloud's controls by the height the strip covers, on the samples cloud alone", async () => {
+        installControllableResizeObserver();
+        getCloud.mockResolvedValue([{ sample_hash: "8".repeat(64), x: 0, y: 0, playback_rate_hz: 8363 }]);
+        getModuleCloud.mockResolvedValue([]);
+        renderPanel();
+        await waitFor(() => {
+            expect(document.querySelector("canvas.cloud-dots")).toBeInTheDocument();
+        });
+        const body = document.querySelector<HTMLElement>(".cloud-body");
+        const dock = document.querySelector(".morph-strip-dock");
+        if (body === null || dock === null) {
+            throw new Error("the cloud's body or the strip's dock is missing");
+        }
+
+        act(() => {
+            resizeTo(dock, 600, 120);
+        });
+        expect(body.style.getPropertyValue("--cloud-bottom-inset")).toBe("120px");
+
+        fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+        expect(body.style.getPropertyValue("--cloud-bottom-inset")).toBe("0px");
     });
 
     it("frames both ends of the pair with room around them on request", async () => {
@@ -562,6 +587,85 @@ describe("CloudPanel", () => {
         });
     });
 
+    it("gives a right-clicked sample to the end opposite the selected one, keeping the selection, and plays it", async () => {
+        const first = "6".repeat(64);
+        const second = "7".repeat(64);
+        getCloud.mockResolvedValue([
+            { sample_hash: first, x: 0, y: 0, playback_rate_hz: 8363 },
+            { sample_hash: second, x: 1, y: 1, playback_rate_hz: 16726 },
+        ]);
+        getModuleCloud.mockResolvedValue([]);
+        getSamplePreview.mockReturnValue(new Promise(() => undefined));
+        renderPanel();
+        await waitFor(() => {
+            expect(document.querySelector("canvas.cloud-dots")).toBeInTheDocument();
+        });
+        act(() => {
+            useMorphStore.getState().takeSample(first);
+            useMorphStore.getState().selectEnd("first");
+        });
+        latestInstance().emit("pointOver", 1);
+
+        fireEvent.pointerDown(latestCanvas(), { pointerId: 1, pointerType: "mouse", button: 2 });
+        fireEvent.contextMenu(latestCanvas());
+
+        expect(useMorphStore.getState()).toMatchObject({ first, second, selectedEnd: "first" });
+        expect(useSelectionStore.getState().highlighted).toEqual({ kind: "sample", hash: second });
+        expect(play).toHaveBeenCalledWith(expect.objectContaining({ key: second, playbackRateHz: 16726 }));
+    });
+
+    it("turns the morph off from its switch, the pair waiting, and back on", async () => {
+        const first = "6".repeat(64);
+        const second = "7".repeat(64);
+        getCloud.mockResolvedValue([
+            { sample_hash: first, x: 0, y: 0, playback_rate_hz: 8363 },
+            { sample_hash: second, x: 1, y: 1, playback_rate_hz: 16726 },
+        ]);
+        getModuleCloud.mockResolvedValue([]);
+        renderPanel();
+        await waitFor(() => {
+            expect(document.querySelector("canvas.cloud-dots")).toBeInTheDocument();
+        });
+        act(() => {
+            useMorphStore.getState().takeSample(first);
+        });
+        const morphSwitch = screen.getByRole("button", { name: "Morph" });
+        expect(morphSwitch).toHaveAttribute("aria-pressed", "true");
+
+        fireEvent.click(morphSwitch);
+        latestInstance().emit("select", { points: [1] });
+
+        expect(morphSwitch).toHaveAttribute("aria-pressed", "false");
+        expect(screen.queryByRole("region", { name: "Morph" })).not.toBeInTheDocument();
+        expect(useMorphStore.getState()).toMatchObject({ first, second: null });
+        expect(play).toHaveBeenCalledWith(expect.objectContaining({ key: second }));
+
+        act(() => {
+            choosePair(first, second);
+        });
+        expect(screen.queryByRole("slider", { name: "Morph weight" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Frame the pair" })).toBeDisabled();
+
+        fireEvent.click(morphSwitch);
+
+        expect(await screen.findByRole("slider", { name: "Morph weight" })).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Morph" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Frame the pair" })).toBeEnabled();
+    });
+
+    it("keeps the Morph switch to the samples cloud", async () => {
+        getCloud.mockResolvedValue([]);
+        getModuleCloud.mockResolvedValue([{ module_hash: "d".repeat(64), tracker: "xm", x: 0, y: 0 }]);
+        renderPanel();
+
+        fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+        await waitFor(() => {
+            expect(document.querySelector("canvas.cloud-dots")).toBeInTheDocument();
+        });
+
+        expect(screen.queryByRole("button", { name: "Morph" })).not.toBeInTheDocument();
+    });
+
     it("asks for the hand labels and their tags only once the Labels mode is chosen", async () => {
         const sampleHash = "8".repeat(64);
         getCloud.mockResolvedValue([{ sample_hash: sampleHash, x: 0, y: 0 }]);
@@ -639,6 +743,32 @@ describe("CloudPanel on touch", () => {
             expect(screen.getByRole("region", { name: "Tapped point" })).toHaveTextContent("kick");
         });
         expect(play).toHaveBeenCalledWith(expect.objectContaining({ key: FIRST_HASH, playbackRateHz: 8363 }));
+    });
+
+    it("offers to make a held sample the end opposite the selected one", async () => {
+        await renderedPanel();
+        act(() => {
+            useMorphStore.getState().takeSample(SECOND_HASH);
+            useMorphStore.getState().selectEnd("first");
+        });
+        vi.useFakeTimers();
+
+        fireEvent.pointerDown(latestCanvas(), { ...FINGER, clientX: 5, clientY: 595 });
+        act(() => {
+            vi.advanceTimersByTime(LONG_PRESS_HOLD_MS);
+        });
+        fireEvent.pointerUp(latestCanvas(), { ...FINGER, clientX: 5, clientY: 595 });
+        vi.useRealTimers();
+
+        const menu = screen.getByRole("dialog", { name: `Sample ${FIRST_HASH.slice(0, 8)}` });
+        fireEvent.click(within(menu).getByRole("button", { name: `Use as ${END_LETTERS.second}` }));
+
+        expect(useMorphStore.getState()).toMatchObject({
+            first: SECOND_HASH,
+            second: FIRST_HASH,
+            selectedEnd: "first",
+        });
+        expect(play).toHaveBeenCalledWith(expect.objectContaining({ key: FIRST_HASH }));
     });
 
     it("opens a held point's menu, which opens the point", async () => {

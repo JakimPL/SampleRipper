@@ -56,8 +56,17 @@ const TOUCH_GUIDE: readonly GuideSection[] = [
             { gesture: "Pinch", meaning: "zooms about the fingers" },
             { gesture: "Hold a point", meaning: "opens its actions" },
             {
+                gesture: "Use as A or B, after holding a point",
+                meaning: "puts it in the other end and plays it, keeping the selected end",
+            },
+            {
                 gesture: "A or B under the cloud",
                 meaning: "plays that end and selects it: every sample you tap next becomes that end",
+            },
+            { gesture: "The × on A or B", meaning: "empties that end; the next sample you tap fills it" },
+            {
+                gesture: "The Morph button",
+                meaning: "turns the morph off and on; while it is off, a tap only plays the point and the pair waits",
             },
             { gesture: "The swap button", meaning: "swaps the ends and mirrors the weight" },
             { gesture: "The waveform button", meaning: "opens the morph's waveform under the slider" },
@@ -94,8 +103,17 @@ const POINTER_GUIDE: readonly GuideSection[] = [
             { gesture: "Double-click a point", meaning: "opens it" },
             { gesture: "Drag, scroll", meaning: "move and zoom the cloud" },
             {
+                gesture: "Right-click a point",
+                meaning: "puts it in the other end and plays it, keeping the selected end",
+            },
+            {
                 gesture: "A or B under the cloud",
                 meaning: "plays that end and selects it: every sample you click next becomes that end",
+            },
+            { gesture: "The × on A or B", meaning: "empties that end; the next sample you click fills it" },
+            {
+                gesture: "The Morph button",
+                meaning: "turns the morph off and on; while it is off, a click only plays the point and the pair waits",
             },
             { gesture: "The swap button", meaning: "swaps the ends and mirrors the weight" },
             { gesture: "The waveform button", meaning: "opens the morph's waveform under the slider" },

@@ -1,9 +1,11 @@
 import type { ChangeEvent, ReactElement } from "react";
-import { useId, useRef } from "react";
+import { useId, useMemo, useRef } from "react";
 
 import { useLayoutMode } from "../layout/useLayoutMode";
 import { Button } from "../shared/controls/Button";
 import { Icon } from "../shared/icons/Icon";
+import { Collapsible } from "../shared/motion/Collapsible";
+import { useLastPresent } from "../shared/motion/useLastPresent";
 import { BottomSheet } from "../shared/overlay/BottomSheet";
 import { MorphDistance } from "./MorphDistance";
 import { MorphHistory } from "./MorphHistory";
@@ -28,16 +30,18 @@ function readoutOffset(weight: number): string {
     return `calc(${share}% + ${correction})`;
 }
 
+/** Whether the status has come back and says no inference process answers. */
+function isOffline(status: MorphStatus): boolean {
+    return status.state.status !== "loading" && !status.available;
+}
+
 interface OfflineNoticeProps {
     readonly status: MorphStatus;
 }
 
-function OfflineNotice({ status }: OfflineNoticeProps): ReactElement | null {
-    if (status.state.status === "loading" || status.available) {
-        return null;
-    }
+function OfflineNotice({ status }: OfflineNoticeProps): ReactElement {
     return (
-        <p className="panel-status morph-offline" role="status">
+        <p className="panel-status morph-offline morph-strip-section" role="status">
             <span>{OFFLINE_NOTICE}</span>
             <Button variant="secondary" onClick={status.refresh}>
                 Check again
@@ -46,9 +50,12 @@ function OfflineNotice({ status }: OfflineNoticeProps): ReactElement | null {
     );
 }
 
-interface PairProps {
+interface MorphPairEnds {
     readonly first: string;
     readonly second: string;
+}
+
+interface PairProps extends MorphPairEnds {
     readonly playback: MorphPlayback;
 }
 
@@ -74,7 +81,7 @@ function MorphSlider({ first, second, playback }: PairProps): ReactElement {
     }
 
     return (
-        <div className="morph-strip-body">
+        <div className="morph-strip-body morph-strip-section">
             <div className="morph-weight">
                 <span className="mono cell-muted">{END_LETTERS.first}</span>
                 <div className="morph-weight-track">
@@ -119,15 +126,17 @@ function MorphPairWaveform({ first, second, playback }: PairProps): ReactElement
 }
 
 /**
- * The morph along the bottom of the cloud: a slot for each end of the pair, the swap between them
- * and the waveform button, always that one row. The selected slot takes every sample picked next,
- * and tapping a slot selects it; ⇄ swaps the ends. Once both ends are chosen the slider stands
- * under the row, and the waveform button opens the morph drawn over both ends beneath it. The
- * morph is drawn at the slider's point as soon as both ends are chosen, unheard, so the ends
- * themselves are heard first; letting the slider go sounds a point through the shared preview
- * element, the way the marker on the cloud does, and the waveform draws whichever point was let
- * go last. The history button opens, under everything else, a column per end of the samples it
- * has held, or a sheet of them on a phone.
+ * The morph along the bottom of the cloud: a slot for each end of the pair, the swap between them,
+ * the waveform button and the history button, always that one row at the bottom. The selected slot
+ * takes every sample picked next, and tapping a slot selects it; the swap button swaps the ends,
+ * and the × of a chosen end empties it. Above the row a drawer stacks, from the top, the notice
+ * that morphing is offline, the history, the slider with the distance once both ends are chosen,
+ * and the waveform nearest the row; each section slides open and closed. The morph is drawn at the
+ * slider's point as soon as both ends are chosen, unheard, so the ends themselves are heard first;
+ * letting the slider go sounds a point through the shared preview element, the way the marker on
+ * the cloud does, and the waveform draws whichever point was let go last. The history opens as a
+ * column per end of the samples it has held, or as a sheet of them on a phone. A closing section
+ * goes on showing the pair it last showed until it has slid shut.
  */
 export function MorphStrip(): ReactElement {
     const first = useMorphStore((state) => state.first);
@@ -143,11 +152,41 @@ export function MorphStrip(): ReactElement {
     const bodyId = useId();
     const historyId = useId();
     const historyInline = layout === "workspace";
-    const pair = first !== null && second !== null ? { first, second } : null;
-    const shown = expanded && pair !== null;
+    const pair = useMemo(
+        (): MorphPairEnds | null => (first !== null && second !== null ? { first, second } : null),
+        [first, second],
+    );
+    const shownPair = useLastPresent(pair);
+    const waveformShown = expanded && pair !== null;
 
     return (
         <section className="morph-strip" aria-label="Morph">
+            <Collapsible open={pair !== null && isOffline(playback.status)}>
+                <OfflineNotice status={playback.status} />
+            </Collapsible>
+            {historyInline && (
+                <Collapsible open={historyShown}>
+                    <section
+                        className="morph-strip-history morph-strip-section"
+                        id={historyId}
+                        aria-label={HISTORY_TITLE}
+                    >
+                        <MorphHistory />
+                    </section>
+                </Collapsible>
+            )}
+            <Collapsible open={pair !== null}>
+                {shownPair !== null && (
+                    <MorphSlider first={shownPair.first} second={shownPair.second} playback={playback} />
+                )}
+            </Collapsible>
+            <Collapsible open={waveformShown}>
+                {shownPair !== null && (
+                    <div className="morph-strip-wave morph-strip-section" id={bodyId}>
+                        <MorphPairWaveform first={shownPair.first} second={shownPair.second} playback={playback} />
+                    </div>
+                )}
+            </Collapsible>
             <div className="morph-strip-row">
                 <MorphSlot end="first" hash={first} />
                 <Button variant="secondary" icon aria-label="Swap the two ends" disabled={pair === null} onClick={swap}>
@@ -158,7 +197,7 @@ export function MorphStrip(): ReactElement {
                     variant="secondary"
                     icon
                     aria-label="Waveform"
-                    aria-expanded={shown}
+                    aria-expanded={waveformShown}
                     aria-controls={bodyId}
                     disabled={pair === null}
                     onClick={toggleExpanded}
@@ -176,23 +215,11 @@ export function MorphStrip(): ReactElement {
                     <Icon name="history" label={null} />
                 </Button>
             </div>
-            {pair !== null && <MorphSlider first={pair.first} second={pair.second} playback={playback} />}
-            {shown && (
-                <div className="morph-strip-wave" id={bodyId}>
-                    <MorphPairWaveform first={pair.first} second={pair.second} playback={playback} />
-                </div>
-            )}
-            {historyShown && historyInline && (
-                <section className="morph-strip-history" id={historyId} aria-label={HISTORY_TITLE}>
-                    <MorphHistory />
-                </section>
-            )}
             {historyShown && !historyInline && (
                 <BottomSheet title={HISTORY_TITLE} onClose={hideHistory}>
                     <MorphHistory />
                 </BottomSheet>
             )}
-            {pair !== null && <OfflineNotice status={playback.status} />}
         </section>
     );
 }

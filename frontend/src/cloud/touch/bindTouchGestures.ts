@@ -1,6 +1,6 @@
 import type { TouchGestureRecognizer, TouchPoint } from "./touchGestures";
 
-const MOUSE_POINTER_TYPE = "mouse";
+export const MOUSE_POINTER_TYPE = "mouse";
 
 export interface TouchBinding {
     readonly unbind: () => void;

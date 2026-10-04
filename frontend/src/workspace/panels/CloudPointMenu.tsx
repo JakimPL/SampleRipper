@@ -1,27 +1,40 @@
 import type { ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { END_LETTERS, OTHER_END, useMorphStore } from "../../morph/morphStore";
 import { samplePreview, useAudioPreview } from "../../samples/useAudioPreview";
 import { shortHash } from "../../shared/format";
 import { ActionSheet, type SheetAction } from "../../shared/overlay/ActionSheet";
 import type { EntityRef } from "../selectionStore";
 import { entityRoute } from "../useEntityRowInteractions";
 
+const USE_AS_LABEL = "Use as";
+
 interface CloudPointMenuProps {
     readonly entity: EntityRef;
     readonly playbackRateHz: number | null;
     /** Brings the point to the middle of the view. */
     readonly onLocate: (hash: string) => void;
+    /** Gives the sample to the morph's end opposite the selected one, as a right click on the cloud does. */
+    readonly onSelectAtOtherEnd: (entity: EntityRef) => void;
     readonly onClose: () => void;
 }
 
 /**
- * What a finger held on a point can do with it: play a sample, open either kind, and bring the
- * point to the middle of the view.
+ * What a finger held on a point can do with it: play a sample or make it the morph's end opposite
+ * the selected one, named by that end's letter, open either kind, and bring the point to the
+ * middle of the view.
  */
-export function CloudPointMenu({ entity, playbackRateHz, onLocate, onClose }: CloudPointMenuProps): ReactElement {
+export function CloudPointMenu({
+    entity,
+    playbackRateHz,
+    onLocate,
+    onSelectAtOtherEnd,
+    onClose,
+}: CloudPointMenuProps): ReactElement {
     const navigate = useNavigate();
     const { play } = useAudioPreview();
+    const otherLetter = useMorphStore((state) => END_LETTERS[OTHER_END[state.selectedEnd]]);
 
     const sampleActions: readonly SheetAction[] =
         entity.kind === "sample"
@@ -32,6 +45,14 @@ export function CloudPointMenu({ entity, playbackRateHz, onLocate, onClose }: Cl
                       disabled: false,
                       run: () => {
                           play(samplePreview(entity.hash, playbackRateHz));
+                      },
+                  },
+                  {
+                      id: "use-at-other-end",
+                      label: `${USE_AS_LABEL} ${otherLetter}`,
+                      disabled: false,
+                      run: () => {
+                          onSelectAtOtherEnd(entity);
                       },
                   },
               ]

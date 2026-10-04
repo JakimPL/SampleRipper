@@ -16,7 +16,9 @@ export type IconName =
     | "redo"
     | "download"
     | "plus"
-    | "minus";
+    | "minus"
+    | "close"
+    | "frame";
 
 /** Whether `Icon` draws a shape as its outline alone or as a solid. */
 export type IconPaint = "stroke" | "fill";
@@ -56,4 +58,6 @@ export const ICON_SHAPES: Readonly<Record<IconName, IconShape>> = {
     download: { path: "M12 4v11M7 10l5 5 5-5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3", paint: "stroke" },
     plus: { path: "M12 5v14M5 12h14", paint: "stroke" },
     minus: { path: "M5 12h14", paint: "stroke" },
+    close: { path: "M6 6l12 12M18 6L6 18", paint: "stroke" },
+    frame: { path: "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5", paint: "stroke" },
 };

@@ -1621,6 +1621,34 @@ table.data td .annotation-editor-input {
     }
 }
 
+/* A section opening from no height and closing back to none, fading as it goes. Its one grid row
+   grows from 0fr to 1fr, which a transition can follow where a height of auto gives it nothing;
+   the closing duration stays within the fallback `Collapsible` waits on. */
+.collapsible {
+    display: grid;
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition:
+        grid-template-rows 200ms ease-out,
+        opacity 200ms ease-out;
+}
+
+.collapsible.is-collapsed {
+    grid-template-rows: 0fr;
+    opacity: 0;
+}
+
+.collapsible-content {
+    min-height: 0;
+    overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .collapsible {
+        transition: none;
+    }
+}
+
 /* Under touch the column holds the heart alone, one tap target wide. */
 :root[data-input="touch"] .cell-verdict .favorite-toggle {
     width: var(--tap-target);
@@ -1760,11 +1788,11 @@ table.data td .annotation-editor-input {
     }
 }
 
-/* The tools that move the view, at the corner a thumb reaches. */
+/* The tools that move the view, at the corner a thumb reaches, above the morph strip lying over the bottom edge. */
 .cloud-tools {
     position: absolute;
     right: var(--space-4);
-    bottom: var(--space-4);
+    bottom: calc(var(--space-4) + var(--cloud-bottom-inset, 0px));
     z-index: 2;
     display: flex;
     flex-direction: column;
@@ -1775,11 +1803,11 @@ table.data td .annotation-editor-input {
     box-shadow: var(--shadow);
 }
 
-/* The tapped point's card rests along the bottom edge, clear of the tools. */
+/* The tapped point's card rests along the bottom edge, clear of the tools and above the morph strip. */
 .cloud-tap-card {
     position: absolute;
     right: calc(var(--space-4) * 2 + var(--control-height));
-    bottom: var(--space-4);
+    bottom: calc(var(--space-4) + var(--cloud-bottom-inset, 0px));
     left: var(--space-4);
     z-index: 2;
     display: grid;
@@ -2055,10 +2083,10 @@ table.data td .annotation-editor-input {
 }
 
 /* The popup stands 14px from its point (`TOOLTIP_GAP_PX` in `tooltipPlacement.ts`), above and to the
-   right unless the cloud's edge is in the way. */
+   right unless the cloud's edge is in the way, and over the morph strip lying along the bottom edge. */
 .cloud-hover-tooltip {
     position: absolute;
-    z-index: 1;
+    z-index: 3;
     transform: translate(14px, calc(-100% - 14px));
     pointer-events: none;
     display: flex;
@@ -2816,25 +2844,43 @@ table.data td .annotation-editor-input {
     color: var(--accent-ink);
 }
 
-/* The strip along the bottom of the cloud: a row of slots, and beneath it the slider and the waveform once opened. */
+/* The strip lies over the cloud's bottom edge, so the cloud keeps its size whatever the strip shows;
+   the shadow sits on the sliding box, whose content clips everything past its edge. */
+.morph-strip-dock {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+}
+
+.morph-strip-dock > .collapsible {
+    box-shadow: var(--shadow);
+}
+
+/* The row of slots along the bottom, and above it a drawer whose sections slide open: each keeps
+   a margin inside its own sliding box, wide enough for a focus ring, so the spacing slides with it. */
 .morph-strip {
-    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-1) var(--space-4) var(--space-3);
     border-top: 1px solid var(--border);
     background: var(--surface-1);
+}
+
+.morph-strip-section {
+    margin: var(--space-2) 0;
 }
 
 .morph-strip-row {
     display: flex;
     align-items: center;
     gap: var(--space-3);
+    padding-top: var(--space-2);
 }
 
 .morph-slot {
-    flex: 1 1 0;
+    flex: 1 1 auto;
     display: flex;
     align-items: center;
     gap: var(--space-3);
@@ -2881,15 +2927,48 @@ table.data td .annotation-editor-input {
     white-space: nowrap;
 }
 
+/* A slot and the × that empties it: the × rests over the slot's right end, a whole tap target wide. */
+.morph-slot-group {
+    position: relative;
+    flex: 1 1 0;
+    display: flex;
+    min-width: 0;
+}
+
+.morph-slot-group:has(.morph-slot-clear) .morph-slot {
+    padding-right: var(--tap-target);
+}
+
+.morph-slot-clear {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--tap-target);
+    height: var(--tap-target);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--font-size-body);
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.morph-slot-clear:hover {
+    color: var(--text-primary);
+}
+
 .morph-strip-body {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
 }
 
-/* A waveform takes the height a sample's player has over its detail, so opening it costs the cloud the same every time. */
+/* A waveform takes the height a sample's player has over its detail. */
 .morph-strip-wave {
-    flex: 0 0 auto;
     height: var(--sample-transport-height);
 }
 
@@ -2970,14 +3049,12 @@ table.data td .annotation-editor-input {
     display: flex;
     align-items: center;
     gap: var(--space-4);
-    margin: 0;
     border-radius: var(--radius-3);
     border: 1px solid var(--border);
 }
 
-/* The history under the strip: undo, redo and forgetting over a column per end, in the box a waveform takes. */
+/* The history in the strip's drawer: undo, redo and forgetting over a column per end, in the box a waveform takes. */
 .morph-strip-history {
-    flex: 0 0 auto;
     height: var(--sample-transport-height);
 }
 
@@ -3102,7 +3179,7 @@ table.data td .annotation-editor-input {
     display: none;
 }
 
-/* In a sheet a column hugs its rows up to half the screen, then scrolls inside, as the box does under the strip. */
+/* In a sheet a column hugs its rows up to half the screen, then scrolls inside, as the box does in the strip's drawer. */
 .sheet .morph-history-column {
     max-height: 50vh;
 }
@@ -3325,9 +3402,9 @@ table.data td .annotation-editor-input {
 }
 
 /* A short viewport keeps the morph strip to its row and gives the cloud the tray's room: the strip
-   names the tapped sample, and a held point offers the rest. */
+   names the tapped sample, and a held point offers the rest. The tools stand in a row above the
+   strip, the Morph switch among them. */
 @media (height < 560px) {
-    .morph-strip-toggle,
     .morph-strip-body,
     .morph-strip-wave,
     .morph-strip-history,

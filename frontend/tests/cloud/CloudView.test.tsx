@@ -8,10 +8,33 @@ import { type PointColoring, SUBSTRATE_ONLY_COLORING } from "../../src/cloud/poi
 import { DOUBLE_TAP_INTERVAL_MS, LONG_PRESS_HOLD_MS } from "../../src/shared/gestures/gestureThresholds";
 import { useThemeStore } from "../../src/theme/themeStore";
 import type { EntityRef } from "../../src/workspace/selectionStore";
+import { installControllableResizeObserver, resizeTo } from "../support/resizeObserver";
 
-const { instances, createScatterplotMock } = vi.hoisted(() => {
+/** The part of the scatterplot's options the fake reads: the renderer a frame is registered on. */
+interface ScatterplotOptions {
+    readonly renderer?: { readonly onFrame: (draw: () => void) => () => void };
+}
+
+const { instances, renderers, createScatterplotMock, createRendererMock } = vi.hoisted(() => {
+    /** A renderer that draws nothing, keeping the frame callbacks registered on it the way the library's own does. */
+    class FakeRenderer {
+        readonly frames = new Set<() => void>();
+        readonly destroy = vi.fn();
+        readonly refresh = vi.fn();
+        readonly isDestroyed = false;
+
+        onFrame(draw: () => void): () => void {
+            this.frames.add(draw);
+            return () => {
+                this.frames.delete(draw);
+            };
+        }
+    }
+
     class FakeScatterplot {
         readonly options: unknown;
+        /** The frame the library registers on its renderer, which a real one runs on every animation frame. */
+        readonly frame = vi.fn();
         readonly draw = vi.fn().mockResolvedValue(undefined);
         readonly select = vi.fn();
         readonly deselect = vi.fn();
@@ -31,8 +54,9 @@ const { instances, createScatterplotMock } = vi.hoisted(() => {
         });
         private readonly listeners = new Map<string, ((payload: unknown) => void)[]>();
 
-        constructor(options: unknown) {
+        constructor(options: ScatterplotOptions) {
             this.options = options;
+            options.renderer?.onFrame(this.frame);
         }
 
         subscribe(event: string, handler: (payload: unknown) => void): { event: string; handler: unknown } {
@@ -54,16 +78,23 @@ const { instances, createScatterplotMock } = vi.hoisted(() => {
     }
 
     const instances: FakeScatterplot[] = [];
-    const createScatterplotMock = vi.fn((options: unknown) => {
+    const renderers: FakeRenderer[] = [];
+    const createScatterplotMock = vi.fn((options: ScatterplotOptions) => {
         const instance = new FakeScatterplot(options);
         instances.push(instance);
         return instance;
     });
-    return { instances, createScatterplotMock };
+    const createRendererMock = vi.fn(() => {
+        const renderer = new FakeRenderer();
+        renderers.push(renderer);
+        return renderer;
+    });
+    return { instances, renderers, createScatterplotMock, createRendererMock };
 });
 
 vi.mock("regl-scatterplot", () => ({
     default: createScatterplotMock,
+    createRenderer: createRendererMock,
 }));
 
 function latestInstance(): (typeof instances)[number] {
@@ -82,6 +113,23 @@ function latestCanvas(): HTMLCanvasElement {
     return canvas;
 }
 
+function latestRenderer(): (typeof renderers)[number] {
+    const renderer = renderers[renderers.length - 1];
+    if (renderer === undefined) {
+        throw new Error("no FakeRenderer was created");
+    }
+    return renderer;
+}
+
+/** The box the scatterplot's canvas fills, which the view watches for resizes. */
+function canvasContainer(): HTMLElement {
+    const container = document.querySelector<HTMLElement>(".cloud-canvas");
+    if (container === null) {
+        throw new Error("canvas container not found");
+    }
+    return container;
+}
+
 function point(ref: EntityRef, x: number, y: number): CloudEntityPoint {
     return { ref, x, y };
 }
@@ -96,7 +144,9 @@ interface RenderOverrides {
     readonly onHover?: (entity: EntityRef | null, screenPosition: readonly [number, number] | null) => void;
     readonly onActivate?: (entity: EntityRef) => void;
     readonly onContextMenu?: (entity: EntityRef, position: readonly [number, number]) => void;
+    readonly onSelectAtOtherEnd?: (entity: EntityRef) => void;
     readonly command?: CloudCommand | null;
+    readonly bottomInsetPx?: number;
     readonly link?: CloudLink | null;
 }
 
@@ -127,7 +177,9 @@ function viewProps(overrides: RenderOverrides = {}): Parameters<typeof CloudView
         onHover: overrides.onHover ?? vi.fn(),
         onActivate: overrides.onActivate ?? vi.fn(),
         onContextMenu: overrides.onContextMenu ?? vi.fn(),
+        onSelectAtOtherEnd: overrides.onSelectAtOtherEnd ?? vi.fn(),
         command: overrides.command ?? null,
+        bottomInsetPx: overrides.bottomInsetPx ?? 0,
         link: overrides.link ?? null,
         onWeightChange: vi.fn(),
         onWeightCommit: vi.fn(),
@@ -146,7 +198,9 @@ async function renderCloudView(overrides: RenderOverrides = {}): Promise<ReturnT
             onHover={overrides.onHover ?? vi.fn()}
             onActivate={overrides.onActivate ?? vi.fn()}
             onContextMenu={overrides.onContextMenu ?? vi.fn()}
+            onSelectAtOtherEnd={overrides.onSelectAtOtherEnd ?? vi.fn()}
             command={overrides.command ?? null}
+            bottomInsetPx={overrides.bottomInsetPx ?? 0}
             link={overrides.link ?? null}
             onWeightChange={vi.fn()}
             onWeightCommit={vi.fn()}
@@ -162,7 +216,9 @@ const MODULE_REF: EntityRef = { kind: "module", hash: "b".repeat(64) };
 
 beforeEach(() => {
     instances.length = 0;
+    renderers.length = 0;
     createScatterplotMock.mockClear();
+    createRendererMock.mockClear();
 });
 
 describe("CloudView", () => {
@@ -213,7 +269,9 @@ describe("CloudView", () => {
                 onHover={vi.fn()}
                 onActivate={vi.fn()}
                 onContextMenu={vi.fn()}
+                onSelectAtOtherEnd={vi.fn()}
                 command={null}
+                bottomInsetPx={0}
                 link={null}
                 onWeightChange={vi.fn()}
                 onWeightCommit={vi.fn()}
@@ -304,7 +362,9 @@ describe("CloudView", () => {
                 onHover={vi.fn()}
                 onActivate={vi.fn()}
                 onContextMenu={vi.fn()}
+                onSelectAtOtherEnd={vi.fn()}
                 command={null}
+                bottomInsetPx={0}
                 link={null}
                 onWeightChange={vi.fn()}
                 onWeightCommit={vi.fn()}
@@ -334,7 +394,9 @@ describe("CloudView", () => {
                 onHover={vi.fn()}
                 onActivate={vi.fn()}
                 onContextMenu={vi.fn()}
+                onSelectAtOtherEnd={vi.fn()}
                 command={null}
+                bottomInsetPx={0}
                 link={null}
                 onWeightChange={vi.fn()}
                 onWeightCommit={vi.fn()}
@@ -376,7 +438,9 @@ describe("CloudView", () => {
                     onHover={vi.fn()}
                     onActivate={vi.fn()}
                     onContextMenu={vi.fn()}
+                    onSelectAtOtherEnd={vi.fn()}
                     command={null}
+                    bottomInsetPx={0}
                     link={null}
                     onWeightChange={vi.fn()}
                     onWeightCommit={vi.fn()}
@@ -453,7 +517,9 @@ describe("CloudView", () => {
                 onHover={vi.fn()}
                 onActivate={vi.fn()}
                 onContextMenu={vi.fn()}
+                onSelectAtOtherEnd={vi.fn()}
                 command={null}
+                bottomInsetPx={0}
                 link={null}
                 onWeightChange={vi.fn()}
                 onWeightCommit={vi.fn()}
@@ -482,7 +548,9 @@ describe("CloudView", () => {
                 onHover={vi.fn()}
                 onActivate={vi.fn()}
                 onContextMenu={vi.fn()}
+                onSelectAtOtherEnd={vi.fn()}
                 command={null}
+                bottomInsetPx={0}
                 link={null}
                 onWeightChange={vi.fn()}
                 onWeightCommit={vi.fn()}
@@ -614,6 +682,91 @@ describe("CloudView", () => {
         expect(setCall.pointColor).toHaveLength(3);
         const drawnPoints = instance.draw.mock.calls[0]?.[0] as number[][];
         expect(drawnPoints.map((drawn) => drawn[2])).toEqual([1, 2]);
+    });
+});
+
+describe("CloudView right click", () => {
+    const POINTS: readonly CloudEntityPoint[] = [point(SAMPLE_REF, 0, 0)];
+
+    function pressWith(pointerType: string): void {
+        fireEvent.pointerDown(latestCanvas(), { pointerId: 1, pointerType, button: 2, clientX: 10, clientY: 20 });
+    }
+
+    it("reports the hovered point a mouse's right button clicks, keeping the browser's menu off", async () => {
+        const onSelectAtOtherEnd = vi.fn();
+        await renderCloudView({ points: POINTS, onSelectAtOtherEnd });
+        latestInstance().emit("pointOver", 0);
+
+        pressWith("mouse");
+        const menuShown = fireEvent.contextMenu(latestCanvas());
+
+        expect(onSelectAtOtherEnd).toHaveBeenCalledWith(SAMPLE_REF);
+        expect(menuShown).toBe(false);
+    });
+
+    it("reports nothing for a right click over no point", async () => {
+        const onSelectAtOtherEnd = vi.fn();
+        await renderCloudView({ points: POINTS, onSelectAtOtherEnd });
+
+        pressWith("mouse");
+        fireEvent.contextMenu(latestCanvas());
+
+        expect(onSelectAtOtherEnd).not.toHaveBeenCalled();
+    });
+
+    it("leaves the menu a finger's hold raises to the hold itself", async () => {
+        const onSelectAtOtherEnd = vi.fn();
+        await renderCloudView({ points: POINTS, onSelectAtOtherEnd });
+        latestInstance().emit("pointOver", 0);
+
+        pressWith("touch");
+        const menuShown = fireEvent.contextMenu(latestCanvas());
+
+        expect(onSelectAtOtherEnd).not.toHaveBeenCalled();
+        expect(menuShown).toBe(false);
+    });
+
+    it("pings no point it reports, the cursor being on it already", async () => {
+        const { container, rerender } = await renderCloudView({ points: POINTS });
+        latestInstance().emit("pointOver", 0);
+        pressWith("mouse");
+        fireEvent.contextMenu(latestCanvas());
+
+        rerender(<CloudView {...viewProps({ points: POINTS, highlighted: SAMPLE_REF })} />);
+        await flushDraw();
+
+        expect(container.querySelector(".cloud-ping")).not.toBeInTheDocument();
+    });
+});
+
+describe("CloudView resize", () => {
+    it("hands the scatterplot a renderer, and destroys it after the scatterplot as the view leaves", async () => {
+        const { unmount } = await renderCloudView({ points: [point(SAMPLE_REF, 0, 0)] });
+        const instance = latestInstance();
+        const renderer = latestRenderer();
+        expect(renderer.frames.has(instance.frame)).toBe(true);
+
+        unmount();
+
+        expect(renderer.destroy).toHaveBeenCalledTimes(1);
+        expect(instance.destroy.mock.invocationCallOrder[0]).toBeLessThan(
+            renderer.destroy.mock.invocationCallOrder[0] ?? 0,
+        );
+    });
+
+    it("draws the points and moves the overlays within the resize that clears the canvas", async () => {
+        installControllableResizeObserver();
+        const { container } = await renderCloudView({ points: [point(SAMPLE_REF, 0, 0)], highlighted: SAMPLE_REF });
+        const instance = latestInstance();
+        instance.frame.mockClear();
+        instance.getScreenPosition.mockReturnValue([120, 340]);
+
+        act(() => {
+            resizeTo(canvasContainer(), 400, 300);
+        });
+
+        expect(instance.frame).toHaveBeenCalledTimes(1);
+        expect(container.querySelector<HTMLElement>(".cloud-ping")?.style.left).toBe("120px");
     });
 });
 
@@ -1120,5 +1273,27 @@ describe("CloudView touch", () => {
         expect(area.width).toBeCloseTo(3, 5);
         expect(area.height).toBeCloseTo(3, 5);
         expect(options).toEqual({ transition: true, transitionDuration: 500 });
+    });
+
+    it("centers a located point in the part of the view above the bottom inset", async () => {
+        const { rerender } = await renderCloudView({ points: TWO_POINTS, bottomInsetPx: 200 });
+
+        rerender(
+            <CloudView
+                {...viewProps({
+                    points: TWO_POINTS,
+                    bottomInsetPx: 200,
+                    command: { sequence: 1, action: { kind: "locate", hash: SAMPLE_REF.hash } },
+                })}
+            />,
+        );
+
+        // The 0.3 square around (-1, -1) fills the 400px left above the inset of the 600px surface,
+        // so the view is 0.45 tall and centered 100px, 0.075 in data, below the point.
+        const [area] = latestInstance().zoomToArea.mock.calls[0] as [Record<string, number>];
+        expect(area.x).toBeCloseTo(-1.225, 5);
+        expect(area.y).toBeCloseTo(-1.3, 5);
+        expect(area.width).toBeCloseTo(0.45, 5);
+        expect(area.height).toBeCloseTo(0.45, 5);
     });
 });

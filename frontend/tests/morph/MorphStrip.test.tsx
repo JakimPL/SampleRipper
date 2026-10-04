@@ -4,7 +4,7 @@ import { describe, expect, it, type Mock, onTestFinished, vi } from "vitest";
 import type * as MorphApi from "../../src/api/morph";
 import type * as SamplesApi from "../../src/api/samples";
 import { PHONE_MEDIA_QUERY } from "../../src/layout/layoutMode";
-import { DEFAULT_WEIGHT, useMorphStore } from "../../src/morph/morphStore";
+import { DEFAULT_WEIGHT, END_LETTERS, useMorphStore } from "../../src/morph/morphStore";
 import { MorphStrip } from "../../src/morph/MorphStrip";
 import type * as AudioPreview from "../../src/samples/useAudioPreview";
 import { shortHash } from "../../src/shared/format";
@@ -393,6 +393,72 @@ describe("MorphStrip with a whole pair", () => {
             expect(screen.queryByRole("status")).not.toBeInTheDocument();
         });
         expect(getMorphStatus).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe("MorphStrip clearing an end", () => {
+    function clearButton(letter: string): HTMLElement | null {
+        return screen.queryByRole("button", { name: `Clear ${letter}` });
+    }
+
+    it("offers a clear button beside each chosen slot alone", () => {
+        useMorphStore.getState().setEnd("first", FIRST);
+
+        showEmpty();
+
+        expect(clearButton(END_LETTERS.first)).toBeInTheDocument();
+        expect(clearButton(END_LETTERS.first)?.closest(".morph-slot")).toBeNull();
+        expect(clearButton(END_LETTERS.second)).not.toBeInTheDocument();
+    });
+
+    it("empties an end and selects it, which undo takes back", async () => {
+        await showPair(true);
+        act(() => {
+            useMorphStore.getState().selectEnd("first");
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: `Clear ${END_LETTERS.second}` }));
+
+        expect(useMorphStore.getState()).toMatchObject({ first: FIRST, second: null, selectedEnd: "second" });
+        expect(slot("B")).toHaveClass("morph-slot-empty");
+        expect(slider()).not.toBeInTheDocument();
+
+        act(() => {
+            useMorphStore.getState().undo();
+        });
+
+        expect(useMorphStore.getState()).toMatchObject({ first: FIRST, second: SECOND });
+        expect(slider()).toBeInTheDocument();
+    });
+
+    it("slides the slider shut over the pair it last showed once the pair breaks", async () => {
+        await showPair(true);
+        const body = document.querySelector(".morph-strip-body");
+
+        fireEvent.click(screen.getByRole("button", { name: `Clear ${END_LETTERS.first}` }));
+
+        const closing = body?.closest(".collapsible");
+        expect(closing).toHaveAttribute("aria-hidden", "true");
+        expect(body).toBeInTheDocument();
+        if (closing instanceof HTMLElement) {
+            fireEvent.transitionEnd(closing);
+        }
+        expect(document.querySelector(".morph-strip-body")).not.toBeInTheDocument();
+    });
+});
+
+describe("MorphStrip's drawer", () => {
+    it("stacks the slider and the waveform above the row, the waveform nearest it", async () => {
+        await showPairOpened(true);
+        const row = document.querySelector(".morph-strip-row");
+        const body = document.querySelector(".morph-strip-body");
+        const wave = document.querySelector(".morph-strip-wave");
+        if (row === null || body === null || wave === null) {
+            throw new Error("a part of the strip is missing");
+        }
+
+        expect(body.compareDocumentPosition(wave) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(wave.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 });
 

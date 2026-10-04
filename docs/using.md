@@ -41,23 +41,30 @@ which **Diagnostics** also offers outright.
 
 ## The morph
 
-The morph plays a sound between two samples. The strip under the cloud holds its two ends, A and B,
-and one of them is always selected:
+The morph plays a sound between two samples. The strip along the bottom of the cloud holds its two
+ends, A and B, and one of them is always selected:
 
 1. Every sample you choose, in a list or on the cloud, becomes the selected end. A is selected
    first, and B as soon as A has a sample, so the first two samples you choose make a pair.
 2. Click or tap a slot to hear its sample and select it. The samples you choose next replace that
    end, and the other end stays. A sample that is already A or B stays where it is.
-3. The swap button swaps the ends and mirrors the weight.
-4. Once both ends are chosen, a slider stands under them. The morph is drawn at the slider's point
-   right away and plays when you let the slider or the cloud's marker go. The waveform button opens
-   the morph's waveform drawn over both ends.
-5. The history button opens a column for A and one for B: the samples each end has held, the
+3. Right-click a point on the cloud to put it in the other end, across from the selected one. On a
+   phone or tablet, hold the point and choose **Use as B** (or **Use as A**).
+4. The × on a slot empties that end and selects it, so the next sample you choose fills it.
+   Ctrl+Z brings the sample back.
+5. The swap button swaps the ends and mirrors the weight.
+6. Once both ends are chosen, a slider slides open above them. The morph is drawn at the slider's
+   point right away and plays when you let the slider or the cloud's marker go. The waveform button
+   opens the morph's waveform drawn over both ends, just above A and B.
+7. The history button opens a column for A and one for B: the samples each end has held, the
    newest at the top, the one it holds now marked. A click on a row makes it that end again. The
    undo and redo buttons in the history take back or repeat the last change, as Ctrl+Z and Ctrl+Y
    do anywhere in the app; they move the marks and leave the rows where they are. Forget all empties
    both columns but for the samples held now. The columns are kept for your next visit, when the
    slots start empty.
+8. The **Morph** button at the top of the cloud's buttons turns the morph off and on. While it is
+   off, the strip and the line between the ends go away, and the samples you choose leave A and B
+   as they are until you turn it back on.
 
 The morph moves one sample's tone color into the other's. Both samples' harmonics sound along the
 way and glide from the first sample's pitch to the second's; drums and noise keep their own pitch.
@@ -75,6 +82,7 @@ way and glide from the first sample's pitch to the second's; drums and noise kee
 | Open sample | Alt+← Alt+→ | Step through the listing |
 | Cloud | Click a point | Takes it in hand and plays it |
 | Cloud | Double-click a point | Opens it |
+| Cloud | Right-click a point | Makes it the other end and plays it |
 | Cloud | Drag, scroll | Move and zoom the cloud |
 | Cloud | Escape | Lets go of the point in hand |
 | Anywhere | Ctrl+Z, Ctrl+Y (⌘Z, ⇧⌘Z on a Mac) | Undo and redo the morph's ends |
@@ -101,7 +109,9 @@ controls sized for a finger. Your browser's "Add to Home Screen" installs the ap
 | Cloud | Double-tap a point | Opens it |
 | Cloud | Tap empty space | Lets go of the point in hand |
 | Cloud | Drag, pinch | Move and zoom the cloud |
-| Cloud | Hold a point | Opens its actions |
+| Cloud | Hold a point | Opens its actions; **Use as B** makes it the other end |
+| Cloud | × on A or B | Empties that end |
+| Cloud | The Morph button | Turns the morph off and on |
 | Cloud | The center button | Centers the cloud on the point in hand |
 | Cloud | The history button | Opens the samples each end has held; a tap on one makes it that end again |
 
