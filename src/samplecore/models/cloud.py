@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from samplecore.models.base import FROZEN
 from samplecore.models.scalars import Index, ModuleHash, SampleHash
+from samplecore.models.tracker import TrackerFormat
 
 
 class SampleCloudCoordinate(BaseModel):
@@ -38,6 +39,19 @@ class ModuleCloudCoordinate(BaseModel):
     x: float
     y: float
     computed_at: datetime
+
+
+class PlacedModule(BaseModel):
+    """A module's coordinate together with the tracker format its file is written in.
+
+    A viewer paints each module of the cloud in its format's color, and a module's format is fixed
+    by its own bytes, so the two are read together and travel as one.
+    """
+
+    model_config = FROZEN
+
+    coordinate: ModuleCloudCoordinate
+    tracker: TrackerFormat
 
 
 class CloudPromotion(BaseModel):

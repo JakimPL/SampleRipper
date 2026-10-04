@@ -7,11 +7,13 @@ from typing import Protocol
 from sqlalchemy import Connection, Row, delete, func, select
 from sqlalchemy.dialects.postgresql import insert as upsert
 
-from samplecore.models.cloud import CloudPromotion, ModuleCloudCoordinate, SampleCloudCoordinate
+from samplecore.models.cloud import CloudPromotion, ModuleCloudCoordinate, PlacedModule, SampleCloudCoordinate
+from samplecore.models.tracker import TrackerFormat
 from samplecore.storage.database import (
     PROMOTION_SLOT,
     bulk_insert,
     cloud_promotion,
+    module,
     module_cloud_coordinates,
     sample_cloud_coordinates,
 )
@@ -159,6 +161,16 @@ class PostgresModuleCloudCoordinateRepository:
     def list_all(self) -> tuple[ModuleCloudCoordinate, ...]:
         rows = self._connection.execute(select(module_cloud_coordinates)).fetchall()
         return tuple(_row_to_module_coordinate(row) for row in rows)
+
+    def list_all_with_trackers(self) -> tuple[PlacedModule, ...]:
+        """Every placed module's coordinate with its module's tracker format, joined in one query."""
+        statement = select(module_cloud_coordinates, module.c.tracker).join(
+            module, module.c.hash == module_cloud_coordinates.c.module_hash
+        )
+        rows = self._connection.execute(statement).fetchall()
+        return tuple(
+            PlacedModule(coordinate=_row_to_module_coordinate(row), tracker=TrackerFormat(row.tracker)) for row in rows
+        )
 
 
 def _row_to_module_coordinate(row: Row[tuple[str, float, float, object]]) -> ModuleCloudCoordinate:

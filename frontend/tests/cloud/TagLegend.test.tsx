@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -29,7 +29,65 @@ describe("TagLegend", () => {
         expect(lofi).toHaveTextContent("33");
         expect(screen.getByRole("button", { name: /PIANO/ })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Painted only" })).toHaveAttribute("aria-expanded", "true");
-        expect(screen.getByRole("group", { name: "Painted tags" })).toHaveClass("tag-legend-expanded");
+    });
+
+    it("drops every tag, in one order, into the panel over the cloud once expanded", async () => {
+        const { container } = render(
+            <TagLegend tags={TAGS} painted={["SNARE"]} onToggle={vi.fn()} emptyCaption={EMPTY_CAPTION} />,
+        );
+
+        await userEvent.click(screen.getByRole("button", { name: "+2 more" }));
+
+        const overlay = container.querySelector<HTMLElement>(".tag-legend-overlay");
+        if (overlay === null) {
+            throw new Error("the expanded legend drops no panel");
+        }
+        const listed = within(overlay).getAllByRole("button");
+        expect(listed.map((button) => button.textContent)).toEqual(["LO-FI33", "SNARE21", "PIANO12"]);
+    });
+
+    it("takes the panel away on Escape", async () => {
+        render(<TagLegend tags={TAGS} painted={["SNARE"]} onToggle={vi.fn()} emptyCaption={EMPTY_CAPTION} />);
+        await userEvent.click(screen.getByRole("button", { name: "+2 more" }));
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(screen.queryByRole("button", { name: /LO-FI/ })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "+2 more" })).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("takes the panel away on a press outside the legend, and keeps it through a press on a chip", async () => {
+        render(
+            <>
+                <TagLegend tags={TAGS} painted={["SNARE"]} onToggle={vi.fn()} emptyCaption={EMPTY_CAPTION} />
+                <p>elsewhere</p>
+            </>,
+        );
+        await userEvent.click(screen.getByRole("button", { name: "+2 more" }));
+
+        fireEvent.pointerDown(screen.getByRole("button", { name: /PIANO/ }));
+        expect(screen.getByRole("button", { name: /PIANO/ })).toBeInTheDocument();
+        fireEvent.pointerDown(screen.getByText("elsewhere"));
+
+        expect(screen.queryByRole("button", { name: /PIANO/ })).not.toBeInTheDocument();
+    });
+
+    it("keeps the way back while expanded, once every tag is painted", async () => {
+        const { rerender } = render(
+            <TagLegend tags={TAGS} painted={["SNARE"]} onToggle={vi.fn()} emptyCaption={EMPTY_CAPTION} />,
+        );
+        await userEvent.click(screen.getByRole("button", { name: "+2 more" }));
+
+        rerender(
+            <TagLegend
+                tags={TAGS}
+                painted={["LO-FI", "SNARE", "PIANO"]}
+                onToggle={vi.fn()}
+                emptyCaption={EMPTY_CAPTION}
+            />,
+        );
+
+        expect(screen.getByRole("button", { name: "Painted only" })).toHaveAttribute("aria-expanded", "true");
     });
 
     it("collapses back to the painted tags", async () => {

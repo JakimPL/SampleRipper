@@ -5,7 +5,9 @@ import createScatterplot from "regl-scatterplot";
 
 import { useLayoutMode } from "../layout/useLayoutMode";
 import { classNames } from "../shared/classNames";
+import { createDoubleTapRecognizer } from "../shared/gestures/doubleTap";
 import {
+    DOUBLE_TAP_INTERVAL_MS,
     LONG_PRESS_HOLD_MS,
     PINCH_MINIMUM_DISTANCE_PX,
     TAP_SLOP_PX,
@@ -25,11 +27,11 @@ import { glowImageOf } from "./densityGlow";
 import { countVisibleUpTo, detailNodeLimit } from "./detailLevel";
 import { type CloudEntityPoint, normalizePoints } from "./geometry";
 import type { NodeFrameStyle } from "./hollowPointRenderer";
-import type { PointColoring } from "./labelColoring";
 import type { MarkerAppearance } from "./markerGeometry";
 import { MorphLink } from "./MorphLink";
 import { type NodeGeometry, nodeGeometryOf, nodePaletteOf } from "./nodeGeometry";
 import { plainDotStyle, usePlainDots } from "./plainDots";
+import type { PointColoring } from "./pointColoring";
 import { drawOrder, paletteColors, type PointSlots, slotPoints, slotValues } from "./pointPalette";
 import { bindTouchGestures } from "./touch/bindTouchGestures";
 import { cameraOf, type CloudCamera, panBy, zoomAbout } from "./touch/cameraControl";
@@ -103,39 +105,23 @@ function perSlotColor(color: string, slotCount: number): ScatterplotColor {
 
 /**
  * How the scatterplot draws its points under the current theme and coloring: the properties it is
- * created with and that `set` re-applies. A sample batch paints each slot in its own color,
- * size and opacity, the substrate's slot finer and fainter than the rest; the module cloud paints in
- * one flat color. Square points snap to the device's pixel grid, which is what keeps them crisp.
+ * created with and that `set` re-applies. Each slot paints in its own color, size and opacity, the
+ * substrate's slot finer and fainter than the rest. Square points snap to the device's pixel grid,
+ * which is what keeps them crisp.
  */
 function pointAppearance(
-    slotting: PointSlots | null,
+    slotting: PointSlots,
     coloring: PointColoring,
     settings: CloudRenderSettings,
 ): ScatterplotProperties {
     const { point, colors } = settings;
-    const style: ScatterplotProperties = {
+    const palette = paletteColors(coloring, colors);
+    return {
         backgroundColor: colors.background,
         pointSizeSelected: point.selectedExtraSizePx,
         pointOutlineWidth: point.outlineWidthPx,
         pointScaleMode: point.scaleMode,
         pixelAligned: point.shape === SQUARE_SHAPE,
-    };
-    if (slotting === null) {
-        return {
-            ...style,
-            colorBy: null,
-            opacityBy: null,
-            sizeBy: null,
-            pointColor: colors.point,
-            pointColorActive: colors.selected,
-            pointColorHover: colors.hover,
-            opacity: point.opacity,
-            pointSize: point.sizePx,
-        };
-    }
-    const palette = paletteColors(coloring, colors);
-    return {
-        ...style,
         colorBy: CATEGORICAL_ENCODING,
         opacityBy: CATEGORICAL_ENCODING,
         sizeBy: CATEGORICAL_ENCODING,
@@ -150,24 +136,18 @@ function pointAppearance(
 /** One draw's worth of points: the positions in the shape the scatterplot reads, and the order to draw them in. */
 interface PointDrawing {
     readonly positions: number[][];
-    readonly categorical: boolean;
-    /** Every point's index, substrate first; null for a batch drawn in one flat color. */
-    readonly order: number[] | null;
+    /** Every point's index, substrate first. */
+    readonly order: number[];
 }
 
 /**
  * The positions a draw hands the scatterplot: `[x, y, slot]` triples under regl-scatterplot's own
- * categorical coloring when every point carries a slot, or plain `[x, y]` pairs for a batch drawn in
- * one flat color -- the two tabs share one scatterplot instance (see `CloudPanel`), so this decides
- * per draw which of the two point kinds is on screen.
+ * categorical coloring, the same shape for either tab's points, which share one scatterplot instance
+ * (see `CloudPanel`).
  */
-function pointDrawing(points: readonly CloudEntityPoint[], slotting: PointSlots | null): PointDrawing {
-    if (slotting === null) {
-        return { positions: points.map((point) => [point.x, point.y]), categorical: false, order: null };
-    }
+function pointDrawing(points: readonly CloudEntityPoint[], slotting: PointSlots): PointDrawing {
     return {
         positions: points.map((point, index) => [point.x, point.y, slotting.slots[index] ?? slotting.substrateSlot]),
-        categorical: true,
         order: drawOrder(slotting),
     };
 }
@@ -293,11 +273,7 @@ function drawSerialized(
     appearance: ScatterplotProperties,
 ): Promise<void> {
     const runDraw = (): Promise<void> =>
-        scatterplot
-            .set(appearance)
-            .then(() =>
-                scatterplot.draw(drawing.positions, drawing.categorical ? { zDataType: CATEGORICAL_DATA } : undefined),
-            );
+        scatterplot.set(appearance).then(() => scatterplot.draw(drawing.positions, { zDataType: CATEGORICAL_DATA }));
     const next = chain.current.then(runDraw, runDraw);
     chain.current = next.then(
         () => undefined,
@@ -398,9 +374,10 @@ function selectHighlighted(
  * A finger works through its own layer (`touch/`), since the library and its camera know only the
  * mouse: a tap selects and activates the point under it within a finger's reach, synchronously,
  * so a caller's playback starts inside the gesture the browser allows sound from; a tap on empty
- * space clears; a held finger reports its point through `onContextMenu`; one finger pans and two
- * pinch, each move driving the camera and asking for the frame that shows it. A `command` centers
- * the view on a point, frames a pair or steps the zoom, once per sequence number.
+ * space clears; a second tap in the same place soon after focuses the point the first one took,
+ * the way a double click does; a held finger reports its point through `onContextMenu`; one finger
+ * pans and two pinch, each move driving the camera and asking for the frame that shows it. A
+ * `command` centers the view on a point, frames a pair or steps the zoom, once per sequence number.
  *
  * The selected and the hovered point each carry a marker in the theme's point shape. Every overlay
  * -- the markers, the ping and the link -- follows the library's `drawing` event, which
@@ -414,8 +391,8 @@ function selectHighlighted(
  *
  * How the points look comes from the theme through `useCloudRenderSettings`: size, shape, opacity
  * and colors are handed to the library at creation and re-applied through its own `set` whenever
- * the theme changes. Sample points draw with regl-scatterplot's own categorical coloring, one color
- * and one opacity per palette slot, the substrate's slot -- the samples no painted tag reaches --
+ * the theme changes. Points draw with regl-scatterplot's own categorical coloring, one color and
+ * one opacity per palette slot, the substrate's slot -- the points no painted entry reaches --
  * fainter than the rest and drawn beneath it, so the named structure stands on
  * a ground whose density still shows. The active and hover colors come as one per slot, which is
  * what paints a selected or hovered point in the theme's own selection and hover colors. The
@@ -530,11 +507,7 @@ export function CloudView({
     nodeGeometryRef.current = nodeGeometry;
     const nodePalette = useMemo(
         () =>
-            nodePaletteOf(
-                slotting === null ? [settings.colors.point] : paletteColors(coloring, settings.colors),
-                slotting?.substrateSlot ?? null,
-                nodeStyle.substrateOpacity,
-            ),
+            nodePaletteOf(paletteColors(coloring, settings.colors), slotting.substrateSlot, nodeStyle.substrateOpacity),
         [slotting, coloring, settings, nodeStyle],
     );
     const nodeFrameStyle = useMemo(
@@ -550,7 +523,7 @@ export function CloudView({
     const nodeLayer = useNodeLayer(nodeCanvasRef, nodeGeometry, nodePalette, nodeFrameStyle);
     const underlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const glow = useMemo(
-        () => glowImageOf(nodeGeometry, nodePalette, slotting?.substrateSlot ?? null, settings.glow.opacity),
+        () => glowImageOf(nodeGeometry, nodePalette, slotting.substrateSlot, settings.glow.opacity),
         [nodeGeometry, nodePalette, slotting, settings],
     );
     const underlay = useUnderlay(underlayCanvasRef, settings.grid, glow);
@@ -782,9 +755,18 @@ export function CloudView({
             }
         }
 
+        const doubleTap = createDoubleTapRecognizer({ intervalMs: DOUBLE_TAP_INTERVAL_MS, slopPx: TAP_SLOP_PX });
+        let tappedEntity: EntityRef | null = null;
+
         function handleTap(x: number, y: number): void {
+            if (doubleTap.tap(x, y, Date.now()) && tappedEntity !== null) {
+                onFocusRef.current(tappedEntity);
+                tappedEntity = null;
+                return;
+            }
             const index = hitAt(x, y);
             const entity = index === null ? undefined : pointsRef.current[index]?.ref;
+            tappedEntity = entity ?? null;
             if (index === null || entity === undefined) {
                 scatterplot.deselect({ preventEvent: true });
                 onClearRef.current();

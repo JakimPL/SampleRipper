@@ -15,6 +15,7 @@ from samplecore.labeling.labels import LabelPath, written_paths
 from samplecore.models.base import FROZEN
 from samplecore.models.experiment import VOCABULARY_PARAMETER
 from samplecore.models.scalars import ModuleHash, SampleHash
+from samplecore.models.tracker import TrackerFormat
 from samplecore.pitch import choose_playback_rate
 from samplecore.storage.repositories.cloud import (
     PostgresCloudCoordinateRepository,
@@ -78,11 +79,16 @@ class SampleCloudPoint(BaseModel):
 
 
 class ModuleCloudPoint(BaseModel):
-    """One module's place in the embedding: the coordinate alone, for the same reason a sample's point is."""
+    """One module's place in the embedding, with the tracker format a viewer paints its point in.
+
+    The point carries the coordinate's own fields, for the same reason a sample's point does. The
+    format rides along because the module's own bytes fix it, so it holds for as long as the point does.
+    """
 
     model_config = FROZEN
 
     module_hash: ModuleHash
+    tracker: TrackerFormat
     x: float
     y: float
 
@@ -276,11 +282,12 @@ def get_module_cloud(connection: Connection = READ_CONNECTION) -> tuple[ModuleCl
     """Every module's position in the library's 2D embedding space, placed by the sounds of its samples."""
     return tuple(
         ModuleCloudPoint(
-            module_hash=coordinate.module_hash,
-            x=round(coordinate.x, COORDINATE_DECIMALS),
-            y=round(coordinate.y, COORDINATE_DECIMALS),
+            module_hash=placed.coordinate.module_hash,
+            tracker=placed.tracker,
+            x=round(placed.coordinate.x, COORDINATE_DECIMALS),
+            y=round(placed.coordinate.y, COORDINATE_DECIMALS),
         )
-        for coordinate in PostgresModuleCloudCoordinateRepository(connection).list_all()
+        for placed in PostgresModuleCloudCoordinateRepository(connection).list_all_with_trackers()
     )
 
 

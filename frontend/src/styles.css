@@ -50,6 +50,12 @@
     --warn-soft: rgb(168 93 20 / 14%);
     --critical: #b5392a;
     --critical-soft: rgb(181 57 42 / 14%);
+
+    /* Each tracker format's stamp color, shared by its badges and its module points. */
+    --tracker-xm: #227a4e;
+    --tracker-it: #a85d14;
+    --tracker-mod: #2f6db0;
+    --tracker-s3m: #b5392a;
     --badge-tint-strength: 14%;
     --shadow: 0 8px 24px rgb(20 23 28 / 14%);
     --range-thumb-size: 14px;
@@ -60,7 +66,6 @@
     --wave-cursor: var(--accent);
     --wave-progress: var(--accent);
     --cloud-bg: var(--surface-0);
-    --cloud-point: var(--text-primary);
     --cloud-point-selected: var(--accent);
     --cloud-ping-color: var(--accent);
     --cloud-link-color: var(--accent);
@@ -245,6 +250,10 @@
         --warn-soft: rgb(217 139 62 / 16%);
         --critical: #e2685a;
         --critical-soft: rgb(226 104 90 / 16%);
+        --tracker-xm: #5fbf8f;
+        --tracker-it: #d98b3e;
+        --tracker-mod: #6ea8e6;
+        --tracker-s3m: #e2685a;
         --badge-tint-strength: 16%;
         --shadow: 0 12px 32px rgb(0 0 0 / 45%);
         --wave-fill: #4a5364;
@@ -286,6 +295,10 @@
     --warn-soft: rgb(217 139 62 / 16%);
     --critical: #e2685a;
     --critical-soft: rgb(226 104 90 / 16%);
+    --tracker-xm: #5fbf8f;
+    --tracker-it: #d98b3e;
+    --tracker-mod: #6ea8e6;
+    --tracker-s3m: #e2685a;
     --badge-tint-strength: 16%;
     --shadow: 0 12px 32px rgb(0 0 0 / 45%);
     --wave-fill: #4a5364;
@@ -325,6 +338,10 @@
     --warn-soft: rgb(255 128 0 / 16%);
     --critical: #f00;
     --critical-soft: rgb(255 0 0 / 16%);
+    --tracker-xm: #008000;
+    --tracker-it: #ff8000;
+    --tracker-mod: #0078d4;
+    --tracker-s3m: #f00;
     --badge-tint-strength: 16%;
     --shadow: 0 2px 6px rgb(0 0 0 / 25%);
     --wave-fill: #f00;
@@ -334,7 +351,6 @@
     --wave-cursor: #c0c0c0;
     --wave-progress: var(--wave-fill);
     --cloud-bg: #000;
-    --cloud-point: #fff;
 
     /* OpenMPT's envelope editor: crisp square nodes, the dragged one yellow, joined by a yellow line. */
     --cloud-point-selected: #ff0;
@@ -1188,23 +1204,23 @@ tr:focus-within .row-open,
 
 /* Mixed opaque against `--surface-1`, so a badge keeps one color on a plain and a selected row. */
 .badge-xm {
-    background: color-mix(in srgb, var(--good) var(--badge-tint-strength), var(--surface-1));
-    color: var(--good);
+    background: color-mix(in srgb, var(--tracker-xm) var(--badge-tint-strength), var(--surface-1));
+    color: var(--tracker-xm);
 }
 
 .badge-it {
-    background: color-mix(in srgb, var(--warn) var(--badge-tint-strength), var(--surface-1));
-    color: var(--warn);
+    background: color-mix(in srgb, var(--tracker-it) var(--badge-tint-strength), var(--surface-1));
+    color: var(--tracker-it);
 }
 
 .badge-mod {
-    background: color-mix(in srgb, var(--accent) var(--badge-tint-strength), var(--surface-1));
-    color: var(--accent);
+    background: color-mix(in srgb, var(--tracker-mod) var(--badge-tint-strength), var(--surface-1));
+    color: var(--tracker-mod);
 }
 
 .badge-s3m {
-    background: color-mix(in srgb, var(--critical) var(--badge-tint-strength), var(--surface-1));
-    color: var(--critical);
+    background: color-mix(in srgb, var(--tracker-s3m) var(--badge-tint-strength), var(--surface-1));
+    color: var(--tracker-s3m);
 }
 
 .badge-unavailable {
@@ -1795,34 +1811,70 @@ table.data td .annotation-editor-input {
     gap: var(--space-2);
 }
 
-.cloud-caption {
-    flex: 0 0 auto;
-    margin: 0;
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--font-size-small);
-    color: var(--text-muted);
-    border-bottom: 1px solid var(--border);
-    background: var(--surface-1);
-}
-
 .panel-filter-separator {
+    flex: 0 0 auto;
     width: 1px;
     height: 16px;
-    margin-left: auto;
     background: var(--border);
 }
 
-/* In a narrow panel the cloud's toolbar keeps to one slim row, every control keeping its size. */
+/* The anchor of the expanded legend's panel, which drops over the cloud's top edge. */
+.cloud-panel {
+    position: relative;
+}
+
+/* The cloud's toolbar is one row at one height, the tabs its tallest controls, so the expanded
+   legend's panel knows where the row ends; whatever outgrows the row scrolls sideways. */
+.cloud-toolbar {
+    --cloud-toolbar-padding: var(--space-3);
+    --cloud-toolbar-height: calc(max(var(--button-height), var(--tap-target)) + 2 * var(--cloud-toolbar-padding) + 1px);
+
+    height: var(--cloud-toolbar-height);
+    padding-block: var(--cloud-toolbar-padding);
+    overflow: auto hidden;
+    scrollbar-width: none;
+}
+
+/* In a narrow panel the cloud's toolbar keeps to a slimmer row. */
 @container panel (width <= 480px) {
     .cloud-toolbar {
-        overflow: auto hidden;
-        scrollbar-width: none;
-        padding-block: var(--space-2);
+        --cloud-toolbar-padding: var(--space-2);
     }
+}
 
-    .cloud-toolbar > * {
-        flex: 0 0 auto;
-    }
+/* Samples and Modules read as one control: joined edge to edge, each tall enough for a finger. */
+.cloud-tabs {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.cloud-tab {
+    height: max(var(--button-height), var(--tap-target));
+}
+
+.cloud-tab .icon {
+    font-size: var(--button-icon-size);
+}
+
+.cloud-tab + .cloud-tab {
+    margin-left: -1px;
+}
+
+.cloud-tab:not(:last-child) {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+}
+
+.cloud-tab:not(:first-child) {
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+}
+
+/* A hovered or pressed tab draws its whole frame over the edge it shares with its neighbor. */
+.cloud-tab:hover,
+.cloud-tab[aria-pressed="true"] {
+    position: relative;
+    z-index: 1;
 }
 
 .panel-filter-caption {
@@ -1831,33 +1883,63 @@ table.data td .annotation-editor-input {
     white-space: nowrap;
 }
 
-/* One row scrolling sideways at rest; expanded, it wraps to three rows and scrolls beyond, so the
-   plot underneath keeps its height either way. */
+/* A legend ends the toolbar's row: its chips take the rest of the row and scroll sideways. */
 .tag-legend {
     --legend-rows: 3;
     --legend-chip-height: var(--control-height-compact);
     --legend-row-gap: var(--space-2);
     --legend-padding: var(--space-3);
 
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
     display: flex;
-    flex-wrap: nowrap;
-    gap: var(--legend-row-gap) var(--space-3);
-    padding: var(--legend-padding) var(--space-4);
-    overflow: auto hidden;
-    scrollbar-width: thin;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface-1);
+    align-items: center;
+    gap: var(--space-3);
 }
 
-.tag-legend-expanded {
+.tag-legend-chips {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    gap: var(--space-3);
+    overflow: auto hidden;
+    scrollbar-width: none;
+}
+
+/* Expanded, every tag drops over the cloud's top edge on the toolbar's own surface, in at most
+   three rows that scroll, so the toolbar stays one row and the cloud keeps its size. */
+.tag-legend-overlay {
+    position: absolute;
+    top: var(--cloud-toolbar-height);
+    right: 0;
+    left: 0;
+    z-index: 3;
+    display: flex;
     flex-wrap: wrap;
+    align-content: flex-start;
+    gap: var(--legend-row-gap) var(--space-3);
     max-height: calc(
         var(--legend-rows) * var(--legend-chip-height) + (var(--legend-rows) - 1) * var(--legend-row-gap) + 2 *
             var(--legend-padding)
     );
+    padding: var(--legend-padding) var(--space-4);
     overflow: hidden auto;
     scrollbar-gutter: stable;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-1);
+    box-shadow: var(--shadow);
+}
+
+/* What a legend says while nothing of its kind is there to paint, cut short where the row ends. */
+.tag-legend-caption {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    font-size: var(--font-size-small);
+    color: var(--text-muted);
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .tag-legend-entry,
@@ -2603,7 +2685,8 @@ table.data td .annotation-editor-input {
 
 :root[data-theme="openmpt"] .dv-react-part,
 :root[data-theme="openmpt"] .panel-status,
-:root[data-theme="openmpt"] .panel-filter {
+:root[data-theme="openmpt"] .panel-filter,
+:root[data-theme="openmpt"] .tag-legend-overlay {
     background: var(--surface-2);
 }
 

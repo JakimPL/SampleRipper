@@ -32,7 +32,9 @@ or a copy of the library published as a website, they show as they are.
 
 The cloud shows every sample as a point, laid out by how it sounds, so similar sounds land near each
 other. The **Legend** chooses what colors the points, the categories or your labels. The **Modules**
-tab has a cloud of its own, where modules holding similar samples land together.
+tab has a cloud of its own, where modules holding similar samples land together. Each module wears
+its format's color, the same as its XM, IT, MOD or S3M stamp, and the legend beside the tabs lists the
+formats with their module counts; a tap or click on one turns its color off and on.
 
 The cloud blends its points on your graphics card. Browsers with simpler graphics get plain dots,
 which **Diagnostics** also offers outright.
@@ -95,6 +97,7 @@ controls sized for a finger. Your browser's "Add to Home Screen" installs the ap
 | Page | Tap ‹ or › | Walks the listing one sample at a time |
 | Page | Tap ← | Returns to the list |
 | Cloud | Tap a point | Takes it in hand and plays it |
+| Cloud | Double-tap a point | Opens it |
 | Cloud | Tap empty space | Lets go of the point in hand |
 | Cloud | Drag, pinch | Move and zoom the cloud |
 | Cloud | Hold a point | Opens its actions |

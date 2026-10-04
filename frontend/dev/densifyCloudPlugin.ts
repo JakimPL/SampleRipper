@@ -106,7 +106,7 @@ async function seedModulePoints(backendUrl: string): Promise<readonly ModuleClou
         keyOf: (module) => module.hash,
         groupOf: (module) => module.tracker,
     });
-    return placed.map((module) => ({ module_hash: module.hash, x: module.x, y: module.y }));
+    return placed.map((module) => ({ module_hash: module.hash, tracker: module.tracker, x: module.x, y: module.y }));
 }
 
 async function answerDensified<Point extends PlanarPoint>(

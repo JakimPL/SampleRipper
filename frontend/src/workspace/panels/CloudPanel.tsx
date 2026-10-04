@@ -5,21 +5,17 @@ import type { CloudCategory, CloudLabel, CloudPoint, ModuleCloudPoint } from "..
 import { type CloudAction, type CloudCommand, type CloudLink, CloudView } from "../../cloud/CloudView";
 import { type ColoringMode, ColoringModeChoice } from "../../cloud/ColoringModeChoice";
 import type { CloudEntityPoint } from "../../cloud/geometry";
-import {
-    defaultPaintedTags,
-    labelColoring,
-    type PointColoring,
-    SUBSTRATE_ONLY_COLORING,
-    type TopLevelTag,
-    topLevelTags,
-} from "../../cloud/labelColoring";
+import { defaultPaintedTags, labelColoring, type TopLevelTag, topLevelTags } from "../../cloud/labelColoring";
 import { LegendSheet } from "../../cloud/LegendSheet";
+import { type PointColoring, SUBSTRATE_ONLY_COLORING } from "../../cloud/pointColoring";
 import { TagLegend } from "../../cloud/TagLegend";
+import { TrackerLegend } from "../../cloud/TrackerLegend";
 import { useCategoryTags } from "../../cloud/useCategoryTags";
 import { useCloud } from "../../cloud/useCloud";
 import { useCloudCategories } from "../../cloud/useCloudCategories";
 import { useCloudLabels } from "../../cloud/useCloudLabels";
 import { useModuleCloud } from "../../cloud/useModuleCloud";
+import { useModuleColoring } from "../../cloud/useModuleColoring";
 import { useContainerWidth } from "../../layout/useContainerWidth";
 import { useLayoutMode } from "../../layout/useLayoutMode";
 import { useMorphStore } from "../../morph/morphStore";
@@ -32,6 +28,7 @@ import { Button } from "../../shared/controls/Button";
 import { ErrorNotice } from "../../shared/ErrorNotice";
 import type { FetchState } from "../../shared/fetchState";
 import { Icon } from "../../shared/icons/Icon";
+import type { IconName } from "../../shared/icons/iconPaths";
 import { Loading } from "../../shared/Loading";
 import { type EntityRef, useSelectionStore } from "../selectionStore";
 import { entityRoute } from "../useEntityRowInteractions";
@@ -40,6 +37,18 @@ import { CloudPointMenu } from "./CloudPointMenu";
 import { CloudTapCard } from "./CloudTapCard";
 
 type CloudTab = "samples" | "modules";
+
+interface CloudTabChoice {
+    readonly tab: CloudTab;
+    readonly label: string;
+    readonly icon: IconName;
+}
+
+const CLOUD_TABS: readonly CloudTabChoice[] = [
+    { tab: "samples", label: "Samples", icon: "samples" },
+    { tab: "modules", label: "Modules", icon: "modules" },
+];
+const CLOUD_TABS_LABEL = "What the cloud shows";
 
 const NO_TAGS: readonly TopLevelTag[] = [];
 const EMPTY_CAPTIONS: Readonly<Record<ColoringMode, string>> = {
@@ -53,7 +62,7 @@ interface HoveredPoint {
     readonly y: number;
 }
 
-/** Below this panel width the legend leaves its row for a sheet. */
+/** At or below this panel width the legend leaves its row for a sheet, as the stylesheet's narrow panel rules do. */
 const LEGEND_SHEET_WIDTH_PX = 480;
 const ZOOM_STEP_FACTOR = 1.5;
 
@@ -164,9 +173,10 @@ function useSampleColoring(mode: ColoringMode): {
 }
 
 /**
- * The cloud with its controls: the tab and the coloring, with the legend as a row, or, when the
- * panel is narrow, the coloring and the legend together in a sheet behind one Legend button, and
- * the tools that move the view. Under touch a tapped point shows a card
+ * The cloud with its controls: one toolbar row holding the tab, then the coloring and its legend --
+ * the painted tags on the Samples tab, the formats on the Modules tab -- or, on a narrow panel's
+ * Samples tab, a Legend button whose sheet holds the coloring and the tags together; and the tools
+ * that move the view. Under touch a tapped point shows a card
  * in place of the hover tooltip, except on a phone, where the tray names it; a held point opens
  * its menu. The strip along the bottom holds the morph's two ends: a selected end takes every
  * tapped point, and the slider and the waveform open under the row once the pair is whole.
@@ -180,11 +190,12 @@ export function CloudPanel(): ReactElement {
     const [command, setCommand] = useState<CloudCommand | null>(null);
     const panelRef = useRef<HTMLDivElement | null>(null);
     const width = useContainerWidth(panelRef);
-    const legendAsSheet = width !== null && width < LEGEND_SHEET_WIDTH_PX;
+    const legendAsSheet = width !== null && width <= LEGEND_SHEET_WIDTH_PX;
     const { input, layout } = useLayoutMode();
     const { curationShown } = useCurationAccess();
     const state = useActiveCloudPoints(tab);
     const { coloring, tags, painted, togglePainted } = useSampleColoring(mode);
+    const moduleColoring = useModuleColoring();
     const navigate = useNavigate();
     const highlighted = useSelectionStore((selection) => selection.highlighted);
     const highlightEntity = useSelectionStore((selection) => selection.highlightEntity);
@@ -260,26 +271,24 @@ export function CloudPanel(): ReactElement {
     }
 
     return (
-        <div className="panel-stack" ref={panelRef}>
+        <div className="panel-stack cloud-panel" ref={panelRef}>
             <div className="panel-filter cloud-toolbar">
-                <Button
-                    variant="secondary"
-                    aria-pressed={tab === "samples"}
-                    onClick={() => {
-                        setTab("samples");
-                    }}
-                >
-                    Samples
-                </Button>
-                <Button
-                    variant="secondary"
-                    aria-pressed={tab === "modules"}
-                    onClick={() => {
-                        setTab("modules");
-                    }}
-                >
-                    Modules
-                </Button>
+                <div className="cloud-tabs" role="group" aria-label={CLOUD_TABS_LABEL}>
+                    {CLOUD_TABS.map((choice) => (
+                        <Button
+                            key={choice.tab}
+                            variant="secondary"
+                            className="cloud-tab"
+                            aria-pressed={tab === choice.tab}
+                            onClick={() => {
+                                setTab(choice.tab);
+                            }}
+                        >
+                            <Icon name={choice.icon} label={null} />
+                            {choice.label}
+                        </Button>
+                    ))}
+                </div>
                 {tab === "samples" && (
                     <>
                         <span className="panel-filter-separator" aria-hidden />
@@ -294,19 +303,34 @@ export function CloudPanel(): ReactElement {
                                 Legend
                             </Button>
                         ) : (
-                            curationShown && (
-                                <>
-                                    <span className="panel-filter-caption">Color by</span>
-                                    <ColoringModeChoice mode={mode} onModeChange={setMode} />
-                                </>
-                            )
+                            <>
+                                {curationShown && (
+                                    <>
+                                        <span className="panel-filter-caption">Color by</span>
+                                        <ColoringModeChoice mode={mode} onModeChange={setMode} />
+                                    </>
+                                )}
+                                <TagLegend
+                                    tags={tags}
+                                    painted={painted}
+                                    onToggle={togglePainted}
+                                    emptyCaption={EMPTY_CAPTIONS[mode]}
+                                />
+                            </>
                         )}
                     </>
                 )}
+                {tab === "modules" && moduleColoring.counts.length > 0 && (
+                    <>
+                        <span className="panel-filter-separator" aria-hidden />
+                        <TrackerLegend
+                            counts={moduleColoring.counts}
+                            painted={moduleColoring.painted}
+                            onToggle={moduleColoring.togglePainted}
+                        />
+                    </>
+                )}
             </div>
-            {tab === "samples" && !legendAsSheet && (
-                <TagLegend tags={tags} painted={painted} onToggle={togglePainted} emptyCaption={EMPTY_CAPTIONS[mode]} />
-            )}
             <div className="panel-body cloud-body">
                 {state.status === "loading" && <Loading />}
                 {state.status === "error" && <ErrorNotice message={state.message} />}
@@ -314,7 +338,7 @@ export function CloudPanel(): ReactElement {
                     <>
                         <CloudView
                             points={state.data}
-                            coloring={coloring}
+                            coloring={tab === "samples" ? coloring : moduleColoring.coloring}
                             highlighted={highlighted}
                             onSelect={handleSelect}
                             onFocus={handleFocus}

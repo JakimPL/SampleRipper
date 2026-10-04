@@ -1,8 +1,9 @@
 import type { MouseEvent, ReactElement, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { classNames } from "../classNames";
 import { buttonClassName, type ButtonVariant } from "../controls/buttonClassName";
+import { useDismissal } from "./useDismissal";
 
 interface DisclosureMenuProps {
     readonly label: string;
@@ -21,28 +22,9 @@ export function DisclosureMenu({ label, className, variant, children }: Disclosu
     const [open, setOpen] = useState(false);
     const rootRef = useRef<HTMLDetailsElement | null>(null);
 
-    useEffect(() => {
-        if (!open) {
-            return undefined;
-        }
-        function handlePointerDown(event: PointerEvent): void {
-            const root = rootRef.current;
-            if (root !== null && event.target instanceof Node && !root.contains(event.target)) {
-                setOpen(false);
-            }
-        }
-        function handleKeyDown(event: KeyboardEvent): void {
-            if (event.key === "Escape") {
-                setOpen(false);
-            }
-        }
-        document.addEventListener("pointerdown", handlePointerDown);
-        document.addEventListener("keydown", handleKeyDown);
-        return (): void => {
-            document.removeEventListener("pointerdown", handlePointerDown);
-            document.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [open]);
+    useDismissal(rootRef, open, () => {
+        setOpen(false);
+    });
 
     function handleSummaryClick(event: MouseEvent<HTMLElement>): void {
         event.preventDefault();

@@ -10,6 +10,7 @@ import type * as SamplesApi from "../../../src/api/samples";
 import { COARSE_POINTER_MEDIA_QUERY } from "../../../src/layout/layoutMode";
 import { useMorphStore } from "../../../src/morph/morphStore";
 import type * as AudioPreview from "../../../src/samples/useAudioPreview";
+import { useCurationAccess } from "../../../src/samples/useCurationAccess";
 import { LONG_PRESS_HOLD_MS } from "../../../src/shared/gestures/gestureThresholds";
 import { CloudPanel } from "../../../src/workspace/panels/CloudPanel";
 import { useSelectionStore } from "../../../src/workspace/selectionStore";
@@ -184,6 +185,11 @@ function latestCanvas(): HTMLCanvasElement {
     return canvas;
 }
 
+/** The toolbar row an element stands in. */
+function toolbarOf(element: HTMLElement): Element | null {
+    return element.closest(".cloud-toolbar");
+}
+
 function renderPanel(): ReturnType<typeof render> {
     return render(
         <MemoryRouter initialEntries={["/"]}>
@@ -277,7 +283,7 @@ describe("CloudPanel", () => {
     it("switches to the Modules tab, showing its points", async () => {
         getCloud.mockResolvedValue([]);
         const moduleHash = "d".repeat(64);
-        getModuleCloud.mockResolvedValue([{ module_hash: moduleHash, x: 0, y: 0 }]);
+        getModuleCloud.mockResolvedValue([{ module_hash: moduleHash, tracker: "xm", x: 0, y: 0 }]);
         renderPanel();
 
         fireEvent.click(screen.getByRole("button", { name: "Modules" }));
@@ -290,7 +296,7 @@ describe("CloudPanel", () => {
     it("navigates to the double-clicked module's route from the Modules tab", async () => {
         getCloud.mockResolvedValue([]);
         const moduleHash = "e".repeat(64);
-        getModuleCloud.mockResolvedValue([{ module_hash: moduleHash, x: 0, y: 0 }]);
+        getModuleCloud.mockResolvedValue([{ module_hash: moduleHash, tracker: "it", x: 0, y: 0 }]);
         // The hover tooltip fetches module detail as soon as pointOver fires below.
         getModule.mockReturnValue(new Promise(() => undefined));
         renderPanel();
@@ -337,6 +343,9 @@ describe("CloudPanel", () => {
         expect(screen.getByRole("button", { name: "Category" })).toHaveAttribute("aria-pressed", "true");
         expect(screen.queryByRole("button", { name: "Legend" })).not.toBeInTheDocument();
         expect(await screen.findByRole("button", { name: /BASS DRUM/ })).toHaveAttribute("aria-pressed", "true");
+        expect(toolbarOf(screen.getByRole("group", { name: "Painted tags" }))).toBe(
+            toolbarOf(screen.getByRole("button", { name: "Samples" })),
+        );
         await waitFor(() => {
             expect(latestInstance().draw).toHaveBeenCalledWith([[expect.any(Number), expect.any(Number), 1]], {
                 zDataType: "categorical",
@@ -464,6 +473,95 @@ describe("CloudPanel", () => {
         expect(area.height).toBeCloseTo(3, 5);
     });
 
+    it("keeps the legend in the tabs' row on a site that shows no labels", async () => {
+        vi.mocked(useCurationAccess).mockReturnValue({ curationShown: false, labelEditing: false });
+        const sampleHash = "4".repeat(64);
+        getCloud.mockResolvedValue([{ sample_hash: sampleHash, x: 0, y: 0 }]);
+        getModuleCloud.mockResolvedValue([]);
+        getCloudCategories.mockResolvedValue([{ sample_hash: sampleHash, path: ["PIANO"], score: 0.7 }]);
+        getCategoryTags.mockResolvedValue([{ path: ["PIANO"], sample_count: 1, rank: 0 }]);
+        renderPanel();
+
+        const piano = await screen.findByRole("button", { name: /PIANO/ });
+
+        expect(screen.queryByRole("button", { name: "Category" })).not.toBeInTheDocument();
+        expect(toolbarOf(piano)).toBe(toolbarOf(screen.getByRole("button", { name: "Modules" })));
+    });
+
+    it("captions the toolbar row while the scoring names no sample", async () => {
+        getCloud.mockResolvedValue([{ sample_hash: "4".repeat(64), x: 0, y: 0 }]);
+        getModuleCloud.mockResolvedValue([]);
+        getCloudCategories.mockResolvedValue([]);
+        getCategoryTags.mockResolvedValue([]);
+        renderPanel();
+
+        const caption = await screen.findByText(/No sample carries a category yet/);
+
+        expect(toolbarOf(caption)).toBe(toolbarOf(screen.getByRole("button", { name: "Samples" })));
+    });
+
+    it("drops the expanded legend over the cloud, leaving the toolbar one row", async () => {
+        const sampleHash = "5".repeat(64);
+        getCloud.mockResolvedValue([{ sample_hash: sampleHash, x: 0, y: 0 }]);
+        getModuleCloud.mockResolvedValue([]);
+        getCloudCategories.mockResolvedValue([{ sample_hash: sampleHash, path: ["TAG 0"], score: 0.7 }]);
+        getCategoryTags.mockResolvedValue(
+            Array.from({ length: 10 }, (_, rank) => ({ path: [`TAG ${String(rank)}`], sample_count: 10 - rank, rank })),
+        );
+        renderPanel();
+
+        fireEvent.click(await screen.findByRole("button", { name: "+2 more" }));
+
+        const hidden = screen.getByRole("button", { name: /TAG 9/ });
+        expect(hidden).toHaveAttribute("aria-pressed", "false");
+        expect(hidden.closest(".tag-legend-overlay")).not.toBeNull();
+        fireEvent.pointerDown(latestCanvas());
+        expect(screen.queryByRole("button", { name: /TAG 9/ })).not.toBeInTheDocument();
+    });
+
+    it("paints each module in its format's color under a legend of the formats the cloud holds", async () => {
+        const xmHashes = ["a".repeat(64), "b".repeat(64)];
+        const itHash = "c".repeat(64);
+        getCloud.mockResolvedValue([]);
+        getModuleCloud.mockResolvedValue([
+            { module_hash: xmHashes[0], tracker: "xm", x: 0, y: 0 },
+            { module_hash: itHash, tracker: "it", x: 1, y: 1 },
+            { module_hash: xmHashes[1], tracker: "xm", x: -1, y: 1 },
+        ]);
+        renderPanel();
+        fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+
+        const legend = await screen.findByRole("group", { name: "Painted formats" });
+        const chips = within(legend).getAllByRole("button");
+        expect(chips.map((chip) => chip.textContent)).toEqual(["XM2", "IT1"]);
+        expect(chips.every((chip) => chip.getAttribute("aria-pressed") === "true")).toBe(true);
+        expect(toolbarOf(legend)).toBe(toolbarOf(screen.getByRole("button", { name: "Modules" })));
+        await waitFor(() => {
+            expect(latestInstance().draw).toHaveBeenLastCalledWith(
+                [
+                    [expect.any(Number), expect.any(Number), 1],
+                    [expect.any(Number), expect.any(Number), 2],
+                    [expect.any(Number), expect.any(Number), 1],
+                ],
+                { zDataType: "categorical" },
+            );
+        });
+
+        fireEvent.click(within(legend).getByRole("button", { name: /IT/ }));
+
+        expect(within(legend).getByRole("button", { name: /IT/ })).toHaveAttribute("aria-pressed", "false");
+        await waitFor(() => {
+            expect(latestInstance().draw).toHaveBeenLastCalledWith(
+                [
+                    [expect.any(Number), expect.any(Number), 1],
+                    [expect.any(Number), expect.any(Number), 0],
+                    [expect.any(Number), expect.any(Number), 1],
+                ],
+                { zDataType: "categorical" },
+            );
+        });
+    });
+
     it("asks for the hand labels and their tags only once the Labels mode is chosen", async () => {
         const sampleHash = "8".repeat(64);
         getCloud.mockResolvedValue([{ sample_hash: sampleHash, x: 0, y: 0 }]);
@@ -558,6 +656,41 @@ describe("CloudPanel on touch", () => {
         fireEvent.click(within(menu).getByRole("button", { name: "Open" }));
 
         expect(await screen.findByText("sample route")).toBeInTheDocument();
+    });
+
+    it("opens a module tapped twice from the Modules tab", async () => {
+        getCloud.mockResolvedValue([]);
+        getModuleCloud.mockResolvedValue([
+            { module_hash: FIRST_HASH, tracker: "mod", x: 0, y: 0 },
+            { module_hash: SECOND_HASH, tracker: "s3m", x: 1, y: 1 },
+        ]);
+        getModule.mockReturnValue(new Promise(() => undefined));
+        renderPanel();
+        fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+        await waitFor(() => {
+            expect(document.querySelector("canvas.cloud-dots")).toBeInTheDocument();
+        });
+        await act(async () => {
+            await Promise.resolve();
+        });
+
+        tap(5, 595);
+        tap(5, 595);
+
+        expect(await screen.findByText("module route")).toBeInTheDocument();
+    });
+
+    it("keeps the format chips in the row of a narrow panel's Modules tab", async () => {
+        narrowThePanel();
+        getCloud.mockResolvedValue([]);
+        getModuleCloud.mockResolvedValue([{ module_hash: FIRST_HASH, tracker: "s3m", x: 0, y: 0 }]);
+        renderPanel();
+        fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+
+        const chip = await screen.findByRole("button", { name: /S3M/ });
+
+        expect(toolbarOf(chip)).toBe(toolbarOf(screen.getByRole("button", { name: "Modules" })));
+        expect(screen.queryByRole("button", { name: "Legend" })).not.toBeInTheDocument();
     });
 
     it("moves the legend and the coloring's choice into a sheet in a narrow panel", async () => {

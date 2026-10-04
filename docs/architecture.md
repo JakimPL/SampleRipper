@@ -1120,6 +1120,14 @@ layout standing. While a layout is fitted, its directed distances are checkpoint
 takes up after its last checkpoint. The pipeline's `module-cloud` step runs after `cloud`, since
 the vectors it reads are the ones `cloud` promotes.
 
+`GET /cloud/modules` carries each module's tracker format on its point, read with the coordinates in
+one query (`PostgresModuleCloudCoordinateRepository.list_all_with_trackers`), since a module's format
+is fixed by its bytes. The Cloud panel's Modules tab paints every module in its stamp's color
+(`--tracker-xm`, `--tracker-it`, `--tracker-mod` and `--tracker-s3m`, which the `.badge-*` stamps read
+too) through the slots the sample cloud paints by (`trackerColoring.ts`), and its legend lists the
+formats the cloud holds with their module counts, each a switch for whether its modules are painted
+or join the substrate.
+
 ## Labels on a sample
 
 A sample is named by two kinds of label. The hand label is what a person wrote
@@ -1147,11 +1155,13 @@ id of the scoring on show, since a scoring's categories never change once writte
 a color that is a function of its rank alone (`labelPalette.ts`: hues a golden angle apart, at the
 lightness and chroma each theme declares), so a tag keeps its color as the vocabulary grows and a new
 one takes the next hue; the legend is the picker, painting the most used top-level tags until a
-person chooses their own, listing the painted ones with the rest behind a toggle inside a strip of at
-most three rows, and a sample carrying several painted tags takes the first it was given
-(`labelColoring.ts`). The Cloud panel opens in the category mode, painted from the categories, with
-the labels one click away; a panel narrower than 480 pixels, a phone's among them, keeps its
-toolbar to the tabs and a Legend button, whose sheet holds that choice above the painted tags.
+person chooses their own, and a sample carrying several painted tags takes the first it was given
+(`labelColoring.ts`). The legend ends the toolbar's one row, after the tabs and the choice of
+coloring: the painted tags fill the rest of the row and scroll sideways, and the toggle drops every
+tag into a panel of at most three rows over the cloud's top edge, so the cloud keeps its size. The
+Cloud panel opens in the category mode, painted from the categories, with the labels one click away;
+a panel 480 pixels wide or narrower, a phone's among them, keeps its toolbar to the tabs and a Legend
+button, whose sheet holds that choice above the painted tags.
 Every point outside the painted tags joins the substrate, on its recessive tone, and while a
 mode's sources load every point waits there.
 
@@ -1257,7 +1267,9 @@ handed in) and cancels the touch start, so the browser raises no compatibility m
 library to misread; the click a tap may still raise is stopped before the canvas sees it. A tap
 finds its point through `hitTest.ts`, a pass over the points' positions through the same
 `ViewTransform` the overlays use, within a finger's reach; `CloudView` then selects and activates
-it synchronously, inside the gesture, which is what lets playback start on a phone. One finger
+it synchronously, inside the gesture, which is what lets playback start on a phone. A second tap in
+the same place soon after, counted by `frontend/src/shared/gestures/doubleTap.ts`, opens the point
+the first one took, the way a double click does. One finger
 pans and two pinch through `cameraControl.ts`, which drives `scatterplot.get("camera")` directly:
 a pan is a translation in the camera's normalized space, half the surface's height being one
 unit, and a pinch a scale about the fingers' midpoint; every move ends in `redraw()`, and the

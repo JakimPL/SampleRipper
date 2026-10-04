@@ -50,6 +50,7 @@ const TOUCH_GUIDE: readonly GuideSection[] = [
         title: "The cloud",
         entries: [
             { gesture: "Tap a point", meaning: "takes it in hand and plays it" },
+            { gesture: "Double-tap a point", meaning: "opens it" },
             { gesture: "Tap empty space", meaning: "lets go of the point in hand" },
             { gesture: "Drag", meaning: "moves the cloud" },
             { gesture: "Pinch", meaning: "zooms about the fingers" },

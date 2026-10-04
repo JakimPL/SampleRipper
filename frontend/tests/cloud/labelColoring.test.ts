@@ -7,9 +7,9 @@ import {
     defaultPaintedTags,
     labelColoring,
     labelSlots,
-    SUBSTRATE_SLOT,
     topLevelTags,
 } from "../../src/cloud/labelColoring";
+import { SUBSTRATE_SLOT } from "../../src/cloud/pointColoring";
 
 const TAGS: readonly TagSummary[] = [
     { path: ["LO-FI"], sample_count: 3, rank: 2 },
@@ -65,7 +65,10 @@ describe("labelColoring", () => {
     it("carries each painted tag's lasting rank in slot order and ignores a tag nobody used", () => {
         const coloring = labelColoring(LABELS, topLevelTags(TAGS), ["SNARE", "KICK", "HI-HAT"]);
 
-        expect(coloring.ranks).toEqual([3, 0]);
+        expect(coloring.paints).toEqual([
+            { kind: "label", rank: 3 },
+            { kind: "label", rank: 0 },
+        ]);
         expect(coloring.slotByHash.get("a".repeat(64))).toBe(2);
         expect(coloring.slotByHash.get("c".repeat(64))).toBe(1);
     });

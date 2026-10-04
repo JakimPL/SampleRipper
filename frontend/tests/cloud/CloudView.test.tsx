@@ -1,11 +1,11 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { useCloudDotsStore } from "../../src/cloud/cloudDotsStore";
 import { type CloudCommand, type CloudLink, CloudView } from "../../src/cloud/CloudView";
 import type { CloudEntityPoint } from "../../src/cloud/geometry";
-import { type PointColoring, SUBSTRATE_ONLY_COLORING } from "../../src/cloud/labelColoring";
-import { LONG_PRESS_HOLD_MS } from "../../src/shared/gestures/gestureThresholds";
+import { type PointColoring, SUBSTRATE_ONLY_COLORING } from "../../src/cloud/pointColoring";
+import { DOUBLE_TAP_INTERVAL_MS, LONG_PRESS_HOLD_MS } from "../../src/shared/gestures/gestureThresholds";
 import { useThemeStore } from "../../src/theme/themeStore";
 import type { EntityRef } from "../../src/workspace/selectionStore";
 
@@ -553,7 +553,10 @@ describe("CloudView", () => {
     it("draws each point's painted-tag slot and a palette of one color per painted tag under a label coloring", async () => {
         const coloring: PointColoring = {
             slotByHash: new Map([[SAMPLE_REF.hash, 2]]),
-            ranks: [5, 0],
+            paints: [
+                { kind: "label", rank: 5 },
+                { kind: "label", rank: 0 },
+            ],
         };
         await renderCloudView({
             points: [point(SAMPLE_REF, 0, 0), point(OTHER_SAMPLE_REF, 1, 1)],
@@ -570,25 +573,47 @@ describe("CloudView", () => {
         expect(instance.draw.mock.calls[0]?.[1]).toEqual({ zDataType: "categorical" });
     });
 
-    it("draws flat [x, y] pairs under the plain point color for the module cloud", async () => {
-        await renderCloudView({ points: [point(MODULE_REF, 0, 0)] });
+    it("paints each module of the module cloud in its painted format's stamp color", async () => {
+        document.documentElement.style.setProperty("--tracker-it", "#ff8000");
+        onTestFinished(() => {
+            document.documentElement.style.removeProperty("--tracker-it");
+        });
+        const coloring: PointColoring = {
+            slotByHash: new Map([[MODULE_REF.hash, 1]]),
+            paints: [{ kind: "tracker", format: "it" }],
+        };
+        const unpainted = point({ kind: "module", hash: "d".repeat(64) }, 1, 1);
+        await renderCloudView({ points: [point(MODULE_REF, 0, 0), unpainted], coloring });
         const instance = latestInstance();
 
-        const setCall = instance.set.mock.calls[0]?.[0] as { colorBy?: string | null };
-        expect(setCall.colorBy).toBeNull();
+        const setCall = instance.set.mock.calls[0]?.[0] as { colorBy?: string; pointColor?: string[] };
+        expect(setCall.colorBy).toBe("category");
+        expect(setCall.pointColor?.[1]).toBe("#ff8000");
         const drawnPoints = instance.draw.mock.calls[0]?.[0] as number[][];
-        expect(drawnPoints[0]).toHaveLength(2);
-        expect(instance.draw.mock.calls[0]?.[1]).toBeUndefined();
+        expect(drawnPoints[0]?.[2]).toBe(1);
+        expect(drawnPoints[1]?.[2]).toBe(0);
+        expect(instance.draw.mock.calls[0]?.[1]).toEqual({ zDataType: "categorical" });
     });
 
-    it("falls back to flat coloring unless every point on this draw is a sample", async () => {
-        await renderCloudView({
-            points: [point(SAMPLE_REF, 0, 0), point(MODULE_REF, 1, 1)],
-        });
+    it("draws every batch through one palette, whichever kinds of points it holds", async () => {
+        const coloring: PointColoring = {
+            slotByHash: new Map([
+                [SAMPLE_REF.hash, 1],
+                [MODULE_REF.hash, 2],
+            ]),
+            paints: [
+                { kind: "label", rank: 0 },
+                { kind: "tracker", format: "xm" },
+            ],
+        };
+        await renderCloudView({ points: [point(SAMPLE_REF, 0, 0), point(MODULE_REF, 1, 1)], coloring });
         const instance = latestInstance();
 
-        const setCall = instance.set.mock.calls[0]?.[0] as { colorBy?: string | null };
-        expect(setCall.colorBy).toBeNull();
+        const setCall = instance.set.mock.calls[0]?.[0] as { colorBy?: string; pointColor?: string[] };
+        expect(setCall.colorBy).toBe("category");
+        expect(setCall.pointColor).toHaveLength(3);
+        const drawnPoints = instance.draw.mock.calls[0]?.[0] as number[][];
+        expect(drawnPoints.map((drawn) => drawn[2])).toEqual([1, 2]);
     });
 });
 
@@ -659,7 +684,10 @@ describe("CloudView point appearance", () => {
             ["1".repeat(64), 1],
             ["3".repeat(64), 2],
         ]),
-        ranks: [0, 1],
+        paints: [
+            { kind: "label", rank: 0 },
+            { kind: "label", rank: 1 },
+        ],
     };
 
     it("paints a categorical point's selected and hovered states in the theme's own colors, one per slot", async () => {
@@ -692,10 +720,10 @@ describe("CloudView point appearance", () => {
         expect(latestInstance().set).toHaveBeenCalledWith({ pointOrder: [1, 3, 0, 2] });
     });
 
-    it("draws a batch of one flat color in its own order", async () => {
-        await renderCloudView({ points: [point(MODULE_REF, 0, 0)] });
+    it("keeps a batch lying wholly on the ground in its own order", async () => {
+        await renderCloudView({ points: [point(MODULE_REF, 0, 0), sample("2")] });
 
-        expect(latestInstance().set).toHaveBeenCalledWith({ pointOrder: null });
+        expect(latestInstance().set).toHaveBeenCalledWith({ pointOrder: [0, 1] });
     });
 
     it("recreates the scatterplot when a theme changes the point shape, keeping its camera, points and highlight", async () => {
@@ -928,6 +956,61 @@ describe("CloudView touch", () => {
         expect(latestInstance().select).toHaveBeenCalledWith([0], { preventEvent: true });
         expect(onSelect).toHaveBeenCalledWith(SAMPLE_REF);
         expect(onActivate).toHaveBeenCalledWith(SAMPLE_REF);
+    });
+
+    it("opens the point a finger taps twice in one place, taking it once", async () => {
+        const onSelect = vi.fn();
+        const onActivate = vi.fn();
+        const onFocus = vi.fn();
+        await renderCloudView({ points: TWO_POINTS, onSelect, onActivate, onFocus });
+
+        tap(5, 595);
+        tap(8, 592);
+
+        expect(onFocus).toHaveBeenCalledExactlyOnceWith(SAMPLE_REF);
+        expect(onSelect).toHaveBeenCalledTimes(1);
+        expect(onActivate).toHaveBeenCalledTimes(1);
+        expect(latestInstance().select).toHaveBeenCalledTimes(1);
+    });
+
+    it("takes two taps on a point apart in time as two single taps", async () => {
+        const onSelect = vi.fn();
+        const onFocus = vi.fn();
+        await renderCloudView({ points: TWO_POINTS, onSelect, onFocus });
+        vi.useFakeTimers();
+
+        tap(5, 595);
+        act(() => {
+            vi.advanceTimersByTime(DOUBLE_TAP_INTERVAL_MS + 1);
+        });
+        tap(5, 595);
+
+        expect(onFocus).not.toHaveBeenCalled();
+        expect(onSelect).toHaveBeenCalledTimes(2);
+    });
+
+    it("clears on each of two taps on empty space, opening nothing", async () => {
+        const onClear = vi.fn();
+        const onFocus = vi.fn();
+        await renderCloudView({ points: TWO_POINTS, onClear, onFocus });
+
+        tap(300, 300);
+        tap(300, 300);
+
+        expect(onClear).toHaveBeenCalledTimes(2);
+        expect(onFocus).not.toHaveBeenCalled();
+    });
+
+    it("takes the point a second tap reaches when the first one found nothing", async () => {
+        const onSelect = vi.fn();
+        const onFocus = vi.fn();
+        await renderCloudView({ points: TWO_POINTS, onSelect, onFocus });
+
+        tap(0, 572);
+        tap(0, 581);
+
+        expect(onFocus).not.toHaveBeenCalled();
+        expect(onSelect).toHaveBeenCalledExactlyOnceWith(SAMPLE_REF);
     });
 
     it("clears the highlight on a tap that lands on no point", async () => {

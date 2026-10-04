@@ -28,6 +28,10 @@ const PROPERTIES = [
     "--cloud-grid-measure",
     "--cloud-grid-center",
     "--cloud-glow-opacity",
+    "--tracker-xm",
+    "--tracker-it",
+    "--tracker-mod",
+    "--tracker-s3m",
 ];
 
 function declare(values: Readonly<Record<string, string>>): void {
@@ -83,6 +87,22 @@ describe("readCloudRenderSettings", () => {
         const { colors } = readCloudRenderSettings();
 
         expect(colors.uncategorized).toBe("#123456");
+    });
+
+    it("reads each tracker format's stamp color, the one its module points wear", () => {
+        declare({
+            "--tracker-xm": "#010203",
+            "--tracker-it": "#040506",
+            "--tracker-mod": "#070809",
+            "--tracker-s3m": "#0a0b0c",
+        });
+
+        expect(readCloudRenderSettings().colors.trackers).toEqual({
+            xm: "#010203",
+            it: "#040506",
+            mod: "#070809",
+            s3m: "#0a0b0c",
+        });
     });
 
     it("reads the marker and node styles a theme declares", () => {
