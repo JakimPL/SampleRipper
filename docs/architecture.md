@@ -1211,7 +1211,10 @@ composition the phone's sample page shows at half that height, where the player 
 play button and the file to save at either side of the waveform with the time in its corner, while
 the workspace's player keeps the rate choice and the file beneath the waveform; both forms are
 `frontend/src/samples/WavePanel.tsx`, which the morph strip's waveform takes as well, at the same
-height. Either way the frame holds still while a sample or a morph sounds. The detail opens
+height. Either way the frame holds still while a sample or a morph sounds, and it holds drawings
+alone: why audio is missing stands in the time's place on the transport, or in a line under the
+phone's row, and the corner's time waits while the waveform is on its way. The waveform fades in
+over its pending line, at once under reduced motion and in the OpenMPT theme. The detail opens
 on an Info tab, the sample's label, categories and properties,
 with its spectral neighbors, occurrences, relations and co-occurrences each a tab beside it; the
 panel holds the tab, so it outlives a change of sample.
@@ -1358,10 +1361,10 @@ apart from the shell's focus and highlight: the samples a person picks fill it, 
 was put while a person goes on browsing. One end is always selected (`selectedEnd` in the store), A
 at the start of a visit, and it takes every sample picked through `takeSample`, called from the two
 places a tap takes a sample in hand, the plain click of
-`frontend/src/workspace/useEntityRowInteractions.ts` and `CloudPanel.handleSelect`. While the other
-end is empty the selection moves there once the selected end takes a sample, so the first two picks
-make a pair; a sample the pair already holds leaves the pair and the selection as they stand, so
-the second click of a double click, or a tap to hear an end again, holds the pair in place. A right
+`frontend/src/workspace/useEntityRowInteractions.ts` and `CloudPanel.handleSelect`. The selection
+stays where a person put it, so every pick lands on the end they chose; a sample the pair already
+holds leaves the pair and the selection as they stand, so the second click of a double click, or a
+tap to hear an end again, holds the pair in place. A right
 click on a sample in the cloud, or **Use as B** in a held point's menu (named by the other end's
 letter), gives the sample to the end opposite the selected one through `takeSampleAtOtherEnd`,
 which names that end the way `setEnd` does and keeps the selection, then plays the sample. The strip
@@ -1386,8 +1389,8 @@ tap card above the strip, and hands it to `CloudView` as `bottomInsetPx`.
 
 The **Morph** switch at the top of the cloud's tools turns the morph off and on (`enabled` in the
 store, kept for the visit and outside the undo line). While it is off the strip slides away, the
-link leaves the cloud, **Frame the pair** rests, the phone's Cloud tab drops its dot, and Ctrl+Z and
-Ctrl+Y stay the browser's; `takeSample` takes nothing, so a tap only takes a point in hand and plays
+link leaves the cloud, **Frame the pair** rests, the phone's Cloud tab drops its dot, and Ctrl+Z,
+Ctrl+Y, A, B and Tab stay the browser's; `takeSample` takes nothing, so a tap only takes a point in hand and plays
 it, and the pair waits as it stands until the switch, a right click or **Use as B** turns the morph
 on again.
 
@@ -1402,7 +1405,11 @@ across visits under one localStorage key by `morphHistoryPersistence.ts`) and a 
 behind the present (`past` and `future`, the ends with the weight and the drawn point) that `undo`
 and `redo` walk, so a row keeps its place and the pair marks its rows by holding their samples.
 `frontend/src/morph/useMorphUndoKeys.ts`, mounted in `AppShell`, hands Ctrl+Z and Ctrl+Y to the
-store from anywhere but a text field, whose own undo the browser keeps; the history button on the
+store from anywhere but a text field, whose own undo the browser keeps, and
+`frontend/src/morph/useMorphEndKeys.ts` beside it selects an end on A or B, outside a text field or
+a drop-down list, and the other end on Tab. Tab switches only while the focus rests outside the
+controls once a pointer has been used, so it keeps walking the controls for a person on the keyboard
+alone; a click on a slot lets the focus go for that reason, while a key press keeps it there. The history button on the
 strip opens `MorphHistory.tsx` in its drawer on the workspace, or as a sheet on a phone, and a click
 on a row names its end through `setEnd`. The opened strip states how far apart the two ends sit
 (`frontend/src/morph/MorphDistance.tsx`, over `GET /samples/{hash}/distance/{other}`), so the length

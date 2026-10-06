@@ -161,22 +161,32 @@ describe("the selected end", () => {
         expect(useMorphStore.getState().selectedEnd).toBe("second");
     });
 
-    it("fills an empty pair in the order samples are taken, the selection moving to the empty end", () => {
+    it("gives every sample taken to the selected end of an empty pair, the selection staying on it", () => {
         useMorphStore.getState().selectEnd("first");
 
         useMorphStore.getState().takeSample(A);
-        expect(useMorphStore.getState()).toMatchObject({ first: A, second: null, selectedEnd: "second" });
+        expect(useMorphStore.getState()).toMatchObject({ first: A, second: null, selectedEnd: "first" });
 
         useMorphStore.getState().takeSample(B);
-        expect(useMorphStore.getState()).toMatchObject({ first: A, second: B, selectedEnd: "second" });
+        expect(useMorphStore.getState()).toMatchObject({ first: B, second: null, selectedEnd: "first" });
     });
 
-    it("hands the selection to the first end when the second takes a sample with the first empty", () => {
+    it("keeps the second end selected while it takes a sample with the first empty", () => {
         useMorphStore.getState().selectEnd("second");
 
         useMorphStore.getState().takeSample(A);
 
-        expect(useMorphStore.getState()).toMatchObject({ first: null, second: A, selectedEnd: "first" });
+        expect(useMorphStore.getState()).toMatchObject({ first: null, second: A, selectedEnd: "second" });
+    });
+
+    it("fills the pair from samples taken with the selection moved between them", () => {
+        useMorphStore.getState().selectEnd("first");
+        useMorphStore.getState().takeSample(A);
+
+        useMorphStore.getState().selectEnd("second");
+        useMorphStore.getState().takeSample(B);
+
+        expect(useMorphStore.getState()).toMatchObject({ first: A, second: B, selectedEnd: "second" });
     });
 
     it("gives every sample taken to the selected end once the pair is whole, and stays selected", () => {
@@ -296,7 +306,7 @@ describe("turning the morph off", () => {
 
         useMorphStore.getState().takeSample(A);
 
-        expect(useMorphStore.getState()).toMatchObject({ first: A, selectedEnd: "second" });
+        expect(useMorphStore.getState()).toMatchObject({ first: A, selectedEnd: "first" });
     });
 
     it("stays off through undo and redo", () => {
@@ -655,6 +665,17 @@ describe("the history under a random walk of every action", () => {
         "discard",
     ]);
 
+    /** The actions that leave the selected end where a person put it. */
+    const SELECTION_KEEPING_KINDS: ReadonlySet<string> = new Set([
+        "setEnd",
+        "swap",
+        "takeSample",
+        "takeSampleAtOtherEnd",
+        "undo",
+        "redo",
+        "forgetHeld",
+    ]);
+
     const STEP_KINDS: readonly Step[] = [
         {
             name: "setEnd",
@@ -780,7 +801,7 @@ describe("the history under a random walk of every action", () => {
                 expect(after.past).toBe(before.past);
                 expect(after.future).toBe(before.future);
             }
-            if (kind.name === "undo" || kind.name === "redo" || kind.name === "forgetHeld") {
+            if (SELECTION_KEEPING_KINDS.has(kind.name)) {
                 expect(after.selectedEnd).toBe(before.selectedEnd);
             }
 

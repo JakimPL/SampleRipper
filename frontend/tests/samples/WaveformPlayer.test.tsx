@@ -295,7 +295,7 @@ describe("WaveformPlayer on a phone", () => {
         expect(screen.getByRole("button", { name: "Pause sample" })).toHaveAttribute("aria-pressed", "true");
     });
 
-    it("says in the frame itself when the audio cannot be loaded", () => {
+    it("says under the row, outside the frame, when the audio cannot be loaded", () => {
         const { container } = renderPlayer();
 
         act(() => {
@@ -303,7 +303,7 @@ describe("WaveformPlayer on a phone", () => {
         });
 
         expect(screen.getByRole("status")).toHaveTextContent(/Audio unavailable/);
-        expect(container.querySelector(".wave-time")).not.toBeInTheDocument();
+        expect(container.querySelector(".wave-panel-frame")?.textContent).toBe("");
         expect(screen.getByRole("button")).toBeDisabled();
     });
 });

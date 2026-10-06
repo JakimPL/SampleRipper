@@ -45,8 +45,9 @@ The morph plays a sound between two samples. The strip along the bottom of the c
 ends, A and B, and one of them is always selected:
 
 1. Every sample you choose, in a list or on the cloud, becomes the selected end. A is selected
-   first, and B as soon as A has a sample, so the first two samples you choose make a pair.
-2. Click or tap a slot to hear its sample and select it. The samples you choose next replace that
+   first, and the selection stays where you put it.
+2. Click or tap a slot to hear its sample and select it, or press A or B. Tab switches to the other
+   end after you have clicked outside the buttons. The samples you choose next replace the selected
    end, and the other end stays. A sample that is already A or B stays where it is.
 3. Right-click a point on the cloud to put it in the other end, across from the selected one. On a
    phone or tablet, hold the point and choose **Use as B** (or **Use as A**).
@@ -86,6 +87,8 @@ way and glide from the first sample's pitch to the second's; drums and noise kee
 | Cloud | Right-click a point | Makes it the other end and plays it |
 | Cloud | Drag, scroll | Move and zoom the cloud |
 | Cloud | Escape | Lets go of the point in hand |
+| Anywhere | A, B | Select that end of the morph |
+| Anywhere | Tab, after a click outside the buttons | Selects the morph's other end |
 | Anywhere | Ctrl+Z, Ctrl+Y (⌘Z, ⇧⌘Z on a Mac) | Undo and redo the morph's ends |
 
 ## Phones and tablets

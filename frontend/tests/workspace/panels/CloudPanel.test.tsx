@@ -736,11 +736,14 @@ describe("CloudPanel on touch", () => {
         fireEvent.pointerUp(latestCanvas(), { ...FINGER, clientX: x, clientY: y });
     }
 
-    it("gives every tapped point to the selected end, playing each, the first to A and the next to B", async () => {
+    it("gives every tapped point to the selected end, playing each, the selection staying where it was put", async () => {
         await renderedPanel();
 
         tap(5, 595);
-        expect(useMorphStore.getState()).toMatchObject({ first: FIRST_HASH, second: null, selectedEnd: "second" });
+        expect(useMorphStore.getState()).toMatchObject({ first: FIRST_HASH, second: null, selectedEnd: "first" });
+        act(() => {
+            useMorphStore.getState().selectEnd("second");
+        });
         tap(595, 5);
         expect(useMorphStore.getState()).toMatchObject({
             first: FIRST_HASH,

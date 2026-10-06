@@ -123,6 +123,12 @@ const POINTER_GUIDE: readonly GuideSection[] = [
                 gesture: "The history button",
                 meaning: "opens the samples each end has held, newest first; a click on one makes it that end again",
             },
+            { gesture: "A, B", meaning: "select that end, from anywhere in the app" },
+            {
+                gesture: "Tab",
+                meaning:
+                    "selects the other end after a click outside the buttons; on a button, it moves to the next one",
+            },
             {
                 gesture: "Ctrl+Z, Ctrl+Y",
                 meaning: "undo and redo the ends, from anywhere in the app; ⌘Z and ⇧⌘Z on a Mac",

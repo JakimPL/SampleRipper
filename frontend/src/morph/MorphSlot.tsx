@@ -1,10 +1,11 @@
-import type { ReactElement, ReactNode, RefObject } from "react";
+import type { MouseEvent, ReactElement, ReactNode, RefObject } from "react";
 import { useEffect, useRef } from "react";
 
 import { SampleName } from "../samples/SampleName";
 import { samplePreview, useAudioPreview } from "../samples/useAudioPreview";
 import { spokenNameOf, useSampleName } from "../samples/useSampleName";
 import { classNames } from "../shared/classNames";
+import { KEYBOARD_CLICK_DETAIL } from "../shared/gestures/gestureThresholds";
 import { Icon } from "../shared/icons/Icon";
 import { useSelectionStore } from "../workspace/selectionStore";
 import { END_LETTERS, type MorphEnd, useMorphStore } from "./morphStore";
@@ -23,8 +24,8 @@ interface ChosenEndProps {
     readonly end: MorphEnd;
     readonly hash: string;
     readonly slotRef: RefObject<HTMLButtonElement | null>;
-    /** Called as the × empties the end, before the end's empty slot takes its place. */
-    readonly onClear: () => void;
+    /** Called as a key press on the × empties the end, before the end's empty slot takes its place. */
+    readonly onKeyboardClear: () => void;
 }
 
 interface EmptyEndProps {
@@ -42,10 +43,20 @@ interface SlotButtonProps {
     readonly children: ReactNode;
 }
 
-/** The button every slot is: the end's letter and what it holds, pressed while the end is selected. */
+/**
+ * The button every slot is: the end's letter and what it holds, pressed while the end is selected.
+ * A click lets the focus go, so Tab goes on switching the ends; a key press keeps it on the slot.
+ */
 function SlotButton({ end, spoken, empty, onClick, buttonRef, children }: SlotButtonProps): ReactElement {
     const selected = useMorphStore((state) => state.selectedEnd === end);
     const letter = END_LETTERS[end];
+
+    function handleClick(event: MouseEvent<HTMLButtonElement>): void {
+        onClick();
+        if (event.detail !== KEYBOARD_CLICK_DETAIL) {
+            event.currentTarget.blur();
+        }
+    }
 
     return (
         <button
@@ -54,7 +65,7 @@ function SlotButton({ end, spoken, empty, onClick, buttonRef, children }: SlotBu
             className={classNames("morph-slot", empty && "morph-slot-empty", selected && "is-selected")}
             aria-label={`${letter}: ${spoken}`}
             aria-pressed={selected}
-            onClick={onClick}
+            onClick={handleClick}
         >
             <span className="morph-slot-letter mono">{letter}</span>
             <span className="morph-slot-name">{children}</span>
@@ -66,7 +77,7 @@ function SlotButton({ end, spoken, empty, onClick, buttonRef, children }: SlotBu
  * The end as chosen: a tap plays its sample at the sample's own rate, takes it in hand and selects
  * the end, and the × beside it empties the end.
  */
-function ChosenEnd({ end, hash, slotRef, onClear }: ChosenEndProps): ReactElement {
+function ChosenEnd({ end, hash, slotRef, onKeyboardClear }: ChosenEndProps): ReactElement {
     const name = useSampleName(hash);
     const reading = useEndpoint(hash);
     const selectEnd = useMorphStore((state) => state.selectEnd);
@@ -95,8 +106,10 @@ function ChosenEnd({ end, hash, slotRef, onClear }: ChosenEndProps): ReactElemen
                 type="button"
                 className="morph-slot-clear"
                 aria-label={CLEAR_LABELS[end]}
-                onClick={() => {
-                    onClear();
+                onClick={(event) => {
+                    if (event.detail === KEYBOARD_CLICK_DETAIL) {
+                        onKeyboardClear();
+                    }
                     discard(end);
                 }}
             >
@@ -129,8 +142,8 @@ function EmptyEnd({ end, slotRef }: EmptyEndProps): ReactElement {
 /**
  * One end of the morph pair as the strip shows it. The selected end takes every sample picked
  * next, in a list or on the cloud; a tap on a slot selects its end, and the × of a chosen end
- * empties it and selects it, a step undo takes back. Focus follows the × to the end's empty slot,
- * so a keyboard stays on the end it just emptied.
+ * empties it and selects it, a step undo takes back. A key press on the × hands the focus to the
+ * end's empty slot, so a keyboard stays on the end it just emptied.
  */
 export function MorphSlot({ end, hash }: MorphSlotProps): ReactElement {
     const slotRef = useRef<HTMLButtonElement | null>(null);
@@ -143,13 +156,13 @@ export function MorphSlot({ end, hash }: MorphSlotProps): ReactElement {
         }
     }, [hash]);
 
-    function handleClear(): void {
+    function handleKeyboardClear(): void {
         clearingRef.current = true;
     }
 
     return hash === null ? (
         <EmptyEnd end={end} slotRef={slotRef} />
     ) : (
-        <ChosenEnd end={end} hash={hash} slotRef={slotRef} onClear={handleClear} />
+        <ChosenEnd end={end} hash={hash} slotRef={slotRef} onKeyboardClear={handleKeyboardClear} />
     );
 }

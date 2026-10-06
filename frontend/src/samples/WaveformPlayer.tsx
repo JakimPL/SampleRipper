@@ -8,7 +8,7 @@ import { formatDuration } from "../shared/format";
 import { Icon } from "../shared/icons/Icon";
 import { useAudioPreview } from "./useAudioPreview";
 import { useWaveformPlayer } from "./useWaveformPlayer";
-import { NO_TRACES, type WaveformNotice, WaveformView } from "./WaveformView";
+import { NO_TRACES, WaveformView } from "./WaveformView";
 import { WavePanel } from "./WavePanel";
 
 export interface RateOption {
@@ -28,10 +28,7 @@ interface WaveformPlayerProps {
 const PLAY_LABEL = "Play sample";
 const PAUSE_LABEL = "Pause sample";
 
-const AUDIO_UNAVAILABLE_NOTICE: WaveformNotice = {
-    text: "Audio unavailable: the file this sample is read from may be gone or changed since its scan.",
-    failed: true,
-};
+const AUDIO_UNAVAILABLE = "Audio unavailable: the file this sample is read from may be gone or changed since its scan.";
 
 function describeRateOption(option: RateOption): string {
     const timeWord = option.eventCount === 1 ? "time" : "times";
@@ -104,11 +101,10 @@ export function WaveformPlayer({
                     pending={!player.isReady && !player.hasFailed}
                     traces={NO_TRACES}
                     playheadFraction={null}
-                    notice={compact && player.hasFailed ? AUDIO_UNAVAILABLE_NOTICE : null}
                 />
             }
             readout={readout}
-            failure={player.hasFailed ? AUDIO_UNAVAILABLE_NOTICE.text : null}
+            failure={player.hasFailed ? AUDIO_UNAVAILABLE : null}
             controls={
                 rateOptions.length > 1 && (
                     <label>

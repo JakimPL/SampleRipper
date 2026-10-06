@@ -22,12 +22,6 @@ export interface WaveformTrace {
 
 export const NO_TRACES: readonly WaveformTrace[] = [];
 
-/** A word standing where a contour would: what it says, and whether it says something went wrong. */
-export interface WaveformNotice {
-    readonly text: string;
-    readonly failed: boolean;
-}
-
 const WHOLE_RATIO = 1;
 
 /**
@@ -76,7 +70,6 @@ interface WaveformViewProps {
     readonly pending: boolean;
     readonly traces: readonly WaveformTrace[];
     readonly playheadFraction: number | null;
-    readonly notice: WaveformNotice | null;
 }
 
 /**
@@ -86,9 +79,8 @@ interface WaveformViewProps {
  * A trace is drawn over its own share of the width, so contours of different lengths sharing one
  * axis read against each other where they really fall. Each is repainted whenever the resolved
  * theme could have changed, the way every canvas-backed visual in the app is, and whenever the
- * frame is resized, since a canvas holds the pixels it was given. A notice stands in the frame
- * itself where a contour is missing, so the reason is read where the contour would have been
- * rather than in a row of its own.
+ * frame is resized, since a canvas holds the pixels it was given. The frame holds drawings alone;
+ * whatever a player has to say stands in its panel around the frame.
  *
  * While the waveform is on its way the frame is marked busy and its pending layer shows a faint
  * zero line with a highlight sweeping along it, the drawing standing dimmed beneath; the stylesheet
@@ -100,7 +92,6 @@ export function WaveformView({
     pending,
     traces,
     playheadFraction,
-    notice,
 }: WaveformViewProps): ReactElement {
     const wrapRef = useRef<HTMLDivElement | null>(null);
     const traceCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -144,14 +135,6 @@ export function WaveformView({
             )}
             {containerRef !== null && <div className="wave-host" ref={containerRef} />}
             <div className="wave-pending" aria-hidden />
-            {notice !== null && (
-                <p
-                    className={classNames("wave-notice", notice.failed && "wave-notice-failed")}
-                    {...(notice.failed ? { role: "status" } : {})}
-                >
-                    <span className="wave-notice-text">{notice.text}</span>
-                </p>
-            )}
             {playheadFraction !== null && (
                 <div
                     className="wave-playhead"

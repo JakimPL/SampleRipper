@@ -43,7 +43,7 @@ describe("WavePanel", () => {
         expect(screen.queryByText("a rate to choose")).not.toBeInTheDocument();
     });
 
-    it("keeps the row symmetric with a slot where there is no file, and the corner clear where the audio is missing", () => {
+    it("keeps the row symmetric with a slot where there is no file, and says under it why the audio is missing", () => {
         const { container } = render(
             <WavePanel
                 compact
@@ -56,10 +56,11 @@ describe("WavePanel", () => {
             />,
         );
 
-        expect(tagsOf(container.querySelector(".wave-panel"))).toEqual(["BUTTON", "DIV", "SPAN"]);
+        expect(tagsOf(container.querySelector(".wave-panel"))).toEqual(["BUTTON", "DIV", "SPAN", "P"]);
         expect(container.querySelector(".wave-panel-slot")).toBeInTheDocument();
         expect(container.querySelector(".wave-time")).not.toBeInTheDocument();
-        expect(screen.queryByText("the audio is gone")).not.toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("the audio is gone");
+        expect(container.querySelector(".wave-panel-frame")).toHaveTextContent(/^the frame$/);
     });
 
     it("stands the frame over a transport row elsewhere, the controls and the file in the row", () => {

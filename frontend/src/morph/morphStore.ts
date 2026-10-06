@@ -61,9 +61,8 @@ interface MorphActions {
     /** Turns the morph on or off, the pair staying as it stands. */
     readonly setEnabled: (enabled: boolean) => void;
     /**
-     * Gives a picked sample to the selected end, and hands the selection to the other end while
-     * that one is empty; a sample the pair already holds, or a morph turned off, leaves everything
-     * as it is.
+     * Gives a picked sample to the selected end, the selection staying on it; a sample the pair
+     * already holds, or a morph turned off, leaves everything as it is.
      */
     readonly takeSample: (hash: string) => void;
     /** Turns the morph on and makes `hash` the sample at the end opposite the selected one, the selection staying. */
@@ -127,9 +126,8 @@ function swappedOf(state: MorphSnapshot): MorphSnapshot {
  * and focus move on.
  *
  * One end is always selected, the first one at the start of a visit, and it takes every sample
- * picked in a list or on the cloud through `takeSample`. Picking fills an empty pair in order:
- * once the selected end takes a sample while the other end is empty, the selection moves there,
- * so the first two picks make a pair; after that the selection stays where a slot's tap put it.
+ * picked in a list or on the cloud through `takeSample`. The selection stays where a person put
+ * it, through a slot, a key or the clearing of an end, so every pick lands on the end they chose.
  * Taking a sample the pair already holds keeps the pair and the selection as they stand, so a
  * double click's second click, or a tap to hear an end again, holds the pair in place. `setEnd`
  * names one end outright, which is how a row of the history gives its sample back, trading places
@@ -202,11 +200,7 @@ export const useMorphStore = create<MorphState & MorphActions>((set, get) => {
             if (!state.enabled || state.first === hash || state.second === hash) {
                 return;
             }
-            const end = state.selectedEnd;
-            commit(withSampleAt(state, end, hash));
-            if (otherEndOf(state, end) === null) {
-                set({ selectedEnd: OTHER_END[end] });
-            }
+            commit(withSampleAt(state, state.selectedEnd, hash));
         },
         takeSampleAtOtherEnd: (hash) => {
             if (!get().enabled) {

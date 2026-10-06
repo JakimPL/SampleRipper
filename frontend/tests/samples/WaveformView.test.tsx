@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { createRef, type ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 
-import { NO_TRACES, type WaveformNotice, type WaveformTrace, WaveformView } from "../../src/samples/WaveformView";
+import { NO_TRACES, type WaveformTrace, WaveformView } from "../../src/samples/WaveformView";
 
 const PEAKS = [
     { minimum: -1, maximum: 1 },
@@ -17,12 +17,7 @@ const TRACES: readonly WaveformTrace[] = [
 /** The pending layer as the stylesheet shows it: inside a frame marked busy. */
 const SHOWN_PENDING_LAYER = ".wave-canvas-wrap[aria-busy='true'] > .wave-pending";
 
-function viewOf(
-    traces: readonly WaveformTrace[],
-    playheadFraction: number | null,
-    notice: WaveformNotice | null,
-    pending: boolean,
-): ReactElement {
+function viewOf(traces: readonly WaveformTrace[], playheadFraction: number | null, pending: boolean): ReactElement {
     return (
         <WaveformView
             containerRef={createRef<HTMLDivElement>()}
@@ -30,17 +25,12 @@ function viewOf(
             pending={pending}
             traces={traces}
             playheadFraction={playheadFraction}
-            notice={notice}
         />
     );
 }
 
-function renderView(
-    traces: readonly WaveformTrace[],
-    playheadFraction: number | null,
-    notice: WaveformNotice | null = null,
-): HTMLElement {
-    const { container } = render(viewOf(traces, playheadFraction, notice, false));
+function renderView(traces: readonly WaveformTrace[], playheadFraction: number | null): HTMLElement {
+    const { container } = render(viewOf(traces, playheadFraction, false));
     return container;
 }
 
@@ -64,19 +54,6 @@ describe("WaveformView", () => {
         expect(container.querySelector(".wave-playhead")).toHaveStyle({ left: "25%" });
     });
 
-    it("says in the frame itself why a contour is missing", () => {
-        renderView(TRACES, null, { text: "the two ends are heard 9.2 times apart in rate", failed: true });
-
-        expect(screen.getByRole("status")).toHaveTextContent("9.2 times apart in rate");
-    });
-
-    it("states what is waited on without announcing it as a failure", () => {
-        renderView(TRACES, null, { text: "Let the slider go", failed: false });
-
-        expect(screen.getByText("Let the slider go")).toBeInTheDocument();
-        expect(screen.queryByRole("status")).not.toBeInTheDocument();
-    });
-
     it("shows no playhead for a waveform whose sound comes from its own transport", () => {
         const container = renderView(TRACES, null);
 
@@ -84,15 +61,15 @@ describe("WaveformView", () => {
     });
 
     it("marks the frame busy under its pending line while the waveform is on its way, in silence", () => {
-        const { container, rerender } = render(viewOf(NO_TRACES, null, null, true));
+        const { container, rerender } = render(viewOf(NO_TRACES, null, true));
         const frame = container.querySelector(".wave-canvas-wrap");
 
         expect(frame).toHaveAttribute("aria-busy", "true");
         expect(container.querySelector(SHOWN_PENDING_LAYER)).toBeInTheDocument();
-        expect(frame).toHaveTextContent("");
+        expect(frame?.textContent).toBe("");
         expect(screen.queryByRole("status")).not.toBeInTheDocument();
 
-        rerender(viewOf(TRACES, null, null, false));
+        rerender(viewOf(TRACES, null, false));
 
         expect(frame).not.toHaveAttribute("aria-busy");
         expect(container.querySelector(SHOWN_PENDING_LAYER)).toBeNull();

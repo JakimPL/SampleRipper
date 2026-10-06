@@ -8,6 +8,7 @@ import { DEFAULT_WEIGHT, END_LETTERS, useMorphStore } from "../../src/morph/morp
 import { MorphStrip } from "../../src/morph/MorphStrip";
 import type * as AudioPreview from "../../src/samples/useAudioPreview";
 import { shortHash } from "../../src/shared/format";
+import { KEYBOARD_CLICK_DETAIL } from "../../src/shared/gestures/gestureThresholds";
 import { UNNAMED_SAMPLE_LABEL } from "../../src/shared/labels";
 import { useSelectionStore } from "../../src/workspace/selectionStore";
 import { stubMatchMedia } from "../support/matchMedia";
@@ -19,6 +20,8 @@ const FIRST_RATE_HZ = 8363;
 const SECOND_RATE_HZ = 16726;
 const STORED_SECONDS = 0.5;
 const MOVED_WEIGHT = 0.25;
+const POINTER_CLICK_DETAIL = 1;
+const REFUSAL = "the two ends are heard 9.2 times apart in rate, and a morph spans at most 4";
 const MOVED_RENDER_URL = `/api/morph/audio?first=${FIRST}&second=${SECOND}&weight=${String(MOVED_WEIGHT)}`;
 const NAMES: Readonly<Record<string, string>> = { [FIRST]: "kick_808", [SECOND]: "" };
 
@@ -218,7 +221,6 @@ interface WaveformCase {
     readonly available: boolean;
     readonly released: boolean;
     readonly drawn: boolean;
-    readonly hint: RegExp | null;
 }
 
 const WAVEFORM_CASES: readonly WaveformCase[] = [
@@ -227,21 +229,18 @@ const WAVEFORM_CASES: readonly WaveformCase[] = [
         available: true,
         released: false,
         drawn: true,
-        hint: null,
     },
     {
         name: "draws the render once a weight has been let go",
         available: true,
         released: true,
         drawn: true,
-        hint: null,
     },
     {
-        name: "says what it waits on while no inference process answers, and asks it for nothing",
+        name: "keeps to the ends while no inference process answers, and asks it for nothing",
         available: false,
         released: true,
         drawn: false,
-        hint: /once an inference process answers/,
     },
 ];
 
@@ -269,23 +268,38 @@ describe("MorphStrip while the pair is open", () => {
         expect(slot("B")).toHaveAttribute("aria-pressed", "true");
     });
 
-    it("fills the first slot and then the second from samples taken in turn, the selection following", async () => {
+    it("fills the selected slot and keeps it selected, then the second once it is chosen", async () => {
         showEmpty();
 
         act(() => {
             useMorphStore.getState().takeSample(FIRST);
         });
-        expect(await screen.findByRole("button", { name: "A: kick_808" })).toHaveAttribute("aria-pressed", "false");
-        expect(slot("B")).toHaveAttribute("aria-pressed", "true");
+        expect(await screen.findByRole("button", { name: "A: kick_808" })).toHaveAttribute("aria-pressed", "true");
+        expect(slot("B")).toHaveAttribute("aria-pressed", "false");
         expect(screen.getByRole("button", { name: "Waveform" })).toBeDisabled();
         expect(slider()).not.toBeInTheDocument();
 
+        fireEvent.click(slot("B"));
         act(() => {
             useMorphStore.getState().takeSample(SECOND);
         });
         expect(slot("B")).toHaveAttribute("aria-pressed", "true");
         expect(slider()).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Waveform" })).toBeEnabled();
+    });
+
+    it("lets the focus go on a click on a slot, and keeps it on a slot pressed from the keyboard", () => {
+        showEmpty();
+
+        slot("B").focus();
+        fireEvent.click(slot("B"), { detail: POINTER_CLICK_DETAIL });
+        expect(slot("B")).toHaveAttribute("aria-pressed", "true");
+        expect(document.body).toHaveFocus();
+
+        slot("A").focus();
+        fireEvent.click(slot("A"), { detail: KEYBOARD_CLICK_DETAIL });
+        expect(slot("A")).toHaveAttribute("aria-pressed", "true");
+        expect(slot("A")).toHaveFocus();
     });
 
     it("names a chosen end by its short hash until the catalog names it", async () => {
@@ -436,9 +450,19 @@ describe("MorphStrip clearing an end", () => {
         const clear = screen.getByRole("button", { name: `Clear ${END_LETTERS.second}` });
         clear.focus();
 
-        fireEvent.click(clear);
+        fireEvent.click(clear, { detail: KEYBOARD_CLICK_DETAIL });
 
         expect(slot("B")).toHaveFocus();
+    });
+
+    it("leaves the focus outside the controls once a click on the × empties the end", async () => {
+        await showPair(true);
+        const clear = screen.getByRole("button", { name: `Clear ${END_LETTERS.second}` });
+        clear.focus();
+
+        fireEvent.click(clear, { detail: POINTER_CLICK_DETAIL });
+
+        expect(document.body).toHaveFocus();
     });
 
     it("slides the slider shut over the pair it last showed once the pair breaks", async () => {
@@ -496,24 +520,42 @@ describe("MorphStrip opened out", () => {
         }
     });
 
-    it.each(WAVEFORM_CASES)("$name", async ({ available, released, drawn, hint }: WaveformCase) => {
-        const fetching = watchFetches();
-        await showPairOpened(available);
-        if (released) {
-            letTheSliderGo(MOVED_WEIGHT);
-        }
+    it.each(WAVEFORM_CASES)(
+        "$name, with no words in the frame",
+        async ({ available, released, drawn }: WaveformCase) => {
+            const fetching = watchFetches();
+            await showPairOpened(available);
+            if (released) {
+                letTheSliderGo(MOVED_WEIGHT);
+            }
 
-        expect(screen.getByRole("button", { name: "Play the morph" })).toHaveProperty("disabled", !drawn);
-        expect(screen.queryByRole("link", { name: "Save this render" })).toStrictEqual(
-            drawn ? expect.anything() : null,
+            expect(screen.getByRole("button", { name: "Play the morph" })).toHaveProperty("disabled", !drawn);
+            expect(screen.queryByRole("link", { name: "Save this render" })).toStrictEqual(
+                drawn ? expect.anything() : null,
+            );
+            expect(waveFrame()?.textContent).toBe("");
+            expect(playAnswered).toHaveBeenCalledTimes(released && available ? 1 : 0);
+            expect(askedForARender(fetching)).toBe(available);
+        },
+    );
+
+    it("says in the transport, outside the frame, why the server refused a point", async () => {
+        const fetching = watchFetches();
+        fetching.mockImplementation((input) =>
+            urlOf(input).includes("/morph/audio")
+                ? Promise.resolve(
+                      new Response(JSON.stringify({ detail: REFUSAL }), {
+                          status: 422,
+                          headers: { "Content-Type": "application/json" },
+                      }),
+                  )
+                : Promise.reject(new TypeError("no network in a test")),
         );
-        if (hint === null) {
-            expect(screen.queryByText(/inference process answers/)).not.toBeInTheDocument();
-        } else {
-            expect(screen.getByText(hint)).toBeInTheDocument();
-        }
-        expect(playAnswered).toHaveBeenCalledTimes(released && available ? 1 : 0);
-        expect(askedForARender(fetching)).toBe(available);
+        await showPairOpened(true);
+
+        expect((await screen.findByText(REFUSAL)).closest(".transport")).toBeInTheDocument();
+        expect(waveFrame()?.textContent).toBe("");
+        expect(morphPlay()).toBeDisabled();
     });
 
     it("shows the drawing as on its way until the ends and the render are read, and again for a point let go", async () => {
