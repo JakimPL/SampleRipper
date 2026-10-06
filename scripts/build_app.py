@@ -18,13 +18,15 @@ from paths import (
     PACKAGE_BUILD_DIRECTORY,
     PINNED_WHEEL_DIRECTORY,
 )
-from torch_builds import CPU_TORCH_INDEX, CUDA_LOCAL_VERSION, CUDA_TORCH_INDEX, PYPI_INDEX
+from pyapp_launcher import installed_python, remove_installation
+from torch_builds import CPU_TORCH_INDEX, CUDA_TORCH_INDEX, CUDA_VARIANT, PYPI_INDEX
 from wheel_pins import write_pinned_wheel
 
 PYAPP_VERSION: Final[str] = "0.29.0"
 PYTHON_VERSION: Final[str] = "3.13"
 APP_EXTRA: Final[str] = "app"
 APP_MODULE: Final[str] = "sampleripper.app"
+QUIT_OPTION: Final[str] = "--quit"
 APP_NAME: Final[str] = "SampleRipper"
 NVIDIA_APP_NAME: Final[str] = f"{APP_NAME}-nvidia"
 EXECUTABLE_SUFFIX: Final[str] = ".exe" if sys.platform == "win32" else ""
@@ -41,7 +43,7 @@ class LauncherBuild:
     requirements: Path
     pinned_directory: Path
     torch_index: str
-    local_version: str | None
+    variant: str | None
 
     @property
     def executable(self) -> Path:
@@ -53,14 +55,14 @@ PROCESSOR_LAUNCHER: Final[LauncherBuild] = LauncherBuild(
     requirements=APP_REQUIREMENTS_FILE,
     pinned_directory=PINNED_WHEEL_DIRECTORY,
     torch_index=CPU_TORCH_INDEX,
-    local_version=None,
+    variant=None,
 )
 NVIDIA_LAUNCHER: Final[LauncherBuild] = LauncherBuild(
     name=NVIDIA_APP_NAME,
     requirements=NVIDIA_REQUIREMENTS_FILE,
     pinned_directory=NVIDIA_PINNED_WHEEL_DIRECTORY,
     torch_index=CUDA_TORCH_INDEX,
-    local_version=CUDA_LOCAL_VERSION,
+    variant=CUDA_VARIANT,
 )
 
 
@@ -92,16 +94,34 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def _build_launcher(cargo: str, wheel: Path, launcher: LauncherBuild) -> None:
-    pinned = write_pinned_wheel(
-        wheel, launcher.requirements, launcher.pinned_directory, local_version=launcher.local_version
-    )
+    pinned = write_pinned_wheel(wheel, launcher.requirements, launcher.pinned_directory, variant=launcher.variant)
     with tempfile.TemporaryDirectory() as build_root:
         subprocess.run(
             [cargo, "install", "pyapp", "--version", PYAPP_VERSION, "--force", "--root", build_root],
             check=True,
             env={**os.environ, **_pyapp_settings(pinned.resolve(), torch_index=launcher.torch_index)},
         )
-        shutil.copy2(Path(build_root) / "bin" / f"pyapp{EXECUTABLE_SUFFIX}", launcher.executable)
+        built = Path(build_root) / "bin" / f"pyapp{EXECUTABLE_SUFFIX}"
+        _retire_replaced_installation(launcher.executable, replacement=built)
+        shutil.copy2(built, launcher.executable)
+
+
+def _retire_replaced_installation(executable: Path, *, replacement: Path) -> None:
+    """Quit the application the launcher about to be replaced installed, and delete its installation.
+
+    A launcher of new contents installs into a folder of its own, so retiring the one it replaces
+    keeps a single installation per launcher on the building machine. Quitting first releases the
+    installation's files, which Windows holds while they run. A replacement of the same contents
+    shares the installation and keeps it.
+    """
+    if not executable.is_file():
+        return
+    python = installed_python(executable)
+    if python == installed_python(replacement):
+        return
+    if python.is_file():
+        subprocess.run([python, "-m", APP_MODULE, QUIT_OPTION], check=True)
+    remove_installation(executable)
 
 
 def _built_wheel() -> Path:

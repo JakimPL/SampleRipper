@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
+from pyapp_launcher import installed_python
+
 LOOPBACK: Final[str] = "127.0.0.1"
 POLL_SECONDS: Final[float] = 2.0
 REQUEST_SECONDS: Final[float] = 10.0
@@ -121,7 +123,7 @@ def _first_session(
     library_root = work / LIBRARY_DIRECTORY_NAME
     state = _wait_for_state(application, lambda state: "status" in state, seconds=INSTALL_SECONDS, launch=launch)
     _step(f"The application answers with status {state['status']}.")
-    python = _installed_python(executable)
+    python = installed_python(executable)
     subprocess.run([python, "-c", WRITE_MODULES, str(modules)], check=True)
     _step(f"Wrote the sandbox modules into {modules}.")
     _request("PUT", f"{application.setup_route}/sources", _sources(library_root, modules))
@@ -143,18 +145,7 @@ def _first_session(
     _step("The library's database stopped.")
 
 
-def _installed_python(executable: Path) -> str:
-    """The interpreter the executable installed, which PyApp's `self python-path` names.
-
-    It runs the application's own commands to their end on every system, while the executable
-    started as a GUI program on Windows returns at once.
-    """
-    return subprocess.run(
-        [executable, "self", "python-path"], check=True, capture_output=True, text=True
-    ).stdout.strip()
-
-
-def _check_second_start(python: str, application: Application, *, environment: dict[str, str]) -> None:
+def _check_second_start(python: Path, application: Application, *, environment: dict[str, str]) -> None:
     """A second start under the same config opens the running application, which keeps the build it ran.
 
     Raises:
@@ -166,7 +157,7 @@ def _check_second_start(python: str, application: Application, *, environment: d
         raise SmokeTestError("a second start replaced the running application")
 
 
-def _run_application(python: str, options: list[str], *, environment: dict[str, str]) -> None:
+def _run_application(python: Path, options: list[str], *, environment: dict[str, str]) -> None:
     """Run the installed application with ``options`` to its end.
 
     Raises:
