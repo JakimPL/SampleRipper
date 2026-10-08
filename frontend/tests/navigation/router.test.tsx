@@ -2,6 +2,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { M } from "../../src/messages/messageIds";
+
 const SHELL_FAILURE = "the shell read a layout that was not there";
 
 const { failing } = vi.hoisted(() => ({ failing: { now: false } }));
@@ -25,8 +27,8 @@ describe("routes", () => {
     it("shows a page saying nothing lives at an address the application does not answer", () => {
         render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ["/no/such/view"] })} />);
 
-        expect(screen.getByRole("heading", { name: "Page not found" })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Back to the workspace" })).toHaveAttribute("href", "/");
+        expect(screen.getByRole("heading", { name: M.navigation.notFoundTitle })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: M.navigation.backToWorkspace })).toHaveAttribute("href", "/");
     });
 
     it("keeps the workspace at a sample's own address", () => {
@@ -67,9 +69,9 @@ describe("routes", () => {
         it("shows what broke and the way back to the workspace", () => {
             render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ["/"] })} />);
 
-            expect(screen.getByRole("heading", { name: "Something went wrong" })).toBeInTheDocument();
+            expect(screen.getByRole("heading", { name: M.navigation.routeErrorTitle })).toBeInTheDocument();
             expect(screen.getByRole("alert")).toHaveTextContent(SHELL_FAILURE);
-            expect(screen.getByRole("link", { name: "Back to the workspace" })).toHaveAttribute("href", "/");
+            expect(screen.getByRole("link", { name: M.navigation.backToWorkspace })).toHaveAttribute("href", "/");
         });
     });
 });
