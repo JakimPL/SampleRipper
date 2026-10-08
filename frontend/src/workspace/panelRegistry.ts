@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import { M, type MessageId } from "../messages/messageIds";
 import type { IconName } from "../shared/icons/iconPaths";
 import { CloudPanel } from "./panels/CloudPanel";
 import { ModuleDetailPanel } from "./panels/ModuleDetailPanel";
@@ -24,8 +25,8 @@ export type PhoneHome =
 
 export interface PanelDefinition {
     readonly id: PanelId;
-    readonly title: string;
-    readonly shortTitle: string;
+    readonly title: MessageId;
+    readonly shortTitle: MessageId;
     readonly icon: IconName;
     readonly component: ComponentType;
     /**
@@ -48,8 +49,8 @@ export interface PanelDefinition {
 export const PANEL_REGISTRY: Readonly<Record<PanelId, PanelDefinition>> = {
     "samples-list": {
         id: "samples-list",
-        title: "Samples",
-        shortTitle: "Samples",
+        title: M.workspace.panels.samples,
+        shortTitle: M.workspace.panels.samples,
         icon: "samples",
         component: SamplesListPanel,
         placement: null,
@@ -59,8 +60,8 @@ export const PANEL_REGISTRY: Readonly<Record<PanelId, PanelDefinition>> = {
     },
     "modules-list": {
         id: "modules-list",
-        title: "Modules",
-        shortTitle: "Modules",
+        title: M.workspace.panels.modules,
+        shortTitle: M.workspace.panels.modules,
         icon: "modules",
         component: ModulesListPanel,
         placement: { direction: "within", referencePanel: "samples-list" },
@@ -70,8 +71,8 @@ export const PANEL_REGISTRY: Readonly<Record<PanelId, PanelDefinition>> = {
     },
     cloud: {
         id: "cloud",
-        title: "Cloud",
-        shortTitle: "Cloud",
+        title: M.workspace.panels.cloud,
+        shortTitle: M.workspace.panels.cloud,
         icon: "cloud",
         component: CloudPanel,
         placement: { direction: "right", referencePanel: "samples-list" },
@@ -81,8 +82,8 @@ export const PANEL_REGISTRY: Readonly<Record<PanelId, PanelDefinition>> = {
     },
     "sample-detail": {
         id: "sample-detail",
-        title: "Sample Detail",
-        shortTitle: "Sample",
+        title: M.workspace.panels.sampleDetail,
+        shortTitle: M.workspace.panels.sampleDetailShort,
         icon: "detail",
         component: SampleDetailPanel,
         placement: { direction: "right", referencePanel: "cloud" },
@@ -92,8 +93,8 @@ export const PANEL_REGISTRY: Readonly<Record<PanelId, PanelDefinition>> = {
     },
     "module-detail": {
         id: "module-detail",
-        title: "Module Detail",
-        shortTitle: "Module",
+        title: M.workspace.panels.moduleDetail,
+        shortTitle: M.workspace.panels.moduleDetailShort,
         icon: "detail",
         component: ModuleDetailPanel,
         placement: { direction: "within", referencePanel: "sample-detail" },
@@ -103,8 +104,8 @@ export const PANEL_REGISTRY: Readonly<Record<PanelId, PanelDefinition>> = {
     },
     stats: {
         id: "stats",
-        title: "Stats",
-        shortTitle: "Stats",
+        title: M.workspace.panels.stats,
+        shortTitle: M.workspace.panels.stats,
         icon: "stats",
         component: StatsPanel,
         placement: { direction: "within", referencePanel: "sample-detail" },

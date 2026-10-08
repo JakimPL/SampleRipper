@@ -2,6 +2,8 @@ import type { KeyboardEvent, ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { getLabelVocabulary } from "../api/curation";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
 import { BottomSheet } from "../shared/overlay/BottomSheet";
 import { useFetch } from "../shared/useFetch";
@@ -9,7 +11,6 @@ import { VOCABULARY_CACHE_KEY } from "./useAnnotationWriter";
 
 const COMMIT_KEY = "Enter";
 const VOCABULARY_CHIP_LIMIT = 24;
-const HELPER_TEXT = "Commas separate tags; a colon adds detail: KICK, DRUM: ACOUSTIC.";
 
 interface LabelSheetProps {
     readonly label: string | null;
@@ -32,6 +33,7 @@ function matchingVocabulary(vocabulary: readonly string[], text: string): readon
  * showing again.
  */
 export function LabelSheet({ label, onCommit, onClose }: LabelSheetProps): ReactElement {
+    const messages = useMessages();
     const [text, setText] = useState(label ?? "");
     const inputRef = useRef<HTMLInputElement | null>(null);
     const vocabulary = useFetch(getLabelVocabulary, [], { cacheKey: VOCABULARY_CACHE_KEY });
@@ -59,14 +61,14 @@ export function LabelSheet({ label, onCommit, onClose }: LabelSheetProps): React
     }
 
     return (
-        <BottomSheet title="Label" onClose={onClose}>
+        <BottomSheet title={messages.text(M.samples.label.sheetTitle)} onClose={onClose}>
             <input
                 ref={inputRef}
                 className="label-sheet-input field"
                 type="text"
                 value={text}
-                placeholder="Label, e.g. HI-HAT: CLOSED"
-                aria-label="Hand label"
+                placeholder={messages.text(M.samples.label.sheetPlaceholder)}
+                aria-label={messages.text(M.samples.label.handLabel)}
                 autoCapitalize="characters"
                 autoComplete="off"
                 enterKeyHint="done"
@@ -75,9 +77,9 @@ export function LabelSheet({ label, onCommit, onClose }: LabelSheetProps): React
                 }}
                 onKeyDown={handleKeyDown}
             />
-            <p className="label-sheet-helper">{HELPER_TEXT}</p>
+            <p className="label-sheet-helper">{messages.text(M.samples.label.helper)}</p>
             {vocabulary.status === "success" && vocabulary.data.length > 0 && (
-                <div className="label-sheet-chips" role="group" aria-label="Known labels">
+                <div className="label-sheet-chips" role="group" aria-label={messages.text(M.samples.label.knownLabels)}>
                     {matchingVocabulary(vocabulary.data, text).map((known) => (
                         <button
                             key={known}
@@ -99,10 +101,10 @@ export function LabelSheet({ label, onCommit, onClose }: LabelSheetProps): React
                         commit(null);
                     }}
                 >
-                    Clear
+                    {messages.text(M.samples.label.clear)}
                 </Button>
                 <Button variant="primary" onClick={commitText}>
-                    Done
+                    {messages.text(M.samples.label.done)}
                 </Button>
             </div>
         </BottomSheet>

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type * as CurationApi from "../../src/api/curation";
+import { M } from "../../src/messages/messageIds";
 import { LabelSheet } from "../../src/samples/LabelSheet";
 
 const { getLabelVocabulary } = vi.hoisted(() => ({ getLabelVocabulary: vi.fn() }));
@@ -18,12 +19,12 @@ describe("LabelSheet", () => {
         render(<LabelSheet label={null} onCommit={vi.fn()} onClose={vi.fn()} />);
         expect(await screen.findByRole("button", { name: "KICK" })).toBeInTheDocument();
 
-        await userEvent.type(screen.getByLabelText("Hand label"), "hi-hat");
+        await userEvent.type(screen.getByLabelText(M.samples.label.handLabel), "hi-hat");
         expect(screen.queryByRole("button", { name: "KICK" })).not.toBeInTheDocument();
 
         await userEvent.click(screen.getByRole("button", { name: "HI-HAT: OPEN" }));
 
-        expect(screen.getByLabelText("Hand label")).toHaveValue("HI-HAT: OPEN");
+        expect(screen.getByLabelText(M.samples.label.handLabel)).toHaveValue("HI-HAT: OPEN");
     });
 
     it("records the wording on Done and on Enter, trimmed, and closes", async () => {
@@ -32,7 +33,7 @@ describe("LabelSheet", () => {
         const onClose = vi.fn();
         render(<LabelSheet label={null} onCommit={onCommit} onClose={onClose} />);
 
-        await userEvent.type(screen.getByLabelText("Hand label"), " snare {Enter}");
+        await userEvent.type(screen.getByLabelText(M.samples.label.handLabel), " snare {Enter}");
 
         expect(onCommit).toHaveBeenCalledWith("snare");
         expect(onClose).toHaveBeenCalledTimes(1);
@@ -44,12 +45,12 @@ describe("LabelSheet", () => {
         const onClose = vi.fn();
         const { rerender } = render(<LabelSheet label="KICK" onCommit={onCommit} onClose={onClose} />);
 
-        fireEvent.click(screen.getByRole("button", { name: "Done" }));
+        fireEvent.click(screen.getByRole("button", { name: M.samples.label.done }));
         expect(onCommit).not.toHaveBeenCalled();
         expect(onClose).toHaveBeenCalledTimes(1);
 
         rerender(<LabelSheet label="KICK" onCommit={onCommit} onClose={onClose} />);
-        fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+        fireEvent.click(screen.getByRole("button", { name: M.samples.label.clear }));
 
         expect(onCommit).toHaveBeenCalledWith(null);
     });

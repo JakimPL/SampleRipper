@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 
+import { useMessages } from "../../messages/useMessages";
 import { withBoundary } from "../../shared/ErrorBoundary";
 import { PanelHost } from "../../shared/panel/PanelHost";
 import type { PanelId } from "../../workspace/panelRegistry";
@@ -18,6 +19,7 @@ interface PhoneSurfacesProps {
  * hidden from sight and from the focus order until it is back in front.
  */
 export function PhoneSurfaces({ tabs, activeTabId }: PhoneSurfacesProps): ReactElement {
+    const { text } = useMessages();
     const [visited, setVisited] = useState<ReadonlySet<PanelId>>(
         () => new Set(activeTabId === null ? [] : [activeTabId]),
     );
@@ -36,7 +38,7 @@ export function PhoneSurfaces({ tabs, activeTabId }: PhoneSurfacesProps): ReactE
                         <section
                             key={tab.id}
                             className="phone-surface"
-                            aria-label={tab.title}
+                            aria-label={text(tab.title)}
                             data-active={active}
                             aria-hidden={!active}
                             inert={!active}

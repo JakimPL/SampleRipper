@@ -3,6 +3,8 @@ import { useState } from "react";
 
 import type { SampleSummary } from "../api/samples";
 import type { InputMode } from "../layout/layoutMode";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { CategoryBadge } from "./CategoryBadge";
 import { LabelField } from "./LabelField";
 import { LabelSheet } from "./LabelSheet";
@@ -23,6 +25,7 @@ interface CategoryCellProps {
  * model heard showing, which is what makes a wrong category one gesture to correct and one to undo.
  */
 export function CategoryCell({ sample, label, onCommit, input }: CategoryCellProps): ReactElement {
+    const { text } = useMessages();
     const [isEditing, setIsEditing] = useState(false);
 
     function leave(): void {
@@ -38,7 +41,7 @@ export function CategoryCell({ sample, label, onCommit, input }: CategoryCellPro
             <button
                 type="button"
                 className="category-cell-button"
-                aria-label="Edit category"
+                aria-label={text(M.samples.label.editCategory)}
                 onClick={() => {
                     setIsEditing(true);
                 }}

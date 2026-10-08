@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 
 import type { SimilarSample } from "../api/samples";
 import { useLayoutMode } from "../layout/useLayoutMode";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { classNames } from "../shared/classNames";
 import { shortHash } from "../shared/format";
 import { Icon } from "../shared/icons/Icon";
@@ -20,9 +22,9 @@ const DISTANCE_DECIMAL_PLACES = 3;
 
 /** The columns of the neighbors table, as its header names them. */
 export const SIMILAR_COLUMN_LABELS = {
-    sample: "Sample",
-    name: "Name",
-    distance: "Distance",
+    sample: M.samples.columns.sample,
+    name: M.samples.columns.name,
+    distance: M.samples.columns.distance,
 } as const;
 
 interface SimilarSampleRowProps {
@@ -40,6 +42,7 @@ export function SimilarSampleRow({ similar }: SimilarSampleRowProps): ReactEleme
         kind: "sample",
         hash: similar.hash,
     });
+    const { text } = useMessages();
     const { input } = useLayoutMode();
     const { play } = useAudioPreview();
 
@@ -72,7 +75,7 @@ export function SimilarSampleRow({ similar }: SimilarSampleRowProps): ReactEleme
             <td className="cell-name">
                 <Link to={href} className="cell-name-stack">
                     <span className="cell-primary">
-                        <OptionalLabel value={similar.display_name} placeholder={UNNAMED_SAMPLE_LABEL} />
+                        <OptionalLabel value={similar.display_name} placeholder={text(UNNAMED_SAMPLE_LABEL)} />
                     </span>
                     <span className="entity-hash mono">
                         {shortHash(similar.hash)}
@@ -83,7 +86,7 @@ export function SimilarSampleRow({ similar }: SimilarSampleRowProps): ReactEleme
                         />
                     </span>
                 </Link>
-                <RowOpenLink href={href} label="Open sample" />
+                <RowOpenLink href={href} label={text(M.samples.openSample)} />
             </td>
             <td className="mono cell-distance">{similar.distance.toFixed(DISTANCE_DECIMAL_PLACES)}</td>
         </tr>

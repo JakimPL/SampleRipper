@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type * as CloudApi from "../../src/api/cloud";
+import { M } from "../../src/messages/messageIds";
 import { SampleGlance } from "../../src/samples/SampleGlance";
 
 const { getCategoryTags } = vi.hoisted(() => ({ getCategoryTags: vi.fn().mockResolvedValue([]) }));
@@ -31,6 +32,6 @@ describe("SampleGlance", () => {
             <SampleGlance hash="b" preview={{ display_name: "", category: null, hand_label: null, thumbnail: null }} />,
         );
 
-        expect(screen.getByText("[unnamed]")).toBeInTheDocument();
+        expect(screen.getByText(M.shared.unnamedSample)).toBeInTheDocument();
     });
 });

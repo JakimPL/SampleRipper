@@ -1,5 +1,8 @@
 import type { ReactElement } from "react";
 
+import type { MessageId } from "../messages/messageIds";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
 
 /** What the cloud paints its samples by: the listening model's category, or the hand labels. */
@@ -12,12 +15,12 @@ interface ColoringModeChoiceProps {
 
 interface ModeChoice {
     readonly mode: ColoringMode;
-    readonly label: string;
+    readonly label: MessageId;
 }
 
 const CHOICES: readonly ModeChoice[] = [
-    { mode: "category", label: "Category" },
-    { mode: "label", label: "Labels" },
+    { mode: "category", label: M.cloud.coloring.category },
+    { mode: "label", label: M.cloud.coloring.labels },
 ];
 
 /**
@@ -26,6 +29,8 @@ const CHOICES: readonly ModeChoice[] = [
  * no choice.
  */
 export function ColoringModeChoice({ mode, onModeChange }: ColoringModeChoiceProps): ReactElement {
+    const { text } = useMessages();
+
     return (
         <>
             {CHOICES.map((choice) => (
@@ -37,7 +42,7 @@ export function ColoringModeChoice({ mode, onModeChange }: ColoringModeChoicePro
                         onModeChange(choice.mode);
                     }}
                 >
-                    {choice.label}
+                    {text(choice.label)}
                 </Button>
             ))}
         </>

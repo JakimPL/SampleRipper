@@ -212,7 +212,7 @@ describe("a preview the browser cannot play", () => {
         });
 
         expect(result.current.playingKey).toBeNull();
-        expect(result.current.failure).toEqual({ key: "broken", message: "no supported source" });
+        expect(result.current.failure).toEqual({ key: "broken", detail: "no supported source" });
         vi.unstubAllGlobals();
     });
 });
@@ -273,7 +273,7 @@ describe("playAnswered", () => {
         expect(result.current.playingKey).toBeNull();
         expect(result.current.failure).toEqual({
             key: source.key,
-            message: "Too many morphs in a short time. Try again in a minute.",
+            detail: "Too many morphs in a short time. Try again in a minute.",
         });
         vi.unstubAllGlobals();
     });

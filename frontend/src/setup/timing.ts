@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 
 import type { ProgressReport } from "../api/setup";
+import { M } from "../messages/messageIds";
+import type { Messages } from "../messages/useMessages";
+
+export type TextFormatter = Messages["text"];
 
 /** How long a pass runs before its pace is steady enough to estimate from. */
 export const ESTIMATE_WARMUP_SECONDS = 10;
@@ -34,31 +38,33 @@ export function estimateRemainingSeconds(report: ProgressReport): number | null 
     return (elapsed / finishedHere) * (report.total - report.done);
 }
 
-function describeMinutes(totalMinutes: number): string {
+function describeMinutes(totalMinutes: number, text: TextFormatter): string {
     const hours = Math.floor(totalMinutes / MINUTES_PER_HOUR);
     const minutes = totalMinutes % MINUTES_PER_HOUR;
     if (hours === 0) {
-        return `${String(minutes)} min`;
+        return text(M.setup.timing.minutes, { minutes });
     }
-    return minutes === 0 ? `${String(hours)} h` : `${String(hours)} h ${String(minutes)} min`;
+    return minutes === 0
+        ? text(M.setup.timing.hours, { hours })
+        : text(M.setup.timing.hoursAndMinutes, { hours, minutes });
 }
 
 /** An estimate as a person reads it, rounded more coarsely the longer it is: "about 25 min left". */
-export function describeEstimate(seconds: number): string {
+export function describeEstimate(seconds: number, text: TextFormatter): string {
     if (seconds < SECONDS_PER_MINUTE) {
-        return "less than a minute left";
+        return text(M.setup.timing.lessThanMinuteLeft);
     }
     const minutes = seconds / SECONDS_PER_MINUTE;
     const step = ESTIMATE_ROUNDING.find((rounding) => minutes < rounding.below)?.step ?? 1;
-    return `about ${describeMinutes(Math.round(minutes / step) * step)} left`;
+    return text(M.setup.timing.about, { duration: describeMinutes(Math.round(minutes / step) * step, text) });
 }
 
 /** A measured span: seconds under a minute, whole minutes and hours above it. */
-export function describeElapsed(seconds: number): string {
+export function describeElapsed(seconds: number, text: TextFormatter): string {
     if (seconds < SECONDS_PER_MINUTE) {
-        return `${String(Math.max(0, Math.floor(seconds)))} s`;
+        return text(M.setup.timing.seconds, { seconds: Math.max(0, Math.floor(seconds)) });
     }
-    return describeMinutes(Math.floor(seconds / SECONDS_PER_MINUTE));
+    return describeMinutes(Math.floor(seconds / SECONDS_PER_MINUTE), text);
 }
 
 /** The current time, advancing every second while `running` holds, so running counters move between polls. */

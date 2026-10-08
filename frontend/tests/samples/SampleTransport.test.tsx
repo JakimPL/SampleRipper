@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest";
 
 import type { SampleDetail } from "../../src/api/samples";
+import { M } from "../../src/messages/messageIds";
 import { SampleTransport } from "../../src/samples/SampleTransport";
 
 const { instances, createMock } = vi.hoisted(() => {
@@ -90,7 +91,7 @@ describe("SampleTransport", () => {
         render(<SampleTransport sample={sampleOf({ playbackRateHz: 22050, playbackRates: TWO_RATES })} />);
 
         await waitFor(() => {
-            expect(screen.getByLabelText("Rate")).toHaveValue("22050");
+            expect(screen.getByLabelText(M.samples.player.rateLabel)).toHaveValue("22050");
         });
         await waitFor(() => {
             expect(createMock).toHaveBeenCalled();
@@ -106,13 +107,13 @@ describe("SampleTransport", () => {
     it("lets the person hear another rate the library plays the sample at", async () => {
         render(<SampleTransport sample={sampleOf({ playbackRateHz: 22050, playbackRates: TWO_RATES })} />);
         await waitFor(() => {
-            expect(screen.getByLabelText("Rate")).toHaveValue("22050");
+            expect(screen.getByLabelText(M.samples.player.rateLabel)).toHaveValue("22050");
         });
         await waitFor(() => {
             expect(createMock).toHaveBeenCalled();
         });
 
-        fireEvent.change(screen.getByLabelText("Rate"), { target: { value: "8363" } });
+        fireEvent.change(screen.getByLabelText(M.samples.player.rateLabel), { target: { value: "8363" } });
 
         expect(latestInstance().setPlaybackRate).toHaveBeenCalledWith(8363 / 44100, false);
     });
@@ -120,13 +121,13 @@ describe("SampleTransport", () => {
     it("plays a rate chosen while the waveform loads once it is ready", async () => {
         render(<SampleTransport sample={sampleOf({ playbackRateHz: 22050, playbackRates: TWO_RATES })} />);
         await waitFor(() => {
-            expect(screen.getByLabelText("Rate")).toHaveValue("22050");
+            expect(screen.getByLabelText(M.samples.player.rateLabel)).toHaveValue("22050");
         });
         await waitFor(() => {
             expect(createMock).toHaveBeenCalled();
         });
 
-        fireEvent.change(screen.getByLabelText("Rate"), { target: { value: "8363" } });
+        fireEvent.change(screen.getByLabelText(M.samples.player.rateLabel), { target: { value: "8363" } });
         act(() => {
             latestInstance().emit("ready", 1.0);
         });
@@ -137,7 +138,7 @@ describe("SampleTransport", () => {
     it("says so for a sample the catalog knows no rate for", () => {
         render(<SampleTransport sample={sampleOf({ playbackRateHz: null })} />);
 
-        expect(screen.getByText(/playback speed of this sample is unknown/)).toBeInTheDocument();
+        expect(screen.getByText(M.samples.player.noRate)).toBeInTheDocument();
         expect(createMock).not.toHaveBeenCalled();
     });
 });

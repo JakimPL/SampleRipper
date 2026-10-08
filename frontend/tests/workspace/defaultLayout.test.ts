@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { buildDefaultLayout, defaultSerializedLayout } from "../../src/workspace/defaultLayout";
 import { PANEL_REGISTRY } from "../../src/workspace/panelRegistry";
 import { FakeDockviewApi } from "../support/fakeDockviewApi";
+import { keyed } from "../support/keyedMessages";
 
 type GridNode = SerializedDockview["grid"]["root"];
 
@@ -23,7 +24,7 @@ function leavesOf(node: GridNode): Leaf[] {
 }
 
 describe("defaultSerializedLayout", () => {
-    const layout = defaultSerializedLayout();
+    const layout = defaultSerializedLayout(keyed);
     const leaves = leavesOf(layout.grid.root);
 
     it("places every registered panel exactly once", () => {
@@ -57,7 +58,7 @@ describe("defaultSerializedLayout", () => {
             expect(layout.panels[definition.id]).toEqual({
                 id: definition.id,
                 contentComponent: definition.id,
-                title: definition.title,
+                title: keyed(definition.title),
                 renderer: definition.renderer,
             });
         }
@@ -68,8 +69,8 @@ describe("buildDefaultLayout", () => {
     it("hands the arrangement to dockview whole", () => {
         const api = new FakeDockviewApi([]);
 
-        buildDefaultLayout(api.asApi());
+        buildDefaultLayout(api.asApi(), keyed);
 
-        expect(api.fromJSON).toHaveBeenCalledWith(defaultSerializedLayout());
+        expect(api.fromJSON).toHaveBeenCalledWith(defaultSerializedLayout(keyed));
     });
 });

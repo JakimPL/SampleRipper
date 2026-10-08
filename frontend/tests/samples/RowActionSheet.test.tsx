@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import type * as CurationApi from "../../src/api/curation";
 import type { SampleSummary } from "../../src/api/samples";
+import { M } from "../../src/messages/messageIds";
 import { RowActionSheet } from "../../src/samples/RowActionSheet";
+import { keyed } from "../support/keyedMessages";
 
 const { getLabelVocabulary } = vi.hoisted(() => ({ getLabelVocabulary: vi.fn().mockResolvedValue([]) }));
 
@@ -58,8 +60,8 @@ describe("RowActionSheet", () => {
         renderSheet(onChange);
 
         expect(screen.getByRole("dialog", { name: "kick" })).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Rate 4" }));
-        fireEvent.click(screen.getByRole("button", { name: "Favorite" }));
+        fireEvent.click(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 4 }) }));
+        fireEvent.click(screen.getByRole("button", { name: M.samples.favorite.yes }));
 
         expect(onChange).toHaveBeenCalledWith({ rating: 4 });
         expect(onChange).toHaveBeenCalledWith({ favorite: true });
@@ -68,7 +70,7 @@ describe("RowActionSheet", () => {
     it("opens the sample from its action", async () => {
         renderSheet();
 
-        fireEvent.click(screen.getByRole("button", { name: "Open" }));
+        fireEvent.click(screen.getByRole("button", { name: M.samples.rowActions.open }));
 
         expect(await screen.findByText("sample route")).toBeInTheDocument();
     });
@@ -76,17 +78,19 @@ describe("RowActionSheet", () => {
     it("turns into the label sheet on Label", () => {
         renderSheet();
 
-        fireEvent.click(screen.getByRole("button", { name: "Label…" }));
+        fireEvent.click(screen.getByRole("button", { name: M.samples.label.openSheet }));
 
-        expect(screen.getByRole("dialog", { name: "Label" })).toBeInTheDocument();
+        expect(screen.getByRole("dialog", { name: M.samples.label.sheetTitle })).toBeInTheDocument();
     });
 
     it("keeps its actions alone where labels may only be seen", () => {
         renderSheet(null);
 
-        expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Rate 4" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Favorite" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Label…" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: M.samples.rowActions.play })).toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: keyed(M.samples.rating.rate, { value: 4 }) }),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: M.samples.favorite.yes })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: M.samples.label.openSheet })).not.toBeInTheDocument();
     });
 });

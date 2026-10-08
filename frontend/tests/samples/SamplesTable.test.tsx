@@ -5,9 +5,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import type * as CloudApi from "../../src/api/cloud";
 import { type SampleSelection, type SampleSummary, WHOLE_CATALOG } from "../../src/api/samples";
+import { M } from "../../src/messages/messageIds";
 import { SamplesTable } from "../../src/samples/SamplesTable";
 import { useCurationAccess } from "../../src/samples/useCurationAccess";
 import { useListingOrderStore } from "../../src/workspace/listingOrderStore";
+import { keyed } from "../support/keyedMessages";
 
 const { getCategoryTags } = vi.hoisted(() => ({ getCategoryTags: vi.fn().mockResolvedValue([]) }));
 
@@ -94,7 +96,7 @@ describe("SamplesTable", () => {
         renderTable();
         expect(useListingOrderStore.getState().orderByKind.sample).toEqual(["a", "b", "c"]);
 
-        fireEvent.click(screen.getByText("Occurrences"));
+        fireEvent.click(screen.getByText(M.samples.columns.occurrences));
 
         expect(useListingOrderStore.getState().orderByKind.sample).toEqual(["a", "c", "b"]);
     });
@@ -103,17 +105,19 @@ describe("SamplesTable", () => {
         renderTable();
 
         // tanstack-table sorts a numeric column descending first (`getAutoSortDir`).
-        fireEvent.click(screen.getByText("Occurrences"));
+        fireEvent.click(screen.getByText(M.samples.columns.occurrences));
         expect(nameOrder()).toEqual(["kick", "hat", "snare"]);
 
-        fireEvent.click(screen.getByText("Occurrences"));
+        fireEvent.click(screen.getByText(M.samples.columns.occurrences));
         expect(nameOrder()).toEqual(["snare", "hat", "kick"]);
     });
 
     it("narrows rows to those matching the free-text filter", () => {
         renderTable();
 
-        fireEvent.change(screen.getByPlaceholderText("Filter samples…"), { target: { value: "snare" } });
+        fireEvent.change(screen.getByPlaceholderText(M.samples.table.filterPlaceholder), {
+            target: { value: "snare" },
+        });
 
         expect(nameOrder()).toEqual(["snare"]);
     });
@@ -121,7 +125,11 @@ describe("SamplesTable", () => {
     it("shows how many of the catalog's samples are loaded so far", () => {
         renderTable({ total: 40 });
 
-        expect(screen.getByText(/3 of 40 loaded/)).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                keyed(M.samples.table.status, { grouped: false, groups: 3, loaded: 3, loading: false, total: 40 }),
+            ),
+        ).toBeInTheDocument();
     });
 
     it("never requests more once there is nothing left to load", () => {
@@ -168,7 +176,7 @@ describe("SamplesTable", () => {
         const onGroupByEquivalenceChange = vi.fn();
         renderTable({ groupByEquivalence: false, onGroupByEquivalenceChange });
 
-        fireEvent.click(screen.getByLabelText("Group similar"));
+        fireEvent.click(screen.getByLabelText(M.samples.table.groupSimilar));
 
         expect(onGroupByEquivalenceChange).toHaveBeenCalledWith(true);
     });
@@ -176,7 +184,11 @@ describe("SamplesTable", () => {
     it("names the groups the loaded rows fold into when grouping", () => {
         renderTable({ total: 40, loadedCount: 5, groupCount: 3, groupByEquivalence: true });
 
-        expect(screen.getByText(/5 of 40 loaded · 3 groups/)).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                keyed(M.samples.table.status, { grouped: true, groups: 3, loaded: 5, loading: false, total: 40 }),
+            ),
+        ).toBeInTheDocument();
     });
 
     it("asks for one window per loaded row count however often the table redraws", () => {
@@ -210,10 +222,12 @@ describe("SamplesTable", () => {
         renderTable({ onLoadMore, hasMore: true });
         onLoadMore.mockClear();
 
-        fireEvent.change(screen.getByPlaceholderText("Filter samples…"), { target: { value: "nothing matches" } });
+        fireEvent.change(screen.getByPlaceholderText(M.samples.table.filterPlaceholder), {
+            target: { value: "nothing matches" },
+        });
         expect(onLoadMore).not.toHaveBeenCalled();
 
-        fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+        fireEvent.click(screen.getByRole("button", { name: M.samples.table.loadMore }));
         expect(onLoadMore).toHaveBeenCalledTimes(1);
     });
 
@@ -270,10 +284,10 @@ describe("SamplesTable columns", () => {
         const { container } = renderTable();
 
         const headers = Array.from(container.querySelectorAll("thead th")).map((header) => header.textContent);
-        expect(headers).toContain("Waveform");
-        expect(headers).toContain("Name");
-        expect(headers).not.toContain("Occurrences");
-        expect(headers).not.toContain("Size");
+        expect(headers).toContain(M.samples.columns.waveform);
+        expect(headers).toContain(M.samples.columns.name);
+        expect(headers).not.toContain(M.samples.columns.occurrences);
+        expect(headers).not.toContain(M.samples.columns.size);
         expect(container.querySelectorAll("colgroup col")).toHaveLength(headers.length);
     });
 
@@ -281,8 +295,8 @@ describe("SamplesTable columns", () => {
         renderTable();
 
         expect(screen.queryByLabelText("Minimum rating")).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Favorites" })).toBeInTheDocument();
-        expect(screen.getByLabelText("Order")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: M.samples.table.favorites })).toBeInTheDocument();
+        expect(screen.getByLabelText(M.samples.table.order)).toBeInTheDocument();
     });
 });
 
@@ -291,7 +305,7 @@ describe("SamplesTable narrowing", () => {
         const onSelectionChange = vi.fn();
         renderTable({ onSelectionChange });
 
-        await userEvent.click(screen.getByRole("button", { name: "Favorites" }));
+        await userEvent.click(screen.getByRole("button", { name: M.samples.table.favorites }));
 
         expect(onSelectionChange).toHaveBeenCalledWith({ ...WHOLE_CATALOG, favoritesOnly: true });
     });
@@ -300,7 +314,7 @@ describe("SamplesTable narrowing", () => {
         const onSelectionChange = vi.fn();
         renderTable({ onSelectionChange });
 
-        await userEvent.selectOptions(screen.getByLabelText("Order"), "rating");
+        await userEvent.selectOptions(screen.getByLabelText(M.samples.table.order), "rating");
 
         expect(onSelectionChange).toHaveBeenCalledWith({ ...WHOLE_CATALOG, sort: "rating" });
     });
@@ -308,7 +322,7 @@ describe("SamplesTable narrowing", () => {
     it("shows a live favorites narrowing as pressed", () => {
         renderTable({ selection: { ...WHOLE_CATALOG, favoritesOnly: true } });
 
-        expect(screen.getByRole("button", { name: "Favorites" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: M.samples.table.favorites })).toHaveAttribute("aria-pressed", "true");
     });
 });
 
@@ -317,15 +331,15 @@ describe("SamplesTable on a site", () => {
         vi.mocked(useCurationAccess).mockReturnValue({ curationShown: false, labelEditing: false });
         renderTable();
 
-        expect(screen.queryByRole("button", { name: "Favorites" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("combobox", { name: "Order" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("columnheader", { name: "Rating" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: M.samples.table.favorites })).not.toBeInTheDocument();
+        expect(screen.queryByRole("combobox", { name: M.samples.table.order })).not.toBeInTheDocument();
+        expect(screen.queryByRole("columnheader", { name: M.samples.columns.rating })).not.toBeInTheDocument();
     });
 
     it("offers both where a person's decisions are shown", () => {
         renderTable();
 
-        expect(screen.getByRole("button", { name: "Favorites" })).toBeInTheDocument();
-        expect(screen.getByRole("combobox", { name: "Order" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: M.samples.table.favorites })).toBeInTheDocument();
+        expect(screen.getByRole("combobox", { name: M.samples.table.order })).toBeInTheDocument();
     });
 });

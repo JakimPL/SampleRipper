@@ -2,6 +2,8 @@ import { type ReactElement, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { quitApplication } from "../api/setup";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { CLOSED_PATH } from "../setup/ClosedView";
 import { describeRefusal } from "../setup/refusal";
 import { SETUP_PATH } from "../setup/SetupGate";
@@ -16,6 +18,7 @@ import { DisclosureMenu } from "../shared/overlay/DisclosureMenu";
  */
 export function LibraryMenu(): ReactElement | null {
     const setup = useSetupProbe();
+    const { text } = useMessages();
     const navigate = useNavigate();
     const [refusal, setRefusal] = useState<string | null>(null);
 
@@ -33,7 +36,7 @@ export function LibraryMenu(): ReactElement | null {
         return null;
     }
     return (
-        <DisclosureMenu label="Library" className="library-menu" variant="quiet">
+        <DisclosureMenu label={text(M.shell.menus.library)} className="library-menu" variant="quiet">
             <Button
                 variant="quiet"
                 wide
@@ -42,7 +45,7 @@ export function LibraryMenu(): ReactElement | null {
                     void navigate(SETUP_PATH);
                 }}
             >
-                Setup
+                {text(M.shell.menus.setup)}
             </Button>
             <Button
                 variant="quiet"
@@ -52,7 +55,7 @@ export function LibraryMenu(): ReactElement | null {
                     void handleQuit();
                 }}
             >
-                Quit SampleRipper
+                {text(M.shell.menus.quit)}
             </Button>
             {refusal !== null && (
                 <p className="menu-note" role="alert">

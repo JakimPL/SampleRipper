@@ -1,6 +1,8 @@
 import type { KeyboardEvent, PointerEvent, ReactElement } from "react";
 import { useRef, useState } from "react";
 
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { snapWeight, WEIGHT_STEP } from "../morph/morphStore";
 import { classNames } from "../shared/classNames";
 import { pointAlong, projectWeight, type ScreenPoint } from "./linkGeometry";
@@ -58,6 +60,7 @@ export function MorphLink({
     onWeightCommit,
     onDragChange,
 }: MorphLinkProps): ReactElement {
+    const { text } = useMessages();
     const wrapperRef = useRef<HTMLDivElement | null>(null);
     const draggingRef = useRef(false);
     const [dragging, setDragging] = useState(false);
@@ -150,7 +153,7 @@ export function MorphLink({
                 role="slider"
                 tabIndex={0}
                 className={classNames("morph-link-marker", square && "morph-link-marker-square")}
-                aria-label="Morph weight"
+                aria-label={text(M.cloud.morphWeight)}
                 aria-valuemin={0}
                 aria-valuemax={1}
                 aria-valuenow={weight}

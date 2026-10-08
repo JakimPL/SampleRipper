@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
+import { M } from "../../src/messages/messageIds";
 import { TopBar } from "../../src/shell/TopBar";
 
 describe("TopBar", () => {
@@ -13,8 +14,8 @@ describe("TopBar", () => {
         );
 
         expect(screen.getByRole("link", { name: "SampleRipper" })).toHaveAttribute("href", "/");
-        expect(screen.getByText("View")).toBeInTheDocument();
-        expect(screen.getByText("Help")).toBeInTheDocument();
-        expect(screen.getByLabelText("Theme")).toBeInTheDocument();
+        expect(screen.getByText(M.shell.menus.view)).toBeInTheDocument();
+        expect(screen.getByText(M.shell.menus.help)).toBeInTheDocument();
+        expect(screen.getByLabelText(M.theme.menu)).toBeInTheDocument();
     });
 });

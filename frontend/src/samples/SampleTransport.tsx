@@ -3,13 +3,14 @@ import { useState } from "react";
 
 import type { SampleDetail } from "../api/samples";
 import type { components } from "../api/schema";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { fileNameStem, shortHash } from "../shared/format";
 import { type RateOption, WaveformPlayer } from "./WaveformPlayer";
 
 type PlaybackRate = components["schemas"]["SamplePlaybackRate"];
 
 const WAV_EXTENSION = ".wav";
-const NO_RATE_NOTICE = "The playback speed of this sample is unknown.";
 
 interface SampleTransportProps {
     readonly sample: SampleDetail;
@@ -25,10 +26,11 @@ function rateOptionsFrom(playbackRates: readonly PlaybackRate[]): RateOption[] {
  * over with another sample.
  */
 export function SampleTransport({ sample }: SampleTransportProps): ReactElement {
+    const { text } = useMessages();
     const [selectedRateHz, setSelectedRateHz] = useState<number | null>(null);
 
     if (sample.playback_rate_hz === null) {
-        return <p className="no-selection">{NO_RATE_NOTICE}</p>;
+        return <p className="no-selection">{text(M.samples.player.noRate)}</p>;
     }
 
     const rateOptions = rateOptionsFrom(sample.playback_rates);

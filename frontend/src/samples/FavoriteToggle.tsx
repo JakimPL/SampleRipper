@@ -2,6 +2,8 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { useLayoutMode } from "../layout/useLayoutMode";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { classNames } from "../shared/classNames";
 
 const FILLED_HEART = "♥";
@@ -20,12 +22,13 @@ interface FavoriteToggleProps {
  * may only see the mark, the heart shows it and takes no clicks.
  */
 export function FavoriteToggle({ favorite, onFavoriteChange }: FavoriteToggleProps): ReactElement {
+    const { text } = useMessages();
     if (onFavoriteChange === null) {
         return (
             <span
                 className={classNames("favorite-toggle is-read-only", favorite && "is-filled")}
                 role="img"
-                aria-label={favorite ? "Favorite" : "Not a favorite"}
+                aria-label={text(favorite ? M.samples.favorite.yes : M.samples.favorite.no)}
             >
                 {favorite ? FILLED_HEART : EMPTY_HEART}
             </span>
@@ -41,6 +44,7 @@ function FavoriteButton({
     readonly favorite: boolean;
     readonly onFavoriteChange: (favorite: boolean) => void;
 }): ReactElement {
+    const { text } = useMessages();
     const [isPointedAt, setIsPointedAt] = useState(false);
     const { input } = useLayoutMode();
     const isShownFilled = favorite || isPointedAt;
@@ -49,7 +53,7 @@ function FavoriteButton({
         <button
             type="button"
             className={classNames("favorite-toggle", isShownFilled && "is-filled")}
-            aria-label="Favorite"
+            aria-label={text(M.samples.favorite.yes)}
             aria-pressed={favorite}
             onMouseEnter={() => {
                 if (input === "pointer") {

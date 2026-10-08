@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as ModulesApi from "../../src/api/modules";
 import type * as SamplesApi from "../../src/api/samples";
+import { M, type MessageId } from "../../src/messages/messageIds";
 import { routes } from "../../src/navigation/router";
 import { LAYOUT_STORAGE_KEY, type StoredLayout } from "../../src/workspace/dockviewPersistence";
 import type * as ModulesListPanelModule from "../../src/workspace/panels/ModulesListPanel";
@@ -69,7 +70,7 @@ function panelTabTitles(): string[] {
  * Closes one panel through its tab and waits for the shell to save the arrangement without it,
  * which dockview reports a moment after the close.
  */
-async function closePanelAndSave(title: string): Promise<void> {
+async function closePanelAndSave(title: MessageId): Promise<void> {
     fireEvent.click(screen.getByRole("button", { name: `Close ${title}` }));
     await waitFor(() => {
         expect(localStorage.getItem(LAYOUT_STORAGE_KEY)).not.toBeNull();
@@ -96,8 +97,8 @@ describe("WorkspaceShell", () => {
         renderShellAt("/modules");
 
         expect(await screen.findByText(MODULES_FAILURE)).toHaveAttribute("role", "alert");
-        expect(panelTabTitles()).toContain("Cloud");
-        expect(panelTabTitles()).toContain("Samples");
+        expect(panelTabTitles()).toContain(M.workspace.panels.cloud);
+        expect(panelTabTitles()).toContain(M.workspace.panels.samples);
         vi.restoreAllMocks();
     });
 
@@ -105,7 +106,15 @@ describe("WorkspaceShell", () => {
         renderShellAt("/");
 
         const titles = panelTabTitles();
-        for (const title of ["Modules", "Samples", "Cloud", "Module Detail", "Sample Detail", "Stats"]) {
+        const defaultTitles = [
+            M.workspace.panels.modules,
+            M.workspace.panels.samples,
+            M.workspace.panels.cloud,
+            M.workspace.panels.moduleDetail,
+            M.workspace.panels.sampleDetail,
+            M.workspace.panels.stats,
+        ];
+        for (const title of defaultTitles) {
             expect(titles).toContain(title);
         }
     });
@@ -130,13 +139,13 @@ describe("WorkspaceShell", () => {
         getSampleRelations.mockResolvedValue([]);
         getSimilarSamples.mockResolvedValue([]);
         renderShellAt("/");
-        expect(screen.queryByText(/playback speed of this sample is unknown/)).not.toBeInTheDocument();
+        expect(screen.queryByText(M.samples.player.noRate)).not.toBeInTheDocument();
 
         act(() => {
             useSelectionStore.getState().focusSample("abc");
         });
 
-        expect(await screen.findByText(/playback speed of this sample is unknown/)).toBeInTheDocument();
+        expect(await screen.findByText(M.samples.player.noRate)).toBeInTheDocument();
         expect(await screen.findByRole("heading", { name: "kick" })).toBeInTheDocument();
     });
 
@@ -173,65 +182,65 @@ describe("WorkspaceShell", () => {
         renderShellAt("/samples/abc");
 
         await waitFor(() => {
-            expect(activeTabTitles()).toContain("Sample Detail");
+            expect(activeTabTitles()).toContain(M.workspace.panels.sampleDetail);
         });
     });
 
     it("renders the theme picker in the top bar", () => {
         renderShellAt("/");
 
-        expect(screen.getByLabelText("Theme")).toBeInTheDocument();
+        expect(screen.getByLabelText(M.theme.menu)).toBeInTheDocument();
     });
 
     it("brings a panel forward at its own address", async () => {
         renderShellAt("/modules");
 
         await waitFor(() => {
-            expect(activeTabTitles()).toContain("Modules");
+            expect(activeTabTitles()).toContain(M.workspace.panels.modules);
         });
     });
 
     it("opens a closed panel again when its own address is visited", async () => {
         const first = renderShellAt("/");
-        await closePanelAndSave("Stats");
+        await closePanelAndSave(M.workspace.panels.stats);
         first.unmount();
 
         renderShellAt("/stats");
 
         await waitFor(() => {
-            expect(panelTabTitles()).toContain("Stats");
+            expect(panelTabTitles()).toContain(M.workspace.panels.stats);
         });
     });
 
     it("brings the Cloud panel back once a pair is complete, with the morph strip on it", async () => {
         renderShellAt("/");
-        await closePanelAndSave("Cloud");
-        expect(panelTabTitles()).not.toContain("Cloud");
+        await closePanelAndSave(M.workspace.panels.cloud);
+        expect(panelTabTitles()).not.toContain(M.workspace.panels.cloud);
 
         act(() => {
             choosePair("a".repeat(64), "b".repeat(64));
         });
 
         await waitFor(() => {
-            expect(activeTabTitles()).toContain("Cloud");
+            expect(activeTabTitles()).toContain(M.workspace.panels.cloud);
         });
-        expect(await screen.findByRole("region", { name: "Morph" })).toBeInTheDocument();
+        expect(await screen.findByRole("region", { name: M.morph.strip })).toBeInTheDocument();
     });
 
     it("keeps a panel closed across a reload once a person closed it", async () => {
         const first = renderShellAt("/");
-        await closePanelAndSave("Stats");
-        expect(panelTabTitles()).not.toContain("Stats");
+        await closePanelAndSave(M.workspace.panels.stats);
+        expect(panelTabTitles()).not.toContain(M.workspace.panels.stats);
         first.unmount();
 
         renderShellAt("/");
 
-        expect(panelTabTitles()).not.toContain("Stats");
+        expect(panelTabTitles()).not.toContain(M.workspace.panels.stats);
     });
 
     it("opens a panel registered since the arrangement was saved", async () => {
         const first = renderShellAt("/");
-        await closePanelAndSave("Stats");
+        await closePanelAndSave(M.workspace.panels.stats);
         first.unmount();
         const record = savedRecord();
         localStorage.setItem(
@@ -241,21 +250,21 @@ describe("WorkspaceShell", () => {
 
         renderShellAt("/");
 
-        expect(panelTabTitles()).toContain("Stats");
+        expect(panelTabTitles()).toContain(M.workspace.panels.stats);
     });
 
     it("lets a closed panel be reopened through the View menu", async () => {
         renderShellAt("/");
-        expect(panelTabTitles()).toContain("Stats");
+        expect(panelTabTitles()).toContain(M.workspace.panels.stats);
 
-        fireEvent.click(screen.getByRole("button", { name: "Close Stats" }));
-        expect(panelTabTitles()).not.toContain("Stats");
+        fireEvent.click(screen.getByRole("button", { name: `Close ${M.workspace.panels.stats}` }));
+        expect(panelTabTitles()).not.toContain(M.workspace.panels.stats);
 
-        fireEvent.click(screen.getByText("View"));
-        fireEvent.click(await screen.findByRole("checkbox", { name: "Stats" }));
+        fireEvent.click(screen.getByText(M.shell.menus.view));
+        fireEvent.click(await screen.findByRole("checkbox", { name: M.workspace.panels.stats }));
 
         await waitFor(() => {
-            expect(panelTabTitles()).toContain("Stats");
+            expect(panelTabTitles()).toContain(M.workspace.panels.stats);
         });
     });
 });

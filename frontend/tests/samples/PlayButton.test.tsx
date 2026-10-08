@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import { M } from "../../src/messages/messageIds";
 import { PlayButton } from "../../src/samples/PlayButton";
 import { Icon } from "../../src/shared/icons/Icon";
 
@@ -12,7 +13,7 @@ describe("PlayButton", () => {
             </PlayButton>,
         );
 
-        const button = screen.getByRole("button", { name: "Play sample preview" });
+        const button = screen.getByRole("button", { name: M.samples.preview.play });
         expect(button.querySelector(".icon")).toBeInTheDocument();
 
         fireEvent.click(button);

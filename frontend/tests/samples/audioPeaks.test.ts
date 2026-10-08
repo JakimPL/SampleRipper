@@ -91,10 +91,21 @@ describe("useAudioPeaks", () => {
         const { result } = renderHook(() => useAudioPeaks(AUDIO_URL, 8));
 
         await waitFor(() => {
-            expect(result.current.refusal).toBe(REFUSAL);
+            expect(result.current.refusal).toEqual({ status: 422, detail: REFUSAL });
         });
         expect(result.current.peaks).toBeNull();
         expect(result.current.pending).toBe(false);
+    });
+
+    it("reads back the status of audio refused with no words of its own", async () => {
+        vi.stubGlobal("AudioContext", FailingDecoder);
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 503 })));
+
+        const { result } = renderHook(() => useAudioPeaks(AUDIO_URL, 8));
+
+        await waitFor(() => {
+            expect(result.current.refusal).toEqual({ status: 503, detail: null });
+        });
     });
 
     it("holds the audio asked for as pending until its request settles, a failed one included", async () => {

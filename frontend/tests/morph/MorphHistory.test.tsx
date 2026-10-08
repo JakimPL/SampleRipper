@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type * as SamplesApi from "../../src/api/samples";
+import { M } from "../../src/messages/messageIds";
 import { MorphHistory } from "../../src/morph/MorphHistory";
 import { END_LETTERS, type MorphEnd, useMorphStore } from "../../src/morph/morphStore";
 import { shortHash } from "../../src/shared/format";
@@ -49,9 +50,9 @@ describe("MorphHistory with nothing held", () => {
 
         expect(rowsOf("first")).toHaveLength(0);
         expect(rowsOf("second")).toHaveLength(0);
-        expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
-        expect(screen.getByRole("button", { name: "Redo" })).toBeDisabled();
-        expect(screen.getByRole("button", { name: "Forget all" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: M.morph.held.undo })).toBeDisabled();
+        expect(screen.getByRole("button", { name: M.morph.held.redo })).toBeDisabled();
+        expect(screen.getByRole("button", { name: M.morph.held.forgetAll })).toBeDisabled();
     });
 });
 
@@ -147,13 +148,13 @@ describe("MorphHistory with samples held", () => {
         render(<MorphHistory />);
         await row("first", NAMES[A] ?? "");
 
-        fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+        fireEvent.click(screen.getByRole("button", { name: M.morph.held.undo }));
         expect(pressedIn("first")).toEqual([false, true]);
-        expect(screen.getByRole("button", { name: "Redo" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: M.morph.held.redo })).toBeEnabled();
 
-        fireEvent.click(screen.getByRole("button", { name: "Redo" }));
+        fireEvent.click(screen.getByRole("button", { name: M.morph.held.redo }));
         expect(pressedIn("first")).toEqual([true, false]);
-        expect(screen.getByRole("button", { name: "Redo" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: M.morph.held.redo })).toBeDisabled();
     });
 
     it("forgets every row but the ones held now", async () => {
@@ -163,11 +164,11 @@ describe("MorphHistory with samples held", () => {
         render(<MorphHistory />);
         await row("first", NAMES[A] ?? "");
 
-        fireEvent.click(screen.getByRole("button", { name: "Forget all" }));
+        fireEvent.click(screen.getByRole("button", { name: M.morph.held.forgetAll }));
 
         expect(rowsOf("first")).toHaveLength(1);
         expect(rowsOf("first")[0]).toHaveAttribute("aria-pressed", "true");
         expect(rowsOf("second")).toHaveLength(1);
-        expect(screen.getByRole("button", { name: "Undo" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: M.morph.held.undo })).toBeEnabled();
     });
 });

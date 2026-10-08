@@ -2,6 +2,8 @@ import type { ChangeEvent, ReactElement } from "react";
 import { useId, useMemo, useRef } from "react";
 
 import { useLayoutMode } from "../layout/useLayoutMode";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
 import { Icon } from "../shared/icons/Icon";
 import { Collapsible } from "../shared/motion/Collapsible";
@@ -20,8 +22,6 @@ import type { MorphStatus } from "./useMorphStatus";
 const WEIGHT_DECIMAL_PLACES = 2;
 const PERCENT_OF_A_SHARE = 100;
 const THUMB_CENTER_SHARE = 0.5;
-const OFFLINE_NOTICE = "Morphing isn't available right now.";
-const HISTORY_TITLE = "History";
 
 /** Where the readout stands over the track: on the thumb's own center, whose travel the thumb's width shortens at either end. */
 function readoutOffset(weight: number): string {
@@ -40,11 +40,13 @@ interface OfflineNoticeProps {
 }
 
 function OfflineNotice({ status }: OfflineNoticeProps): ReactElement {
+    const { text } = useMessages();
+
     return (
         <p className="panel-status morph-offline morph-strip-section" role="status">
-            <span>{OFFLINE_NOTICE}</span>
+            <span>{text(M.morph.offline)}</span>
             <Button variant="secondary" onClick={status.refresh}>
-                Check again
+                {text(M.morph.checkAgain)}
             </Button>
         </p>
     );
@@ -61,6 +63,7 @@ interface PairProps extends MorphPairEnds {
 
 /** The slider between the two ends, and the distance between them where the panel has room for it. */
 function MorphSlider({ first, second, playback }: PairProps): ReactElement {
+    const { text } = useMessages();
     const weight = useMorphStore((state) => state.weight);
     const setWeight = useMorphStore((state) => state.setWeight);
     const { layout } = useLayoutMode();
@@ -94,7 +97,7 @@ function MorphSlider({ first, second, playback }: PairProps): ReactElement {
                         max={1}
                         step={WEIGHT_STEP}
                         value={weight}
-                        aria-label="Point along the morph"
+                        aria-label={text(M.morph.weight)}
                         onChange={handleChange}
                         onPointerUp={handleRelease}
                         onKeyUp={handleRelease}
@@ -139,6 +142,7 @@ function MorphPairWaveform({ first, second, playback }: PairProps): ReactElement
  * goes on showing the pair it last showed until it has slid shut.
  */
 export function MorphStrip(): ReactElement {
+    const { text } = useMessages();
     const first = useMorphStore((state) => state.first);
     const second = useMorphStore((state) => state.second);
     const swap = useMorphStore((state) => state.swap);
@@ -160,7 +164,7 @@ export function MorphStrip(): ReactElement {
     const waveformShown = expanded && pair !== null;
 
     return (
-        <section className="morph-strip" aria-label="Morph">
+        <section className="morph-strip" aria-label={text(M.morph.strip)}>
             <Collapsible open={pair !== null && isOffline(playback.status)}>
                 <OfflineNotice status={playback.status} />
             </Collapsible>
@@ -169,7 +173,7 @@ export function MorphStrip(): ReactElement {
                     <section
                         className="morph-strip-history morph-strip-section"
                         id={historyId}
-                        aria-label={HISTORY_TITLE}
+                        aria-label={text(M.morph.history)}
                     >
                         <MorphHistory />
                     </section>
@@ -189,14 +193,20 @@ export function MorphStrip(): ReactElement {
             </Collapsible>
             <div className="morph-strip-row">
                 <MorphSlot end="first" hash={first} />
-                <Button variant="secondary" icon aria-label="Swap the two ends" disabled={pair === null} onClick={swap}>
+                <Button
+                    variant="secondary"
+                    icon
+                    aria-label={text(M.morph.swap)}
+                    disabled={pair === null}
+                    onClick={swap}
+                >
                     <Icon name="swap" label={null} />
                 </Button>
                 <MorphSlot end="second" hash={second} />
                 <Button
                     variant="secondary"
                     icon
-                    aria-label="Waveform"
+                    aria-label={text(M.morph.waveform)}
                     aria-expanded={waveformShown}
                     aria-controls={bodyId}
                     disabled={pair === null}
@@ -207,7 +217,7 @@ export function MorphStrip(): ReactElement {
                 <Button
                     variant="secondary"
                     icon
-                    aria-label={HISTORY_TITLE}
+                    aria-label={text(M.morph.history)}
                     aria-expanded={historyShown}
                     aria-controls={historyInline ? historyId : undefined}
                     onClick={toggleHistoryShown}
@@ -216,7 +226,7 @@ export function MorphStrip(): ReactElement {
                 </Button>
             </div>
             {historyShown && !historyInline && (
-                <BottomSheet title={HISTORY_TITLE} onClose={hideHistory}>
+                <BottomSheet title={text(M.morph.history)} onClose={hideHistory}>
                     <MorphHistory />
                 </BottomSheet>
             )}

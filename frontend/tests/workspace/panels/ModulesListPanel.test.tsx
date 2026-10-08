@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import type * as ModulesApi from "../../../src/api/modules";
+import { M } from "../../../src/messages/messageIds";
 import { ModulesListPanel } from "../../../src/workspace/panels/ModulesListPanel";
 import { useSelectionStore } from "../../../src/workspace/selectionStore";
 
@@ -45,7 +46,7 @@ describe("ModulesListPanel", () => {
 
         renderPanel();
 
-        expect(screen.getByText("Loading…")).toBeInTheDocument();
+        expect(screen.getByText(M.shared.loading)).toBeInTheDocument();
     });
 
     it("renders the fetched modules once loaded", async () => {

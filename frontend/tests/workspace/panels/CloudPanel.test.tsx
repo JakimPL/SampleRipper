@@ -8,12 +8,14 @@ import type * as ModulesApi from "../../../src/api/modules";
 import type * as MorphApi from "../../../src/api/morph";
 import type * as SamplesApi from "../../../src/api/samples";
 import { COARSE_POINTER_MEDIA_QUERY } from "../../../src/layout/layoutMode";
-import { END_LETTERS, useMorphStore } from "../../../src/morph/morphStore";
+import { M } from "../../../src/messages/messageIds";
+import { useMorphStore } from "../../../src/morph/morphStore";
 import type * as AudioPreview from "../../../src/samples/useAudioPreview";
 import { useCurationAccess } from "../../../src/samples/useCurationAccess";
 import { LONG_PRESS_HOLD_MS } from "../../../src/shared/gestures/gestureThresholds";
 import { CloudPanel } from "../../../src/workspace/panels/CloudPanel";
 import { useSelectionStore } from "../../../src/workspace/selectionStore";
+import { keyed } from "../../support/keyedMessages";
 import { stubMatchMedia } from "../../support/matchMedia";
 import { choosePair } from "../../support/morphPair";
 import { installControllableResizeObserver, resizeTo } from "../../support/resizeObserver";
@@ -225,7 +227,7 @@ describe("CloudPanel", () => {
 
         renderPanel();
 
-        expect(screen.getByText("Loading…")).toBeInTheDocument();
+        expect(screen.getByText(M.shared.loading)).toBeInTheDocument();
     });
 
     it("renders a canvas for the Samples tab once its points have loaded", async () => {
@@ -302,7 +304,7 @@ describe("CloudPanel", () => {
         getModuleCloud.mockResolvedValue([{ module_hash: moduleHash, tracker: "xm", x: 0, y: 0 }]);
         renderPanel();
 
-        fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+        fireEvent.click(screen.getByRole("button", { name: M.workspace.panels.modules }));
 
         await waitFor(() => {
             expect(document.querySelector("canvas.cloud-dots")).toBeInTheDocument();
@@ -316,7 +318,7 @@ describe("CloudPanel", () => {
         // The hover tooltip fetches module detail as soon as pointOver fires below.
         getModule.mockReturnValue(new Promise(() => undefined));
         renderPanel();
-        fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+        fireEvent.click(screen.getByRole("button", { name: M.workspace.panels.modules }));
         await waitFor(() => {
             expect(document.querySelector("canvas.cloud-dots")).toBeInTheDocument();
         });
@@ -357,11 +359,11 @@ describe("CloudPanel", () => {
         getCategoryTags.mockResolvedValue([{ path: ["BASS DRUM"], sample_count: 1, rank: 0 }]);
         renderPanel();
 
-        expect(screen.getByRole("button", { name: "Category" })).toHaveAttribute("aria-pressed", "true");
-        expect(screen.queryByRole("button", { name: "Legend" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: M.cloud.coloring.category })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.queryByRole("button", { name: M.cloud.legend.title })).not.toBeInTheDocument();
         expect(await screen.findByRole("button", { name: /BASS DRUM/ })).toHaveAttribute("aria-pressed", "true");
-        expect(toolbarOf(screen.getByRole("group", { name: "Tags shown" }))).toBe(
-            toolbarOf(screen.getByRole("button", { name: "Samples" })),
+        expect(toolbarOf(screen.getByRole("group", { name: M.cloud.legend.tagsShown }))).toBe(
+            toolbarOf(screen.getByRole("button", { name: M.workspace.panels.samples })),
         );
         await waitFor(() => {
             expect(latestInstance().draw).toHaveBeenCalledWith([[expect.any(Number), expect.any(Number), 1]], {
@@ -409,7 +411,7 @@ describe("CloudPanel", () => {
         act(() => {
             choosePair(first, second);
         });
-        const marker = await screen.findByRole("slider", { name: "Morph weight" });
+        const marker = await screen.findByRole("slider", { name: M.cloud.morphWeight });
 
         fireEvent.pointerDown(marker, { pointerId: 1, clientX: 10, clientY: 20 });
         fireEvent.pointerUp(marker, { pointerId: 1, clientX: 10, clientY: 20 });
@@ -440,7 +442,7 @@ describe("CloudPanel", () => {
         act(() => {
             choosePair(first, second);
         });
-        const marker = await screen.findByRole("slider", { name: "Morph weight" });
+        const marker = await screen.findByRole("slider", { name: M.cloud.morphWeight });
 
         fireEvent.pointerDown(marker, { pointerId: 1, clientX: 10, clientY: 20 });
         fireEvent.pointerUp(marker, { pointerId: 1, clientX: 10, clientY: 20 });
@@ -456,11 +458,13 @@ describe("CloudPanel", () => {
             expect(document.querySelector("canvas.cloud-dots")).toBeInTheDocument();
         });
 
-        expect(document.querySelector(".cloud-body")).toContainElement(screen.getByRole("region", { name: "Morph" }));
+        expect(document.querySelector(".cloud-body")).toContainElement(
+            screen.getByRole("region", { name: M.morph.strip }),
+        );
 
-        fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+        fireEvent.click(screen.getByRole("button", { name: M.workspace.panels.modules }));
 
-        expect(screen.queryByRole("region", { name: "Morph" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: M.morph.strip })).not.toBeInTheDocument();
     });
 
     it("lifts the cloud's controls by the height the strip covers, on the samples cloud alone", async () => {
@@ -482,7 +486,7 @@ describe("CloudPanel", () => {
         });
         expect(body.style.getPropertyValue("--cloud-bottom-inset")).toBe("120px");
 
-        fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+        fireEvent.click(screen.getByRole("button", { name: M.workspace.panels.modules }));
         expect(body.style.getPropertyValue("--cloud-bottom-inset")).toBe("0px");
     });
 
@@ -498,13 +502,13 @@ describe("CloudPanel", () => {
         await waitFor(() => {
             expect(document.querySelector("canvas.cloud-dots")).toBeInTheDocument();
         });
-        expect(screen.getByRole("button", { name: "Frame the pair" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: M.workspace.cloud.framePair })).toBeDisabled();
         act(() => {
             choosePair(first, second);
         });
-        await screen.findByRole("slider", { name: "Morph weight" });
+        await screen.findByRole("slider", { name: M.cloud.morphWeight });
 
-        fireEvent.click(screen.getByRole("button", { name: "Frame the pair" }));
+        fireEvent.click(screen.getByRole("button", { name: M.workspace.cloud.framePair }));
 
         const [area] = latestInstance().zoomToArea.mock.calls[0] as [Record<string, number>];
         expect(area.x).toBeCloseTo(-1.5, 5);
@@ -524,8 +528,8 @@ describe("CloudPanel", () => {
 
         const piano = await screen.findByRole("button", { name: /PIANO/ });
 
-        expect(screen.queryByRole("button", { name: "Category" })).not.toBeInTheDocument();
-        expect(toolbarOf(piano)).toBe(toolbarOf(screen.getByRole("button", { name: "Modules" })));
+        expect(screen.queryByRole("button", { name: M.cloud.coloring.category })).not.toBeInTheDocument();
+        expect(toolbarOf(piano)).toBe(toolbarOf(screen.getByRole("button", { name: M.workspace.panels.modules })));
     });
 
     it("captions the toolbar row while the scoring names no sample", async () => {
@@ -536,9 +540,9 @@ describe("CloudPanel", () => {
         getCategoryTags.mockResolvedValue([]);
         renderPanel();
 
-        const caption = await screen.findByText(/No categories yet/);
+        const caption = await screen.findByText(M.workspace.cloud.emptyCategories);
 
-        expect(toolbarOf(caption)).toBe(toolbarOf(screen.getByRole("button", { name: "Samples" })));
+        expect(toolbarOf(caption)).toBe(toolbarOf(screen.getByRole("button", { name: M.workspace.panels.samples })));
     });
 
     it("drops the expanded legend over the cloud, leaving the toolbar one row", async () => {
@@ -552,7 +556,7 @@ describe("CloudPanel", () => {
         );
         renderPanel();
 
-        fireEvent.click(await screen.findByRole("button", { name: "+2 more" }));
+        fireEvent.click(await screen.findByRole("button", { name: keyed(M.cloud.legend.hiddenMore, { count: 2 }) }));
 
         const hidden = screen.getByRole("button", { name: /TAG 9/ });
         expect(hidden).toHaveAttribute("aria-pressed", "false");
@@ -571,13 +575,13 @@ describe("CloudPanel", () => {
             { module_hash: xmHashes[1], tracker: "xm", x: -1, y: 1 },
         ]);
         renderPanel();
-        fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+        fireEvent.click(screen.getByRole("button", { name: M.workspace.panels.modules }));
 
-        const legend = await screen.findByRole("group", { name: "Formats shown" });
+        const legend = await screen.findByRole("group", { name: M.cloud.legend.formatsShown });
         const chips = within(legend).getAllByRole("button");
         expect(chips.map((chip) => chip.textContent)).toEqual(["XM2", "IT1"]);
         expect(chips.every((chip) => chip.getAttribute("aria-pressed") === "true")).toBe(true);
-        expect(toolbarOf(legend)).toBe(toolbarOf(screen.getByRole("button", { name: "Modules" })));
+        expect(toolbarOf(legend)).toBe(toolbarOf(screen.getByRole("button", { name: M.workspace.panels.modules })));
         await waitFor(() => {
             expect(latestInstance().draw).toHaveBeenLastCalledWith(
                 [
@@ -646,28 +650,28 @@ describe("CloudPanel", () => {
         act(() => {
             useMorphStore.getState().takeSample(first);
         });
-        const morphSwitch = screen.getByRole("button", { name: "Morph" });
+        const morphSwitch = screen.getByRole("button", { name: M.morph.strip });
         expect(morphSwitch).toHaveAttribute("aria-pressed", "true");
 
         fireEvent.click(morphSwitch);
         latestInstance().emit("select", { points: [1] });
 
         expect(morphSwitch).toHaveAttribute("aria-pressed", "false");
-        expect(screen.queryByRole("region", { name: "Morph" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: M.morph.strip })).not.toBeInTheDocument();
         expect(useMorphStore.getState()).toMatchObject({ first, second: null });
         expect(play).toHaveBeenCalledWith(expect.objectContaining({ key: second }));
 
         act(() => {
             choosePair(first, second);
         });
-        expect(screen.queryByRole("slider", { name: "Morph weight" })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Frame the pair" })).toBeDisabled();
+        expect(screen.queryByRole("slider", { name: M.cloud.morphWeight })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: M.workspace.cloud.framePair })).toBeDisabled();
 
         fireEvent.click(morphSwitch);
 
-        expect(await screen.findByRole("slider", { name: "Morph weight" })).toBeInTheDocument();
-        expect(screen.getByRole("region", { name: "Morph" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Frame the pair" })).toBeEnabled();
+        expect(await screen.findByRole("slider", { name: M.cloud.morphWeight })).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: M.morph.strip })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: M.workspace.cloud.framePair })).toBeEnabled();
     });
 
     it("keeps the Morph switch to the samples cloud", async () => {
@@ -675,12 +679,12 @@ describe("CloudPanel", () => {
         getModuleCloud.mockResolvedValue([{ module_hash: "d".repeat(64), tracker: "xm", x: 0, y: 0 }]);
         renderPanel();
 
-        fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+        fireEvent.click(screen.getByRole("button", { name: M.workspace.panels.modules }));
         await waitFor(() => {
             expect(document.querySelector("canvas.cloud-dots")).toBeInTheDocument();
         });
 
-        expect(screen.queryByRole("button", { name: "Morph" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: M.morph.strip })).not.toBeInTheDocument();
     });
 
     it("asks for the hand labels and their tags only once the Labels mode is chosen", async () => {
@@ -697,7 +701,7 @@ describe("CloudPanel", () => {
         expect(getCloudLabels).not.toHaveBeenCalled();
         expect(getLabelTags).not.toHaveBeenCalled();
 
-        fireEvent.click(screen.getByRole("button", { name: "Labels" }));
+        fireEvent.click(screen.getByRole("button", { name: M.cloud.coloring.labels }));
 
         await waitFor(() => {
             expect(getCloudLabels).toHaveBeenCalledTimes(1);
@@ -761,7 +765,7 @@ describe("CloudPanel on touch", () => {
         tap(5, 595);
 
         await waitFor(() => {
-            expect(screen.getByRole("region", { name: "Tapped point" })).toHaveTextContent("kick");
+            expect(screen.getByRole("region", { name: M.workspace.tapCard.region })).toHaveTextContent("kick");
         });
         expect(play).toHaveBeenCalledWith(expect.objectContaining({ key: FIRST_HASH, playbackRateHz: 8363 }));
     });
@@ -781,8 +785,10 @@ describe("CloudPanel on touch", () => {
         fireEvent.pointerUp(latestCanvas(), { ...FINGER, clientX: 5, clientY: 595 });
         vi.useRealTimers();
 
-        const menu = screen.getByRole("dialog", { name: `Sample ${FIRST_HASH.slice(0, 8)}` });
-        fireEvent.click(within(menu).getByRole("button", { name: `Use as ${END_LETTERS.second}` }));
+        const menu = screen.getByRole("dialog", {
+            name: keyed(M.workspace.pointMenu.sampleTitle, { hash: FIRST_HASH.slice(0, 8) }),
+        });
+        fireEvent.click(within(menu).getByRole("button", { name: M.workspace.pointMenu.useAsSecond }));
 
         expect(useMorphStore.getState()).toMatchObject({
             first: SECOND_HASH,
@@ -803,8 +809,10 @@ describe("CloudPanel on touch", () => {
         fireEvent.pointerUp(latestCanvas(), { ...FINGER, clientX: 5, clientY: 595 });
         vi.useRealTimers();
 
-        const menu = screen.getByRole("dialog", { name: `Sample ${FIRST_HASH.slice(0, 8)}` });
-        fireEvent.click(within(menu).getByRole("button", { name: "Open" }));
+        const menu = screen.getByRole("dialog", {
+            name: keyed(M.workspace.pointMenu.sampleTitle, { hash: FIRST_HASH.slice(0, 8) }),
+        });
+        fireEvent.click(within(menu).getByRole("button", { name: M.samples.rowActions.open }));
 
         expect(await screen.findByText("sample route")).toBeInTheDocument();
     });
@@ -817,7 +825,7 @@ describe("CloudPanel on touch", () => {
         ]);
         getModule.mockReturnValue(new Promise(() => undefined));
         renderPanel();
-        fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+        fireEvent.click(screen.getByRole("button", { name: M.workspace.panels.modules }));
         await waitFor(() => {
             expect(document.querySelector("canvas.cloud-dots")).toBeInTheDocument();
         });
@@ -836,11 +844,11 @@ describe("CloudPanel on touch", () => {
         getCategoryTags.mockResolvedValue([{ path: ["BASS DRUM"], sample_count: 1, rank: 0 }]);
         await renderedPanel();
 
-        const legend = await screen.findByRole("button", { name: "Legend" });
+        const legend = await screen.findByRole("button", { name: M.cloud.legend.title });
 
-        expect(toolbarOf(legend)).toBe(toolbarOf(screen.getByRole("button", { name: "Samples" })));
-        expect(screen.queryByRole("button", { name: "Category" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("group", { name: "Tags shown" })).not.toBeInTheDocument();
+        expect(toolbarOf(legend)).toBe(toolbarOf(screen.getByRole("button", { name: M.workspace.panels.samples })));
+        expect(screen.queryByRole("button", { name: M.cloud.coloring.category })).not.toBeInTheDocument();
+        expect(screen.queryByRole("group", { name: M.cloud.legend.tagsShown })).not.toBeInTheDocument();
     });
 
     it("keeps the format chips in the row of a narrow panel's Modules tab", async () => {
@@ -848,12 +856,12 @@ describe("CloudPanel on touch", () => {
         getCloud.mockResolvedValue([]);
         getModuleCloud.mockResolvedValue([{ module_hash: FIRST_HASH, tracker: "s3m", x: 0, y: 0 }]);
         renderPanel();
-        fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+        fireEvent.click(screen.getByRole("button", { name: M.workspace.panels.modules }));
 
         const chip = await screen.findByRole("button", { name: /S3M/ });
 
-        expect(toolbarOf(chip)).toBe(toolbarOf(screen.getByRole("button", { name: "Modules" })));
-        expect(screen.queryByRole("button", { name: "Legend" })).not.toBeInTheDocument();
+        expect(toolbarOf(chip)).toBe(toolbarOf(screen.getByRole("button", { name: M.workspace.panels.modules })));
+        expect(screen.queryByRole("button", { name: M.cloud.legend.title })).not.toBeInTheDocument();
     });
 
     it("moves the legend and the coloring's choice into a sheet in a narrow panel", async () => {
@@ -862,14 +870,17 @@ describe("CloudPanel on touch", () => {
         getCategoryTags.mockResolvedValue([{ path: ["BASS DRUM"], sample_count: 1, rank: 0 }]);
         await renderedPanel();
 
-        expect(screen.queryByRole("button", { name: "Category" })).not.toBeInTheDocument();
-        fireEvent.click(await screen.findByRole("button", { name: "Legend" }));
+        expect(screen.queryByRole("button", { name: M.cloud.coloring.category })).not.toBeInTheDocument();
+        fireEvent.click(await screen.findByRole("button", { name: M.cloud.legend.title }));
 
-        const sheet = screen.getByRole("dialog", { name: "Legend" });
-        expect(within(sheet).getByRole("group", { name: "Color by" })).toBeInTheDocument();
-        expect(within(sheet).getByRole("button", { name: "Category" })).toHaveAttribute("aria-pressed", "true");
-        expect(screen.queryByRole("group", { name: "Tags shown", hidden: false })).toBe(
-            within(sheet).getByRole("group", { name: "Tags shown" }),
+        const sheet = screen.getByRole("dialog", { name: M.cloud.legend.title });
+        expect(within(sheet).getByRole("group", { name: M.cloud.legend.colorBy })).toBeInTheDocument();
+        expect(within(sheet).getByRole("button", { name: M.cloud.coloring.category })).toHaveAttribute(
+            "aria-pressed",
+            "true",
+        );
+        expect(screen.queryByRole("group", { name: M.cloud.legend.tagsShown, hidden: false })).toBe(
+            within(sheet).getByRole("group", { name: M.cloud.legend.tagsShown }),
         );
         fireEvent.click(within(sheet).getByRole("button", { name: /BASS DRUM/ }));
         expect(within(sheet).getByRole("button", { name: /BASS DRUM/ })).toHaveAttribute("aria-pressed", "false");
@@ -881,13 +892,16 @@ describe("CloudPanel on touch", () => {
         getCategoryTags.mockResolvedValue([]);
         await renderedPanel();
 
-        fireEvent.click(screen.getByRole("button", { name: "Legend" }));
+        fireEvent.click(screen.getByRole("button", { name: M.cloud.legend.title }));
 
-        const sheet = screen.getByRole("dialog", { name: "Legend" });
-        expect(within(sheet).getByText(/No categories yet/)).toBeInTheDocument();
-        fireEvent.click(within(sheet).getByRole("button", { name: "Labels" }));
-        expect(within(sheet).getByRole("button", { name: "Labels" })).toHaveAttribute("aria-pressed", "true");
-        expect(await within(sheet).findByText(/No labels yet/)).toBeInTheDocument();
+        const sheet = screen.getByRole("dialog", { name: M.cloud.legend.title });
+        expect(within(sheet).getByText(M.workspace.cloud.emptyCategories)).toBeInTheDocument();
+        fireEvent.click(within(sheet).getByRole("button", { name: M.cloud.coloring.labels }));
+        expect(within(sheet).getByRole("button", { name: M.cloud.coloring.labels })).toHaveAttribute(
+            "aria-pressed",
+            "true",
+        );
+        expect(await within(sheet).findByText(M.workspace.cloud.emptyLabels)).toBeInTheDocument();
         await waitFor(() => {
             expect(getCloudLabels).toHaveBeenCalled();
         });
@@ -896,14 +910,14 @@ describe("CloudPanel on touch", () => {
     it("steps the zoom and centers on the point in hand from the tools", async () => {
         await renderedPanel();
 
-        fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+        fireEvent.click(screen.getByRole("button", { name: M.workspace.cloud.zoomIn }));
         expect(latestInstance().camera.scale).toHaveBeenCalledWith([1.5, 1.5], [0, 0]);
-        expect(screen.getByRole("button", { name: "Center on the selection" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: M.workspace.cloud.centerOnSelection })).toBeDisabled();
 
         act(() => {
             useSelectionStore.getState().highlightEntity({ kind: "sample", hash: SECOND_HASH });
         });
-        fireEvent.click(screen.getByRole("button", { name: "Center on the selection" }));
+        fireEvent.click(screen.getByRole("button", { name: M.workspace.cloud.centerOnSelection }));
 
         expect(latestInstance().zoomToArea).toHaveBeenCalledTimes(1);
     });

@@ -1,11 +1,16 @@
 import type { ReactElement } from "react";
 
+import type { Message } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { classNames } from "../shared/classNames";
 
 export type MessageTone = "normal" | "error";
 
+/** A catalog message, or text the server wrote and the page shows as it came. */
+export type SetupMessageContent = Message | string;
+
 export interface SetupMessageText {
-    readonly text: string;
+    readonly content: SetupMessageContent;
     readonly tone: MessageTone;
 }
 
@@ -19,13 +24,15 @@ interface SetupMessageProps {
  * arriving or leaving moves none of the controls around it.
  */
 export function SetupMessage({ message, className }: SetupMessageProps): ReactElement {
+    const { textOf } = useMessages();
+    const content = message?.content;
     return (
         <p
             className={classNames("setup-message", className)}
             data-tone={message?.tone ?? "normal"}
             role={message?.tone === "error" ? "alert" : "status"}
         >
-            {message?.text}
+            {typeof content === "string" ? content : content === undefined ? null : textOf(content)}
         </p>
     );
 }

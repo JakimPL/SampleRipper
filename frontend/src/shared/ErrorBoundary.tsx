@@ -1,5 +1,7 @@
 import { Component, type ReactElement, type ReactNode } from "react";
 
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { Button } from "./controls/Button";
 import { ErrorNotice } from "./ErrorNotice";
 import { describeError } from "./fetchState";
@@ -10,6 +12,15 @@ interface ErrorBoundaryProps {
 
 interface ErrorBoundaryState {
     readonly message: string | null;
+}
+
+function TryAgainButton({ onClick }: { readonly onClick: () => void }): ReactElement {
+    const { text } = useMessages();
+    return (
+        <Button variant="secondary" onClick={onClick}>
+            {text(M.shared.tryAgain)}
+        </Button>
+    );
 }
 
 /**
@@ -38,14 +49,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         return (
             <div className="error-boundary">
                 <ErrorNotice message={message} />
-                <Button
-                    variant="secondary"
+                <TryAgainButton
                     onClick={() => {
                         this.setState({ message: null });
                     }}
-                >
-                    Try again
-                </Button>
+                />
             </div>
         );
     }

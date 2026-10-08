@@ -1,5 +1,9 @@
 import type { ReactElement } from "react";
 
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
+
 export function Loading(): ReactElement {
-    return <p className="loading">Loading…</p>;
+    const { text } = useMessages();
+    return <p className="loading">{text(M.shared.loading)}</p>;
 }

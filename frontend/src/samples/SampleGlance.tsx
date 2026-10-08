@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 
 import type { SamplePreview, WaveformPeak } from "../api/samples";
+import { useMessages } from "../messages/useMessages";
 import { shortHash } from "../shared/format";
 import { UNNAMED_SAMPLE_LABEL } from "../shared/labels";
 import { OptionalLabel } from "../shared/OptionalLabel";
@@ -19,10 +20,11 @@ interface SampleGlanceProps {
  * and its stored waveform. The cloud's tooltip, a tap card and a tray all read one sample this way.
  */
 export function SampleGlance({ hash, preview }: SampleGlanceProps): ReactElement {
+    const { text } = useMessages();
     return (
         <div className="glance">
             <div className="glance-name">
-                <OptionalLabel value={preview.display_name} placeholder={UNNAMED_SAMPLE_LABEL} />
+                <OptionalLabel value={preview.display_name} placeholder={text(UNNAMED_SAMPLE_LABEL)} />
             </div>
             <div className="glance-meta">
                 <span className="entity-hash mono">{shortHash(hash)}</span>

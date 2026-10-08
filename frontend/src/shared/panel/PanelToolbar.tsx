@@ -2,6 +2,8 @@ import type { ReactElement, ReactNode } from "react";
 import { useRef } from "react";
 
 import { useContainerWidth } from "../../layout/useContainerWidth";
+import { M } from "../../messages/messageIds";
+import { useMessages } from "../../messages/useMessages";
 import { DisclosureMenu } from "../overlay/DisclosureMenu";
 
 /** Below this width the secondary controls fold into a menu, leaving the primary one its room. */
@@ -22,6 +24,7 @@ interface PanelToolbarProps {
  * status wraps under them.
  */
 export function PanelToolbar({ primary, secondary, status }: PanelToolbarProps): ReactElement {
+    const { text } = useMessages();
     const rootRef = useRef<HTMLDivElement | null>(null);
     const width = useContainerWidth(rootRef);
     const collapsed = width !== null && width < TOOLBAR_COLLAPSE_WIDTH_PX;
@@ -30,7 +33,7 @@ export function PanelToolbar({ primary, secondary, status }: PanelToolbarProps):
         <div className="panel-filter panel-toolbar" ref={rootRef}>
             <div className="panel-toolbar-primary">{primary}</div>
             {collapsed ? (
-                <DisclosureMenu label="Filters" className="panel-toolbar-menu" variant="secondary">
+                <DisclosureMenu label={text(M.shared.filters)} className="panel-toolbar-menu" variant="secondary">
                     {secondary}
                 </DisclosureMenu>
             ) : (

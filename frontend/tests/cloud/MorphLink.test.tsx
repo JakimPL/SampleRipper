@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { MarkerAppearance } from "../../src/cloud/markerGeometry";
 import { MorphLink } from "../../src/cloud/MorphLink";
+import { M } from "../../src/messages/messageIds";
 
 const FIRST = [10, 20] as const;
 const SECOND = [110, 20] as const;
@@ -44,7 +45,7 @@ function renderLink(overrides: RenderOverrides = {}): {
             onDragChange={overrides.onDragChange ?? vi.fn()}
         />,
     );
-    return { marker: screen.getByRole("slider", { name: "Morph weight" }), container };
+    return { marker: screen.getByRole("slider", { name: M.cloud.morphWeight }), container };
 }
 
 describe("MorphLink", () => {

@@ -1,6 +1,8 @@
 import type { ReactElement } from "react";
 
 import type { TrackerFormat } from "../api/modules";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { trackerColorProperty } from "./cloudRenderSettings";
 import { LegendChip } from "./LegendChip";
 import type { TrackerCount } from "./trackerColoring";
@@ -23,8 +25,10 @@ function trackerFormatName(format: TrackerFormat): string {
  * stamps' own custom properties, so a theme change recolors them together with the badges.
  */
 export function TrackerLegend({ counts, painted, onToggle }: TrackerLegendProps): ReactElement {
+    const { text } = useMessages();
+
     return (
-        <div className="tag-legend" role="group" aria-label="Formats shown">
+        <div className="tag-legend" role="group" aria-label={text(M.cloud.legend.formatsShown)}>
             <div className="tag-legend-chips">
                 {counts.map((count) => (
                     <LegendChip

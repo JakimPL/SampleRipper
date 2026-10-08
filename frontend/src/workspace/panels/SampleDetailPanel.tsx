@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { useLayoutMode } from "../../layout/useLayoutMode";
+import { useMessages } from "../../messages/useMessages";
 import { type DetailTab, SampleDetailView } from "../../samples/SampleDetailView";
 import { SampleTransport } from "../../samples/SampleTransport";
 import { useSampleDetail } from "../../samples/useSampleDetail";
@@ -59,9 +60,10 @@ export function SampleDetailPanel(): ReactElement {
     const focusedSampleHash = useSelectionStore((state) => state.focusedSampleHash);
     const [tab, setTab] = useState<DetailTab>(DEFAULT_DETAIL_TAB);
     const { input } = useLayoutMode();
+    const { text } = useMessages();
 
     if (focusedSampleHash === null) {
-        return <p className="no-selection">{hintFor("noSample", input)}</p>;
+        return <p className="no-selection">{text(hintFor("noSample", input))}</p>;
     }
 
     return <FocusedSampleDetail sampleHash={focusedSampleHash} tab={tab} onTabChange={setTab} />;

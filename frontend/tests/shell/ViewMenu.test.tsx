@@ -3,10 +3,12 @@ import type { DockviewApi } from "dockview-react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
+import { M } from "../../src/messages/messageIds";
 import { ViewMenu } from "../../src/shell/ViewMenu";
 import { defaultSerializedLayout } from "../../src/workspace/defaultLayout";
 import { PANEL_REGISTRY, type PanelId } from "../../src/workspace/panelRegistry";
 import { FakeDockviewApi } from "../support/fakeDockviewApi";
+import { keyed } from "../support/keyedMessages";
 
 function renderMenu(api: DockviewApi | null): void {
     render(
@@ -20,7 +22,7 @@ const ALL_PANEL_IDS = Object.keys(PANEL_REGISTRY) as PanelId[];
 const OPEN_EXCEPT_STATS = ALL_PANEL_IDS.filter((id) => id !== "stats");
 
 function openMenu(): void {
-    fireEvent.click(screen.getByText("View"));
+    fireEvent.click(screen.getByText(M.shell.menus.view));
 }
 
 describe("ViewMenu", () => {
@@ -29,8 +31,8 @@ describe("ViewMenu", () => {
         renderMenu(api.asApi());
         openMenu();
 
-        expect(screen.getByRole("checkbox", { name: "Stats" })).not.toBeChecked();
-        expect(screen.getByRole("checkbox", { name: "Cloud" })).toBeChecked();
+        expect(screen.getByRole("checkbox", { name: M.workspace.panels.stats })).not.toBeChecked();
+        expect(screen.getByRole("checkbox", { name: M.workspace.panels.cloud })).toBeChecked();
         expect(screen.getAllByRole("checkbox")).toHaveLength(ALL_PANEL_IDS.length);
     });
 
@@ -38,8 +40,8 @@ describe("ViewMenu", () => {
         renderMenu(null);
         openMenu();
 
-        expect(screen.getByRole("checkbox", { name: "Stats" })).toBeDisabled();
-        expect(screen.getByRole("button", { name: "Reset layout" })).toBeDisabled();
+        expect(screen.getByRole("checkbox", { name: M.workspace.panels.stats })).toBeDisabled();
+        expect(screen.getByRole("button", { name: M.shell.menus.resetLayout })).toBeDisabled();
     });
 
     it("reopens a closed panel at its registered placement when the reference is open", () => {
@@ -47,12 +49,12 @@ describe("ViewMenu", () => {
         renderMenu(api.asApi());
         openMenu();
 
-        fireEvent.click(screen.getByRole("checkbox", { name: "Stats" }));
+        fireEvent.click(screen.getByRole("checkbox", { name: M.workspace.panels.stats }));
 
         expect(api.addPanel).toHaveBeenCalledWith({
             id: "stats",
             component: "stats",
-            title: "Stats",
+            title: M.workspace.panels.stats,
             renderer: "onlyWhenVisible",
             position: { direction: "within", referencePanel: "sample-detail" },
         });
@@ -63,12 +65,12 @@ describe("ViewMenu", () => {
         renderMenu(api.asApi());
         openMenu();
 
-        fireEvent.click(screen.getByRole("checkbox", { name: "Stats" }));
+        fireEvent.click(screen.getByRole("checkbox", { name: M.workspace.panels.stats }));
 
         expect(api.addPanel).toHaveBeenCalledWith({
             id: "stats",
             component: "stats",
-            title: "Stats",
+            title: M.workspace.panels.stats,
             renderer: "onlyWhenVisible",
         });
     });
@@ -78,7 +80,7 @@ describe("ViewMenu", () => {
         renderMenu(api.asApi());
         openMenu();
 
-        fireEvent.click(screen.getByRole("checkbox", { name: "Cloud" }));
+        fireEvent.click(screen.getByRole("checkbox", { name: M.workspace.panels.cloud }));
 
         expect(api.getPanel("cloud")?.api.close).toHaveBeenCalled();
     });
@@ -94,7 +96,7 @@ describe("ViewMenu", () => {
         });
 
         await waitFor(() => {
-            expect(screen.getByRole("checkbox", { name: "Stats" })).toBeChecked();
+            expect(screen.getByRole("checkbox", { name: M.workspace.panels.stats })).toBeChecked();
         });
     });
 
@@ -103,8 +105,8 @@ describe("ViewMenu", () => {
         renderMenu(api.asApi());
         openMenu();
 
-        fireEvent.click(screen.getByRole("button", { name: "Reset layout" }));
+        fireEvent.click(screen.getByRole("button", { name: M.shell.menus.resetLayout }));
 
-        expect(api.fromJSON).toHaveBeenCalledWith(defaultSerializedLayout());
+        expect(api.fromJSON).toHaveBeenCalledWith(defaultSerializedLayout(keyed));
     });
 });

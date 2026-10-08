@@ -4,10 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import type * as CurationApi from "../../src/api/curation";
 import type { SampleDetail } from "../../src/api/samples";
+import { M } from "../../src/messages/messageIds";
 import { AnnotationEditor } from "../../src/samples/AnnotationEditor";
 import { AnnotationRows } from "../../src/samples/AnnotationRows";
 import { useAnnotationStore } from "../../src/samples/annotationStore";
 import { useCurationAccess } from "../../src/samples/useCurationAccess";
+import { keyed } from "../support/keyedMessages";
 
 const { changeSampleAnnotation, getLabelVocabulary } = vi.hoisted(() => ({
     changeSampleAnnotation: vi.fn(),
@@ -63,7 +65,9 @@ describe("AnnotationEditor", () => {
         renderEditor(buildSample({ hand_label: "SNARE", rating: 4, favorite: true, equivalence_member_count: 3 }));
 
         expect(screen.getByText("SNARE")).toBeInTheDocument();
-        expect(screen.getByRole("img", { name: "Rated 4 of 5" })).toBeInTheDocument();
+        expect(
+            screen.getByRole("img", { name: keyed(M.samples.rating.rated, { maximum: 5, rating: 4 }) }),
+        ).toBeInTheDocument();
         expect(screen.queryAllByRole("button")).toHaveLength(0);
         expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
         expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
@@ -74,7 +78,7 @@ describe("AnnotationEditor", () => {
         resolvesTo({ ...NOTHING, label: "WARM PAD" }, [SAMPLE_HASH]);
         renderEditor(buildSample());
 
-        await userEvent.type(screen.getByLabelText("Hand label"), "warm pad{Enter}");
+        await userEvent.type(screen.getByLabelText(M.samples.label.handLabel), "warm pad{Enter}");
 
         await waitFor(() => {
             expect(changeSampleAnnotation).toHaveBeenCalledWith(SAMPLE_HASH, "sample", { label: "warm pad" });
@@ -86,7 +90,7 @@ describe("AnnotationEditor", () => {
         resolvesTo({ ...NOTHING, label: "SNARE" }, [SAMPLE_HASH, OTHER_HASH]);
         renderEditor(buildSample({ equivalence_member_count: 2 }), "equivalence_class");
 
-        await userEvent.type(screen.getByLabelText("Hand label"), "snare{Enter}");
+        await userEvent.type(screen.getByLabelText(M.samples.label.handLabel), "snare{Enter}");
 
         await waitFor(() => {
             expect(useAnnotationStore.getState().annotationBySampleHash[OTHER_HASH]?.label).toBe("SNARE");
@@ -98,7 +102,7 @@ describe("AnnotationEditor", () => {
         resolvesTo({ label: "WARM PAD", rating: 4, favorite: false }, [SAMPLE_HASH]);
         renderEditor(buildSample({ hand_label: "WARM PAD" }));
 
-        await userEvent.click(screen.getByRole("button", { name: "Rate 4" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 4 }) }));
 
         await waitFor(() => {
             expect(changeSampleAnnotation).toHaveBeenCalledWith(SAMPLE_HASH, "sample", { rating: 4 });
@@ -110,7 +114,7 @@ describe("AnnotationEditor", () => {
         resolvesTo(null, [SAMPLE_HASH]);
         renderEditor(buildSample({ rating: 3 }));
 
-        await userEvent.click(screen.getByRole("button", { name: "Rate 3" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 3 }) }));
 
         await waitFor(() => {
             expect(changeSampleAnnotation).toHaveBeenCalledWith(SAMPLE_HASH, "sample", { rating: null });
@@ -122,7 +126,7 @@ describe("AnnotationEditor", () => {
         resolvesTo({ ...NOTHING, favorite: true }, [SAMPLE_HASH]);
         renderEditor(buildSample());
 
-        await userEvent.click(screen.getByRole("button", { name: "Favorite" }));
+        await userEvent.click(screen.getByRole("button", { name: M.samples.favorite.yes }));
 
         await waitFor(() => {
             expect(changeSampleAnnotation).toHaveBeenCalledWith(SAMPLE_HASH, "sample", { favorite: true });
@@ -133,7 +137,7 @@ describe("AnnotationEditor", () => {
         getLabelVocabulary.mockResolvedValue([]);
         renderEditor(buildSample({ favorite: true }));
 
-        expect(screen.getByRole("button", { name: "Favorite" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: M.samples.favorite.yes })).toHaveAttribute("aria-pressed", "true");
     });
 
     it("shows a rating the moment its star is clicked, before the server answers", async () => {
@@ -141,9 +145,12 @@ describe("AnnotationEditor", () => {
         changeSampleAnnotation.mockReturnValue(new Promise(() => undefined));
         renderEditor(buildSample());
 
-        await userEvent.click(screen.getByRole("button", { name: "Rate 2" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 2 }) }));
 
-        expect(screen.getByRole("button", { name: "Rate 2" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 2 }) })).toHaveAttribute(
+            "aria-pressed",
+            "true",
+        );
     });
 
     it("carries the group scope through a rating", async () => {
@@ -151,7 +158,7 @@ describe("AnnotationEditor", () => {
         resolvesTo({ ...NOTHING, rating: 2 }, [SAMPLE_HASH, OTHER_HASH]);
         renderEditor(buildSample({ equivalence_member_count: 2 }), "equivalence_class");
 
-        await userEvent.click(screen.getByRole("button", { name: "Rate 2" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 2 }) }));
 
         await waitFor(() => {
             expect(changeSampleAnnotation).toHaveBeenCalledWith(SAMPLE_HASH, "equivalence_class", { rating: 2 });
@@ -170,7 +177,7 @@ describe("AnnotationEditor", () => {
         resolvesTo({ ...NOTHING, label: "WARM PAD" }, [SAMPLE_HASH]);
         renderEditor(buildSample());
 
-        await userEvent.type(screen.getByLabelText("Hand label"), "warm pad");
+        await userEvent.type(screen.getByLabelText(M.samples.label.handLabel), "warm pad");
         await userEvent.tab();
 
         await waitFor(() => {
@@ -182,7 +189,7 @@ describe("AnnotationEditor", () => {
         getLabelVocabulary.mockResolvedValue([]);
         renderEditor(buildSample({ hand_label: "warm pad" }));
 
-        await userEvent.click(screen.getByLabelText("Hand label"));
+        await userEvent.click(screen.getByLabelText(M.samples.label.handLabel));
         await userEvent.tab();
 
         expect(changeSampleAnnotation).not.toHaveBeenCalled();
@@ -192,9 +199,9 @@ describe("AnnotationEditor", () => {
         getLabelVocabulary.mockResolvedValue([]);
         renderEditor(buildSample({ hand_label: "warm pad" }));
 
-        await userEvent.type(screen.getByLabelText("Hand label"), " and bright{Escape}");
+        await userEvent.type(screen.getByLabelText(M.samples.label.handLabel), " and bright{Escape}");
 
-        expect(screen.getByLabelText("Hand label")).toHaveValue("warm pad");
+        expect(screen.getByLabelText(M.samples.label.handLabel)).toHaveValue("warm pad");
         expect(changeSampleAnnotation).not.toHaveBeenCalled();
     });
 
@@ -202,7 +209,7 @@ describe("AnnotationEditor", () => {
         getLabelVocabulary.mockResolvedValue([]);
         renderEditor(buildSample({ hand_label: "warm pad" }));
 
-        expect(screen.getByRole("button", { name: "Clear" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: M.samples.label.clear })).toBeEnabled();
     });
 
     it("clears the wording alone", async () => {
@@ -210,7 +217,7 @@ describe("AnnotationEditor", () => {
         resolvesTo({ ...NOTHING, rating: 4 }, [SAMPLE_HASH]);
         renderEditor(buildSample({ hand_label: "warm pad", rating: 4 }));
 
-        await userEvent.click(screen.getByRole("button", { name: "Clear" }));
+        await userEvent.click(screen.getByRole("button", { name: M.samples.label.clear }));
 
         await waitFor(() => {
             expect(changeSampleAnnotation).toHaveBeenCalledWith(SAMPLE_HASH, "sample", { label: null });
@@ -222,10 +229,13 @@ describe("AnnotationEditor", () => {
         changeSampleAnnotation.mockRejectedValue(new Error("request failed with status 404"));
         renderEditor(buildSample());
 
-        await userEvent.click(screen.getByRole("button", { name: "Rate 5" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 5 }) }));
 
         expect(await screen.findByText(/request failed with status 404/)).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Rate 5" })).toHaveAttribute("aria-pressed", "false");
+        expect(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 5 }) })).toHaveAttribute(
+            "aria-pressed",
+            "false",
+        );
     });
 });
 
@@ -243,7 +253,7 @@ describe("AnnotationRows", () => {
         resolvesTo({ ...NOTHING, label: "SNARE" }, [SAMPLE_HASH]);
         renderRows(buildSample({ equivalence_member_count: 3 }));
 
-        await userEvent.type(screen.getByLabelText("Hand label"), "snare{Enter}");
+        await userEvent.type(screen.getByLabelText(M.samples.label.handLabel), "snare{Enter}");
 
         await waitFor(() => {
             expect(changeSampleAnnotation).toHaveBeenCalledWith(SAMPLE_HASH, "equivalence_class", { label: "snare" });

@@ -11,10 +11,10 @@ export interface PreviewSource {
     readonly playbackRateHz: number | null;
 }
 
-/** A preview that could not be played: which one, and what the browser said about it. */
+/** A preview that could not be played: which one, and the words the browser or the server gave for it, `null` when it gave none. */
 export interface PreviewFailure {
     readonly key: string;
-    readonly message: string;
+    readonly detail: string | null;
 }
 
 interface PreviewState {
@@ -33,8 +33,6 @@ export interface PreviewProgress {
 }
 
 const AT_THE_START: PreviewProgress = { key: null, currentTimeSeconds: 0, durationSeconds: 0 };
-
-const UNPLAYABLE_MESSAGE = "the sample can't be played";
 
 let audioElement: HTMLAudioElement | null = null;
 let state: PreviewState = { playingKey: null, paused: false, failure: null, source: null };
@@ -97,7 +95,7 @@ function reportFailure(element: HTMLAudioElement, source: PreviewSource, error: 
     publish({
         playingKey: null,
         paused: false,
-        failure: { key: source.key, message: error instanceof Error ? error.message : UNPLAYABLE_MESSAGE },
+        failure: { key: source.key, detail: error instanceof Error ? error.message : null },
         source,
     });
 }
@@ -140,7 +138,7 @@ async function playAnswered(source: PreviewSource): Promise<boolean> {
             publish({
                 playingKey: null,
                 paused: false,
-                failure: { key: source.key, message: detail ?? UNPLAYABLE_MESSAGE },
+                failure: { key: source.key, detail },
                 source,
             });
         }

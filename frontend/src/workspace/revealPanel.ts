@@ -1,5 +1,6 @@
 import type { DockviewApi } from "dockview-react";
 
+import type { Messages } from "../messages/useMessages";
 import { addRegisteredPanel } from "./addPanel";
 import type { PanelDefinition, PanelId } from "./panelRegistry";
 
@@ -20,9 +21,9 @@ export function revealPanel(api: DockviewApi | null, panelId: PanelId): void {
  * Opens `definition`'s panel at its registered placement when the shell holds none, then brings
  * it forward: what a panel's own address asks for.
  */
-export function openAndRevealPanel(api: DockviewApi, definition: PanelDefinition): void {
+export function openAndRevealPanel(api: DockviewApi, definition: PanelDefinition, text: Messages["text"]): void {
     if (api.getPanel(definition.id) === undefined) {
-        addRegisteredPanel(api, definition);
+        addRegisteredPanel(api, definition, text);
     }
     api.getPanel(definition.id)?.api.setActive();
 }

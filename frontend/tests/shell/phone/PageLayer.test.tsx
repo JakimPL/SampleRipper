@@ -6,6 +6,7 @@ import type * as CloudApi from "../../../src/api/cloud";
 import type * as ModulesApi from "../../../src/api/modules";
 import type * as SamplesApi from "../../../src/api/samples";
 import { PHONE_MEDIA_QUERY } from "../../../src/layout/layoutMode";
+import { M } from "../../../src/messages/messageIds";
 import { PageBody, PageHeaderFor } from "../../../src/shell/phone/PageLayer";
 import { usePhoneShellStore } from "../../../src/shell/phone/phoneShellStore";
 import type { PhonePage } from "../../../src/shell/phone/phoneView";
@@ -128,7 +129,7 @@ describe("PageHeaderFor", () => {
 
         expect(await screen.findByRole("heading", { name: "sample b" })).toBeInTheDocument();
         expect(screen.getByText("2 / 3")).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Next sample" }));
+        fireEvent.click(screen.getByRole("button", { name: M.shell.page.nextSample }));
 
         await waitFor(() => {
             expect(router.state.location.pathname).toBe("/samples/c");
@@ -142,14 +143,14 @@ describe("PageHeaderFor", () => {
         });
         renderHeaderAt(["/samples/a"], { kind: "sample", sampleHash: "a" });
 
-        expect(screen.getByRole("button", { name: "Previous sample" })).toBeDisabled();
-        expect(screen.getByRole("button", { name: "Next sample" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: M.shell.page.previousSample })).toBeDisabled();
+        expect(screen.getByRole("button", { name: M.shell.page.nextSample })).toBeEnabled();
     });
 
     it("keeps the steps away while the sample stands outside its listing", () => {
         renderHeaderAt(["/samples/z"], { kind: "sample", sampleHash: "z" });
 
-        expect(screen.queryByRole("button", { name: "Next sample" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: M.shell.page.nextSample })).not.toBeInTheDocument();
         expect(screen.getByText("z")).toBeInTheDocument();
     });
 
@@ -157,7 +158,7 @@ describe("PageHeaderFor", () => {
         usePhoneShellStore.getState().rememberTab("/cloud");
         const router = renderHeaderAt(["/cloud", "/samples/b"], { kind: "sample", sampleHash: "b" });
 
-        fireEvent.click(screen.getByRole("button", { name: "Back" }));
+        fireEvent.click(screen.getByRole("button", { name: M.shell.page.back }));
 
         await waitFor(() => {
             expect(router.state.location.pathname).toBe("/cloud");
@@ -167,7 +168,7 @@ describe("PageHeaderFor", () => {
     it("goes to the home tab when the visit began on the page", async () => {
         const router = renderHeaderAt(["/samples/b"], { kind: "sample", sampleHash: "b" });
 
-        fireEvent.click(screen.getByRole("button", { name: "Back" }));
+        fireEvent.click(screen.getByRole("button", { name: M.shell.page.back }));
 
         await waitFor(() => {
             expect(router.state.location.pathname).toBe("/");
@@ -181,10 +182,10 @@ describe("PageHeaderFor", () => {
         });
         renderHeaderAt(["/modules/m2"], { kind: "module", moduleHash: "m2" });
         expect(await screen.findByRole("heading", { name: "A Song" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Previous module" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: M.shell.page.previousModule })).toBeEnabled();
 
         renderHeaderAt(["/stats"], { kind: "panel", panelId: "stats" });
-        expect(screen.getByRole("heading", { name: "Stats" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: M.workspace.panels.stats })).toBeInTheDocument();
     });
 });
 
@@ -194,10 +195,10 @@ describe("PageBody", () => {
         useSelectionStore.getState().focusSample("b");
         renderHeaderAt(["/samples/b"], { kind: "sample", sampleHash: "b" }, true);
 
-        expect(await screen.findByRole("button", { name: "Play sample" })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: M.samples.player.play })).toBeInTheDocument();
         expect(document.querySelector(".wave-panel-compact > :last-child")).toBe(
-            screen.getByRole("link", { name: "Save this sample" }),
+            screen.getByRole("link", { name: M.samples.player.save }),
         );
-        expect(screen.queryByLabelText("Rate")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(M.samples.player.rateLabel)).not.toBeInTheDocument();
     });
 });

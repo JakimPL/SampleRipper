@@ -5,6 +5,7 @@ import { SampleName } from "../../src/samples/SampleName";
 import { spokenNameOf } from "../../src/samples/useSampleName";
 import { shortHash } from "../../src/shared/format";
 import { UNNAMED_SAMPLE_LABEL } from "../../src/shared/labels";
+import { KEYED_MESSAGES } from "../support/keyedMessages";
 
 const HASH = "a".repeat(64);
 
@@ -23,7 +24,7 @@ const NAME_CASES: readonly NameCase[] = [
 
 describe("spokenNameOf", () => {
     it.each(NAME_CASES)("speaks of $name", ({ given, shown }: NameCase) => {
-        expect(spokenNameOf(HASH, given)).toBe(shown);
+        expect(spokenNameOf(HASH, given, KEYED_MESSAGES.text)).toBe(shown);
     });
 });
 

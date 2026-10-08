@@ -5,6 +5,7 @@ import { useCloudDotsStore } from "../../src/cloud/cloudDotsStore";
 import { type CloudCommand, type CloudLink, CloudView } from "../../src/cloud/CloudView";
 import type { CloudEntityPoint } from "../../src/cloud/geometry";
 import { type PointColoring, SUBSTRATE_ONLY_COLORING } from "../../src/cloud/pointColoring";
+import { M } from "../../src/messages/messageIds";
 import { DOUBLE_TAP_INTERVAL_MS, LONG_PRESS_HOLD_MS } from "../../src/shared/gestures/gestureThresholds";
 import { useThemeStore } from "../../src/theme/themeStore";
 import type { EntityRef } from "../../src/workspace/selectionStore";
@@ -222,7 +223,7 @@ describe("CloudView", () => {
     it("shows an honest empty state when there are no cloud coordinates yet", async () => {
         await renderCloudView();
 
-        expect(screen.getByText("The cloud is empty")).toBeInTheDocument();
+        expect(screen.getByText(M.cloud.empty.title)).toBeInTheDocument();
     });
 
     it("draws every given point through the scatterplot", async () => {
@@ -767,7 +768,7 @@ describe("CloudView morph link", () => {
     it("joins two points in view with a line whose marker sits at the weight", async () => {
         await renderCloudView({ points: [point(SAMPLE_REF, 0, 0), point(MODULE_REF, 1, 1)], link: LINK });
 
-        const marker = screen.getByRole("slider", { name: "Morph weight" });
+        const marker = screen.getByRole("slider", { name: M.cloud.morphWeight });
         expect(marker.style.left).toBe("10.5px");
         expect(marker.style.top).toBe("20.5px");
     });
@@ -780,7 +781,7 @@ describe("CloudView morph link", () => {
             latestInstance().emit("drawing", { view: movedView() });
         });
 
-        const marker = screen.getByRole("slider", { name: "Morph weight" });
+        const marker = screen.getByRole("slider", { name: M.cloud.morphWeight });
         expect(marker.style.left).toBe("120px");
         expect(marker.style.top).toBe("340px");
     });
@@ -788,7 +789,7 @@ describe("CloudView morph link", () => {
     it("shows no link while an end is out of this view", async () => {
         await renderCloudView({ points: [point(SAMPLE_REF, 0, 0)], link: LINK });
 
-        expect(screen.queryByRole("slider", { name: "Morph weight" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("slider", { name: M.cloud.morphWeight })).not.toBeInTheDocument();
     });
 });
 

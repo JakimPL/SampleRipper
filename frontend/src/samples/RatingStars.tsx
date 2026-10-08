@@ -2,6 +2,8 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { useLayoutMode } from "../layout/useLayoutMode";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { classNames } from "../shared/classNames";
 import { EMPTY_STAR, FILLED_STAR, RATING_VALUES } from "./rating";
 
@@ -31,11 +33,16 @@ export function RatingStars({ rating, onRatingChange }: RatingStarsProps): React
 }
 
 function ShownRating({ rating }: { readonly rating: number | null }): ReactElement {
+    const { text } = useMessages();
     return (
         <span
             className="rating-stars is-read-only"
             role="img"
-            aria-label={rating === null ? "Not rated" : `Rated ${String(rating)} of ${String(RATING_VALUES.length)}`}
+            aria-label={
+                rating === null
+                    ? text(M.samples.rating.none)
+                    : text(M.samples.rating.rated, { rating, maximum: RATING_VALUES.length })
+            }
         >
             {RATING_VALUES.map((value) => (
                 <span
@@ -59,6 +66,7 @@ function RatingButtons({
     readonly rating: number | null;
     readonly onRatingChange: (rating: number | null) => void;
 }): ReactElement {
+    const { text } = useMessages();
     const [previewed, setPreviewed] = useState<number | null>(null);
     const { input } = useLayoutMode();
     const previews = input === "pointer";
@@ -68,7 +76,7 @@ function RatingButtons({
         <span
             className="rating-stars"
             role="group"
-            aria-label="Rating"
+            aria-label={text(M.samples.rating.group)}
             onMouseLeave={() => {
                 setPreviewed(null);
             }}
@@ -78,7 +86,7 @@ function RatingButtons({
                     key={value}
                     type="button"
                     className={classNames("rating-star", shown !== null && value <= shown && "is-filled")}
-                    aria-label={`Rate ${String(value)}`}
+                    aria-label={text(M.samples.rating.rate, { value })}
                     aria-pressed={rating !== null && value <= rating}
                     onMouseEnter={() => {
                         if (previews) {

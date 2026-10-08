@@ -2,6 +2,8 @@ import type { MouseEvent, ReactElement } from "react";
 import { Link } from "react-router-dom";
 
 import type { Module } from "../api/modules";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { classNames } from "../shared/classNames";
 import { formatBytes, shortHash } from "../shared/format";
 import { Icon } from "../shared/icons/Icon";
@@ -25,6 +27,7 @@ function keepToTheLink(event: MouseEvent): void {
 }
 
 export function ModuleRow({ module, visibleColumns }: ModuleRowProps): ReactElement {
+    const { text } = useMessages();
     const { href, isHighlighted, isFocused, onClick, onDoubleClick, onKeyDown } = useEntityRowInteractions({
         kind: "module",
         hash: module.hash,
@@ -39,7 +42,7 @@ export function ModuleRow({ module, visibleColumns }: ModuleRowProps): ReactElem
             <td className="cell-name">
                 <Link to={href} className="cell-name-stack" onKeyDown={onKeyDown}>
                     <span className="cell-primary">
-                        <OptionalLabel value={module.title} placeholder={UNTITLED_MODULE_LABEL} />
+                        <OptionalLabel value={module.title} placeholder={text(UNTITLED_MODULE_LABEL)} />
                     </span>
                     <span className="entity-hash mono">
                         {shortHash(module.hash)}
@@ -48,7 +51,7 @@ export function ModuleRow({ module, visibleColumns }: ModuleRowProps): ReactElem
                         )}
                     </span>
                 </Link>
-                <RowOpenLink href={href} label="Open module" />
+                <RowOpenLink href={href} label={text(M.modules.open)} />
             </td>
             {visibleColumns.has("filename") && <td className="cell-muted">{module.filename}</td>}
             {visibleColumns.has("tracker") && (
@@ -70,8 +73,8 @@ export function ModuleRow({ module, visibleColumns }: ModuleRowProps): ReactElem
                             className="row-link"
                             target="_blank"
                             rel="noreferrer"
-                            aria-label={`Open on ${linkHost(module.link)}`}
-                            title={`Open on ${linkHost(module.link)}`}
+                            aria-label={text(M.modules.openOn, { host: linkHost(module.link) })}
+                            title={text(M.modules.openOn, { host: linkHost(module.link) })}
                             onDoubleClick={keepToTheLink}
                             {...ROW_LINK_PROPS}
                         >

@@ -10,6 +10,7 @@ import {
 } from "../../src/workspace/dockviewPersistence";
 import { PANEL_REGISTRY, type PanelId } from "../../src/workspace/panelRegistry";
 import { FakeDockviewApi, serializedLayoutOf } from "../support/fakeDockviewApi";
+import { keyed } from "../support/keyedMessages";
 
 const RETIRED_KNOWN_PANELS_STORAGE_KEY = "sampleripper-workspace-panels";
 const ALL_PANEL_IDS = Object.keys(PANEL_REGISTRY) as PanelId[];
@@ -30,9 +31,9 @@ describe("restoreOrBuildLayout", () => {
     it("draws the first-run arrangement when nothing was saved", () => {
         const api = new FakeDockviewApi([]);
 
-        restoreOrBuildLayout(api.asApi());
+        restoreOrBuildLayout(api.asApi(), keyed);
 
-        expect(api.fromJSON).toHaveBeenCalledWith(defaultSerializedLayout());
+        expect(api.fromJSON).toHaveBeenCalledWith(defaultSerializedLayout(keyed));
     });
 
     it("restores a record of the current version as it was saved", () => {
@@ -40,7 +41,7 @@ describe("restoreOrBuildLayout", () => {
         storeRecord({ version: LAYOUT_VERSION, layout: saved, knownPanels: ALL_PANEL_IDS });
         const api = new FakeDockviewApi(["cloud", "stats"]);
 
-        restoreOrBuildLayout(api.asApi());
+        restoreOrBuildLayout(api.asApi(), keyed);
 
         expect(api.fromJSON).toHaveBeenCalledWith(saved);
         expect(api.addPanel).not.toHaveBeenCalled();
@@ -51,9 +52,9 @@ describe("restoreOrBuildLayout", () => {
         localStorage.setItem(RETIRED_KNOWN_PANELS_STORAGE_KEY, JSON.stringify(ALL_PANEL_IDS));
         const api = new FakeDockviewApi([]);
 
-        restoreOrBuildLayout(api.asApi());
+        restoreOrBuildLayout(api.asApi(), keyed);
 
-        expect(api.fromJSON).toHaveBeenCalledWith(defaultSerializedLayout());
+        expect(api.fromJSON).toHaveBeenCalledWith(defaultSerializedLayout(keyed));
         expect(localStorage.getItem(LAYOUT_STORAGE_KEY)).toBeNull();
         expect(localStorage.getItem(RETIRED_KNOWN_PANELS_STORAGE_KEY)).toBeNull();
     });
@@ -62,9 +63,9 @@ describe("restoreOrBuildLayout", () => {
         localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(serializedLayoutOf(["cloud"])));
         const api = new FakeDockviewApi([]);
 
-        restoreOrBuildLayout(api.asApi());
+        restoreOrBuildLayout(api.asApi(), keyed);
 
-        expect(api.fromJSON).toHaveBeenCalledWith(defaultSerializedLayout());
+        expect(api.fromJSON).toHaveBeenCalledWith(defaultSerializedLayout(keyed));
     });
 
     it("draws the first-run arrangement again when the saved one cannot be read back", () => {
@@ -74,9 +75,9 @@ describe("restoreOrBuildLayout", () => {
             throw new Error("a group named no panel");
         });
 
-        restoreOrBuildLayout(api.asApi());
+        restoreOrBuildLayout(api.asApi(), keyed);
 
-        expect(api.fromJSON).toHaveBeenLastCalledWith(defaultSerializedLayout());
+        expect(api.fromJSON).toHaveBeenLastCalledWith(defaultSerializedLayout(keyed));
     });
 
     it("opens a panel registered after the record was saved, and saves the completed arrangement", () => {
@@ -84,7 +85,7 @@ describe("restoreOrBuildLayout", () => {
         storeRecord({ version: LAYOUT_VERSION, layout: serializedLayoutOf(knownBefore), knownPanels: knownBefore });
         const api = new FakeDockviewApi(knownBefore);
 
-        restoreOrBuildLayout(api.asApi());
+        restoreOrBuildLayout(api.asApi(), keyed);
 
         expect(api.addPanel).toHaveBeenCalledWith(expect.objectContaining({ id: "stats" }));
         expect(storedRecord().knownPanels).toEqual(ALL_PANEL_IDS);
@@ -92,7 +93,7 @@ describe("restoreOrBuildLayout", () => {
 
     it("saves a versioned record naming every registered panel on each layout change", () => {
         const api = new FakeDockviewApi(ALL_PANEL_IDS);
-        restoreOrBuildLayout(api.asApi());
+        restoreOrBuildLayout(api.asApi(), keyed);
 
         api.emitLayoutChange();
 
@@ -108,9 +109,9 @@ describe("resetLayout", () => {
         storeRecord({ version: LAYOUT_VERSION, layout: serializedLayoutOf(["cloud"]), knownPanels: ALL_PANEL_IDS });
         const api = new FakeDockviewApi(["cloud"]);
 
-        resetLayout(api.asApi());
+        resetLayout(api.asApi(), keyed);
 
         expect(localStorage.getItem(LAYOUT_STORAGE_KEY)).toBeNull();
-        expect(api.fromJSON).toHaveBeenCalledWith(defaultSerializedLayout());
+        expect(api.fromJSON).toHaveBeenCalledWith(defaultSerializedLayout(keyed));
     });
 });

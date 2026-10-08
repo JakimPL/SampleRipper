@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type * as StatsApi from "../../../src/api/stats";
+import { M } from "../../../src/messages/messageIds";
 import { StatsPanel } from "../../../src/workspace/panels/StatsPanel";
 
 const { getStats } = vi.hoisted(() => ({ getStats: vi.fn() }));
@@ -17,7 +18,7 @@ describe("StatsPanel", () => {
 
         render(<StatsPanel />);
 
-        expect(screen.getByText("Loading…")).toBeInTheDocument();
+        expect(screen.getByText(M.shared.loading)).toBeInTheDocument();
     });
 
     it("renders the fetched stats once loaded", async () => {

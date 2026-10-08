@@ -2,10 +2,13 @@ import { type ReactElement, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { quitApplication, type SetupState } from "../api/setup";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { Loading } from "../shared/Loading";
 import { CLOSED_PATH } from "./ClosedView";
 import { LibraryPanel } from "./LibraryPanel";
 import { describeRefusal } from "./refusal";
+import type { SetupMessageContent } from "./SetupMessage";
 import { SetupTopBar } from "./SetupTopBar";
 import { SourcesForm } from "./SourcesForm";
 import { lastKnownState, type SetupSource, useSetupState } from "./useSetupState";
@@ -28,17 +31,15 @@ function SetupPanes({ state, onChanged }: SetupPanesProps): ReactElement {
 }
 
 function SetupPlaceholder({ source }: { readonly source: SetupSource }): ReactElement | null {
+    const { text } = useMessages();
     switch (source.status) {
         case "loading":
             return <Loading />;
         case "absent":
             return (
                 <section className="setup-card">
-                    <h2>Setup isn&apos;t available here</h2>
-                    <p className="setup-hint">
-                        This server only shows the library. To choose folders and build the library, start SampleRipper
-                        with `sampleripper app`.
-                    </p>
+                    <h2>{text(M.setup.view.unavailableTitle)}</h2>
+                    <p className="setup-hint">{text(M.setup.view.unavailableBody)}</p>
                 </section>
             );
         case "unreachable":
@@ -58,8 +59,9 @@ export function SetupView(): ReactElement {
     const navigate = useNavigate();
     const [quitRefusal, setQuitRefusal] = useState<string | null>(null);
     const state = lastKnownState(source);
-    const notice =
-        quitRefusal ?? (source.status === "unreachable" ? `Can't reach SampleRipper: ${source.message}` : null);
+    const unreachable: SetupMessageContent | null =
+        source.status === "unreachable" ? { id: M.setup.view.unreachable, values: { message: source.message } } : null;
+    const notice = quitRefusal ?? unreachable;
 
     async function handleQuit(): Promise<void> {
         setQuitRefusal(null);

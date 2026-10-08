@@ -1,5 +1,7 @@
 import type { ReactElement } from "react";
 
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
 import { FolderPath } from "./FolderPath";
 
@@ -16,18 +18,25 @@ const CLEAR_GLYPH = "×";
 
 /** A folder's path in a field, the way to clear it at the field's end, and Browse… beside it. */
 export function PathRow({ path, placeholder, onBrowse, onClear }: PathRowProps): ReactElement {
+    const { text } = useMessages();
     return (
         <div className="path-row">
             <div className="field field-static">
                 <FolderPath path={path} placeholder={placeholder} />
                 {onClear !== null && (
-                    <Button variant="quiet" icon aria-label="Remove" disabled={path === null} onClick={onClear}>
+                    <Button
+                        variant="quiet"
+                        icon
+                        aria-label={text(M.setup.folders.remove)}
+                        disabled={path === null}
+                        onClick={onClear}
+                    >
                         {CLEAR_GLYPH}
                     </Button>
                 )}
             </div>
             <Button variant="secondary" onClick={onBrowse}>
-                Browse…
+                {text(M.setup.folders.browse)}
             </Button>
         </div>
     );

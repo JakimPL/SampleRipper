@@ -3,6 +3,8 @@ import { useEffect } from "react";
 
 import { sampleAudioUrl } from "../api/samples";
 import { useLayoutMode } from "../layout/useLayoutMode";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { DownloadLink } from "../shared/DownloadLink";
 import { formatDuration } from "../shared/format";
 import { Icon } from "../shared/icons/Icon";
@@ -25,16 +27,6 @@ interface WaveformPlayerProps {
     readonly onRateChange: (rateHz: number) => void;
 }
 
-const PLAY_LABEL = "Play sample";
-const PAUSE_LABEL = "Pause sample";
-
-const AUDIO_UNAVAILABLE = "Can't play this sample. Its file may have been moved or changed.";
-
-function describeRateOption(option: RateOption): string {
-    const timeWord = option.eventCount === 1 ? "time" : "times";
-    return `${String(option.rateHz)} Hz · played ${String(option.eventCount)} ${timeWord}`;
-}
-
 /**
  * The full player of one sample: its decoded waveform over a transport, the rate it is heard at,
  * and a way to save it. On a phone it is one row instead: the play button and the file to save at
@@ -49,6 +41,7 @@ export function WaveformPlayer({
     rateOptions,
     onRateChange,
 }: WaveformPlayerProps): ReactElement {
+    const { text } = useMessages();
     const player = useWaveformPlayer(sampleAudioUrl(sampleHash), rateHz);
     const { playingKey, stop } = useAudioPreview();
     const compact = useLayoutMode().layout === "phone";
@@ -81,7 +74,7 @@ export function WaveformPlayer({
         <button
             type="button"
             className="play-btn"
-            aria-label={player.isPlaying ? PAUSE_LABEL : PLAY_LABEL}
+            aria-label={text(player.isPlaying ? M.samples.player.pause : M.samples.player.play)}
             aria-pressed={player.isPlaying}
             onClick={handleTogglePlay}
             disabled={!player.isReady}
@@ -104,22 +97,31 @@ export function WaveformPlayer({
                 />
             }
             readout={readout}
-            failure={player.hasFailed ? AUDIO_UNAVAILABLE : null}
+            failure={player.hasFailed ? text(M.samples.player.unavailable) : null}
             controls={
                 rateOptions.length > 1 && (
                     <label>
-                        Rate
+                        {text(M.samples.player.rateLabel)}
                         <select className="field" value={rateHz} onChange={handleRateChange}>
                             {rateOptions.map((option) => (
                                 <option key={option.rateHz} value={option.rateHz}>
-                                    {describeRateOption(option)}
+                                    {text(M.samples.player.rateOption, {
+                                        rateHz: option.rateHz,
+                                        count: option.eventCount,
+                                    })}
                                 </option>
                             ))}
                         </select>
                     </label>
                 )
             }
-            download={<DownloadLink href={sampleAudioUrl(sampleHash)} fileName={fileName} label="Save this sample" />}
+            download={
+                <DownloadLink
+                    href={sampleAudioUrl(sampleHash)}
+                    fileName={fileName}
+                    label={text(M.samples.player.save)}
+                />
+            }
         />
     );
 }

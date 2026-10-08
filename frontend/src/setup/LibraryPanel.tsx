@@ -10,6 +10,8 @@ import {
     startBuild,
 } from "../api/setup";
 import type { LibraryStats } from "../api/stats";
+import { M, type Message } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
 import { buttonClassName } from "../shared/controls/buttonClassName";
 import { ActionSheet } from "../shared/overlay/ActionSheet";
@@ -28,57 +30,47 @@ interface LibraryPanelProps {
     readonly onChanged: (state: SetupState) => void;
 }
 
-const BUILD_TITLE = "Build my library";
-const BUILD_NOTE =
-    "Reads your modules and samples and finds duplicates. Run it again after adding files; only new files are read.";
-const CLOUD_TITLE = "Build the cloud";
-const CLOUD_NOTE = "Analyzes every sample, suggests categories and lays out the cloud.";
-const CONFIRMATION_TITLE = "Build the cloud without an NVIDIA graphics card?";
-const CONFIRMATION_NOTE =
-    "On the processor, analyzing a large collection can take a day or more. You can build the cloud later.";
 const DEFAULT_BUILD_CLOUD = true;
 const DEFAULT_OPEN_TO_NETWORK = false;
-export const SAVE_FOLDER_CHANGES_FIRST = "Save your folder changes first.";
-export const CHECKING_FOR_A_CARD = "Checking for an NVIDIA graphics card…";
 
-function countOf(count: number, noun: string): string {
-    return `${count.toLocaleString()} ${noun}${count === 1 ? "" : "s"}`;
-}
-
-function describeStats(stats: LibraryStats | null, building: boolean): string {
+function describeStats(stats: LibraryStats | null, building: boolean): Message {
     if (stats === null) {
-        return "Your library is open.";
+        return { id: M.setup.library.open };
     }
     if (stats.sample_count === 0) {
-        return building ? "Your library is empty so far." : "Your library is empty. Build it to fill it.";
+        return { id: building ? M.setup.library.emptyBuilding : M.setup.library.empty };
     }
-    const modules = stats.module_count > 0 ? ` and ${countOf(stats.module_count, "module")}` : "";
-    return `Your library holds ${countOf(stats.sample_count, "sample")}${modules}.`;
+    return stats.module_count > 0
+        ? {
+              id: M.setup.library.holdsWithModules,
+              values: { samples: stats.sample_count, modules: stats.module_count },
+          }
+        : { id: M.setup.library.holds, values: { samples: stats.sample_count } };
 }
 
 function libraryStatus(state: SetupState, unsavedChanges: boolean, stats: LibraryStats | null): SetupMessageText {
     const building = state.build?.status === "running";
     switch (state.status) {
         case "unconfigured":
-            return { text: "Welcome! Choose your folders, then save to open the library.", tone: "normal" };
+            return { content: { id: M.setup.library.welcome }, tone: "normal" };
         case "starting":
-            return { text: "Opening your library. The first time can take a moment.", tone: "normal" };
+            return { content: { id: M.setup.library.starting }, tone: "normal" };
         case "failed":
-            return { text: state.problem ?? "The library couldn't open.", tone: "error" };
+            return { content: state.problem ?? { id: M.setup.library.failed }, tone: "error" };
         case "ready":
             return unsavedChanges
-                ? { text: SAVE_FOLDER_CHANGES_FIRST, tone: "normal" }
-                : { text: describeStats(stats, building), tone: "normal" };
+                ? { content: { id: M.setup.library.saveFolderChangesFirst }, tone: "normal" }
+                : { content: describeStats(stats, building), tone: "normal" };
     }
 }
 
-function describeDevice(device: BuildDevice | null): string {
+function describeDevice(device: BuildDevice | null): Message {
     if (device === null) {
-        return CHECKING_FOR_A_CARD;
+        return { id: M.setup.library.checkingForCard };
     }
     return device.card === null
-        ? "Builds use the processor, so building the cloud takes a long time."
-        : `Builds use your ${device.card}.`;
+        ? { id: M.setup.library.deviceProcessor }
+        : { id: M.setup.library.deviceCard, values: { card: device.card } };
 }
 
 interface OpenLibraryButtonProps {
@@ -88,16 +80,17 @@ interface OpenLibraryButtonProps {
 }
 
 function OpenLibraryButton({ ready, primary }: OpenLibraryButtonProps): ReactElement {
+    const { text } = useMessages();
     if (!ready) {
         return (
             <Button variant="secondary" disabled>
-                Open the library
+                {text(M.setup.library.openLibrary)}
             </Button>
         );
     }
     return (
         <Link className={buttonClassName({ variant: primary ? "primary" : "secondary" })} to="/">
-            Open the library
+            {text(M.setup.library.openLibrary)}
         </Link>
     );
 }
@@ -111,6 +104,7 @@ function OpenLibraryButton({ ready, primary }: OpenLibraryButtonProps): ReactEle
  * takes many hours over a large collection.
  */
 export function LibraryPanel({ state, unsavedChanges, onChanged }: LibraryPanelProps): ReactElement {
+    const { text, textOf } = useMessages();
     const [refusal, setRefusal] = useState<string | null>(null);
     const [confirming, setConfirming] = useState(false);
     const build = state.build;
@@ -123,7 +117,7 @@ export function LibraryPanel({ state, unsavedChanges, onChanged }: LibraryPanelP
     const stats = useLibraryStats(ready, `${build?.started_at ?? ""} ${build?.status ?? ""}`);
     const empty = stats === null || stats.sample_count === 0;
     const status =
-        refusal !== null ? { text: refusal, tone: "error" as const } : libraryStatus(state, unsavedChanges, stats);
+        refusal !== null ? { content: refusal, tone: "error" as const } : libraryStatus(state, unsavedChanges, stats);
 
     async function act(action: () => Promise<SetupState>): Promise<void> {
         setRefusal(null);
@@ -151,7 +145,7 @@ export function LibraryPanel({ state, unsavedChanges, onChanged }: LibraryPanelP
     const footer = (
         <div className="setup-footer-actions">
             <Button variant={canStart && empty ? "primary" : "secondary"} disabled={!canStart} onClick={handleBuild}>
-                {BUILD_TITLE}
+                {text(M.setup.library.buildTitle)}
             </Button>
             <OpenLibraryButton ready={ready} primary={ready && !empty} />
         </div>
@@ -159,26 +153,26 @@ export function LibraryPanel({ state, unsavedChanges, onChanged }: LibraryPanelP
 
     return (
         <>
-            <SetupPane title="Library" titleId="setup-library-title" footer={footer}>
+            <SetupPane title={text(M.setup.library.title)} titleId="setup-library-title" footer={footer}>
                 <SetupMessage message={status} className="setup-status" />
 
                 <fieldset className="group">
-                    <legend>Build</legend>
-                    <p className="setup-hint">{BUILD_NOTE}</p>
+                    <legend>{text(M.setup.library.buildLegend)}</legend>
+                    <p className="setup-hint">{text(M.setup.library.buildNote)}</p>
                     <CheckOption
-                        title={CLOUD_TITLE}
-                        note={CLOUD_NOTE}
+                        title={text(M.setup.library.cloudTitle)}
+                        note={text(M.setup.library.cloudNote)}
                         checked={buildCloud}
                         disabled={state.options === null || running}
                         onChange={(chosen) => {
                             void act(() => chooseOptions({ build_cloud: chosen, open_to_network: openToNetwork }));
                         }}
                     />
-                    <p className="setup-hint build-device">{describeDevice(device)}</p>
+                    <p className="setup-hint build-device">{textOf(describeDevice(device))}</p>
                 </fieldset>
 
                 <fieldset className="group">
-                    <legend>Sharing</legend>
+                    <legend>{text(M.setup.library.sharingLegend)}</legend>
                     <NetworkOption
                         chosen={openToNetwork}
                         reach={state.home_network}
@@ -198,11 +192,11 @@ export function LibraryPanel({ state, unsavedChanges, onChanged }: LibraryPanelP
             </SetupPane>
             {confirming && (
                 <ActionSheet
-                    title={CONFIRMATION_TITLE}
+                    title={text(M.setup.library.confirmTitle)}
                     actions={[
                         {
                             id: "cloud",
-                            label: "Build with the cloud",
+                            label: text(M.setup.library.confirmWithCloud),
                             disabled: false,
                             run: () => {
                                 start("all");
@@ -210,19 +204,19 @@ export function LibraryPanel({ state, unsavedChanges, onChanged }: LibraryPanelP
                         },
                         {
                             id: "catalog",
-                            label: "Build without the cloud",
+                            label: text(M.setup.library.confirmWithoutCloud),
                             disabled: false,
                             run: () => {
                                 start("catalog");
                             },
                         },
-                        { id: "cancel", label: "Cancel", disabled: false, run: () => undefined },
+                        { id: "cancel", label: text(M.shared.cancel), disabled: false, run: () => undefined },
                     ]}
                     onClose={() => {
                         setConfirming(false);
                     }}
                 >
-                    <p className="setup-hint">{CONFIRMATION_NOTE}</p>
+                    <p className="setup-hint">{text(M.setup.library.confirmNote)}</p>
                 </ActionSheet>
             )}
         </>

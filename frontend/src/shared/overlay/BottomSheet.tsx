@@ -2,6 +2,9 @@ import type { ReactElement, ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
+import { M } from "../../messages/messageIds";
+import { useMessages } from "../../messages/useMessages";
+
 interface BottomSheetProps {
     readonly title: string;
     readonly onClose: () => void;
@@ -16,6 +19,7 @@ const CLOSE_KEY = "Escape";
  * it renders at the document's root, so the rows and panels beneath cannot clip or shift it.
  */
 export function BottomSheet({ title, onClose, children }: BottomSheetProps): ReactElement {
+    const { text } = useMessages();
     const sheetRef = useRef<HTMLDivElement | null>(null);
     const onCloseRef = useRef(onClose);
     onCloseRef.current = onClose;
@@ -37,7 +41,7 @@ export function BottomSheet({ title, onClose, children }: BottomSheetProps): Rea
 
     return createPortal(
         <div className="sheet-layer">
-            <button type="button" className="sheet-scrim" aria-label="Close" onClick={onClose} />
+            <button type="button" className="sheet-scrim" aria-label={text(M.shared.close)} onClick={onClose} />
             <div ref={sheetRef} className="sheet" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}>
                 <div className="sheet-handle" aria-hidden />
                 <h2 className="sheet-title">{title}</h2>

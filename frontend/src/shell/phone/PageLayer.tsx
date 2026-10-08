@@ -1,6 +1,8 @@
 import type { ReactElement, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { M } from "../../messages/messageIds";
+import { useMessages } from "../../messages/useMessages";
 import { useModule } from "../../modules/useModule";
 import { useSampleDetail } from "../../samples/useSampleDetail";
 import { Button } from "../../shared/controls/Button";
@@ -34,6 +36,7 @@ interface PageProps {
  * whole walk stays one step from the list.
  */
 function PageHeader({ title, entity }: PageHeaderProps): ReactElement {
+    const { text } = useMessages();
     const back = useBack();
     const navigate = useNavigate();
     const neighbors = useListingNeighbors(entity);
@@ -47,7 +50,13 @@ function PageHeader({ title, entity }: PageHeaderProps): ReactElement {
 
     return (
         <>
-            <Button variant="quiet" icon className="phone-page-back" aria-label="Back" onClick={back}>
+            <Button
+                variant="quiet"
+                icon
+                className="phone-page-back"
+                aria-label={text(M.shell.page.back)}
+                onClick={back}
+            >
                 ←
             </Button>
             <h1 className="phone-header-title">{title}</h1>
@@ -57,7 +66,9 @@ function PageHeader({ title, entity }: PageHeaderProps): ReactElement {
                         variant="quiet"
                         icon
                         className="phone-page-step"
-                        aria-label={`Previous ${entity.kind}`}
+                        aria-label={text(
+                            entity.kind === "sample" ? M.shell.page.previousSample : M.shell.page.previousModule,
+                        )}
                         disabled={neighbors.previous === null}
                         onClick={() => {
                             stepTo(neighbors.previous);
@@ -72,7 +83,7 @@ function PageHeader({ title, entity }: PageHeaderProps): ReactElement {
                         variant="quiet"
                         icon
                         className="phone-page-step"
-                        aria-label={`Next ${entity.kind}`}
+                        aria-label={text(entity.kind === "sample" ? M.shell.page.nextSample : M.shell.page.nextModule)}
                         disabled={neighbors.next === null}
                         onClick={() => {
                             stepTo(neighbors.next);
@@ -87,10 +98,11 @@ function PageHeader({ title, entity }: PageHeaderProps): ReactElement {
 }
 
 function SamplePageHeader({ sampleHash }: { readonly sampleHash: string }): ReactElement {
+    const { text } = useMessages();
     const state = useSampleDetail(sampleHash);
     const title =
         state.status === "success" ? (
-            <OptionalLabel value={state.data.sample.display_name} placeholder={UNNAMED_SAMPLE_LABEL} />
+            <OptionalLabel value={state.data.sample.display_name} placeholder={text(UNNAMED_SAMPLE_LABEL)} />
         ) : (
             <span className="mono">{shortHash(sampleHash)}</span>
         );
@@ -98,10 +110,11 @@ function SamplePageHeader({ sampleHash }: { readonly sampleHash: string }): Reac
 }
 
 function ModulePageHeader({ moduleHash }: { readonly moduleHash: string }): ReactElement {
+    const { text } = useMessages();
     const state = useModule(moduleHash);
     const title =
         state.status === "success" ? (
-            <OptionalLabel value={state.data.title} placeholder={UNTITLED_MODULE_LABEL} />
+            <OptionalLabel value={state.data.title} placeholder={text(UNTITLED_MODULE_LABEL)} />
         ) : (
             <span className="mono">{shortHash(moduleHash)}</span>
         );
@@ -110,13 +123,14 @@ function ModulePageHeader({ moduleHash }: { readonly moduleHash: string }): Reac
 
 /** The header of whichever page is open, standing in the shell's own header bar. */
 export function PageHeaderFor({ page }: PageProps): ReactElement {
+    const { text } = useMessages();
     switch (page.kind) {
         case "sample":
             return <SamplePageHeader sampleHash={page.sampleHash} />;
         case "module":
             return <ModulePageHeader moduleHash={page.moduleHash} />;
         case "panel":
-            return <PageHeader title={PANEL_REGISTRY[page.panelId].title} entity={null} />;
+            return <PageHeader title={text(PANEL_REGISTRY[page.panelId].title)} entity={null} />;
     }
 }
 

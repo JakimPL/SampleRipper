@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 
+import { useMessages } from "../messages/useMessages";
 import { shortHash } from "../shared/format";
 import { UNNAMED_SAMPLE_LABEL } from "../shared/labels";
 import { OptionalLabel } from "../shared/OptionalLabel";
@@ -12,8 +13,9 @@ interface SampleNameProps {
 
 /** A sample's name as a control shows it: the short hash in mono until the catalog answers, then the name or the unnamed label. */
 export function SampleName({ hash, name }: SampleNameProps): ReactElement {
+    const { text } = useMessages();
     if (name === null) {
         return <span className="mono">{shortHash(hash)}</span>;
     }
-    return <OptionalLabel value={name} placeholder={UNNAMED_SAMPLE_LABEL} />;
+    return <OptionalLabel value={name} placeholder={text(UNNAMED_SAMPLE_LABEL)} />;
 }

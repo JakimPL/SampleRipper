@@ -4,8 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { TopLevelTag } from "../../src/cloud/labelColoring";
 import { TagLegend } from "../../src/cloud/TagLegend";
+import { M } from "../../src/messages/messageIds";
+import { keyed } from "../support/keyedMessages";
 
-const EMPTY_CAPTION = "No sample carries a tag yet.";
+const EMPTY_CAPTION = M.cloud.empty.body;
 
 const TAGS: readonly TopLevelTag[] = [
     { name: "LO-FI", sampleCount: 33, rank: 4 },
@@ -22,13 +24,13 @@ describe("TagLegend", () => {
         expect(snare).toHaveTextContent("21");
         expect(screen.queryByRole("button", { name: /LO-FI/ })).not.toBeInTheDocument();
 
-        await userEvent.click(screen.getByRole("button", { name: "+2 more" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.cloud.legend.hiddenMore, { count: 2 }) }));
 
         const lofi = screen.getByRole("button", { name: /LO-FI/ });
         expect(lofi).toHaveAttribute("aria-pressed", "false");
         expect(lofi).toHaveTextContent("33");
         expect(screen.getByRole("button", { name: /PIANO/ })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Shown only" })).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByRole("button", { name: M.cloud.legend.shownOnly })).toHaveAttribute("aria-expanded", "true");
     });
 
     it("drops every tag, in one order, into the panel over the cloud once expanded", async () => {
@@ -36,7 +38,7 @@ describe("TagLegend", () => {
             <TagLegend tags={TAGS} painted={["SNARE"]} onToggle={vi.fn()} emptyCaption={EMPTY_CAPTION} />,
         );
 
-        await userEvent.click(screen.getByRole("button", { name: "+2 more" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.cloud.legend.hiddenMore, { count: 2 }) }));
 
         const overlay = container.querySelector<HTMLElement>(".tag-legend-overlay");
         if (overlay === null) {
@@ -48,12 +50,15 @@ describe("TagLegend", () => {
 
     it("takes the panel away on Escape", async () => {
         render(<TagLegend tags={TAGS} painted={["SNARE"]} onToggle={vi.fn()} emptyCaption={EMPTY_CAPTION} />);
-        await userEvent.click(screen.getByRole("button", { name: "+2 more" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.cloud.legend.hiddenMore, { count: 2 }) }));
 
         await userEvent.keyboard("{Escape}");
 
         expect(screen.queryByRole("button", { name: /LO-FI/ })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "+2 more" })).toHaveAttribute("aria-expanded", "false");
+        expect(screen.getByRole("button", { name: keyed(M.cloud.legend.hiddenMore, { count: 2 }) })).toHaveAttribute(
+            "aria-expanded",
+            "false",
+        );
     });
 
     it("takes the panel away on a press outside the legend, and keeps it through a press on a chip", async () => {
@@ -63,7 +68,7 @@ describe("TagLegend", () => {
                 <p>elsewhere</p>
             </>,
         );
-        await userEvent.click(screen.getByRole("button", { name: "+2 more" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.cloud.legend.hiddenMore, { count: 2 }) }));
 
         fireEvent.pointerDown(screen.getByRole("button", { name: /PIANO/ }));
         expect(screen.getByRole("button", { name: /PIANO/ })).toBeInTheDocument();
@@ -76,7 +81,7 @@ describe("TagLegend", () => {
         const { rerender } = render(
             <TagLegend tags={TAGS} painted={["SNARE"]} onToggle={vi.fn()} emptyCaption={EMPTY_CAPTION} />,
         );
-        await userEvent.click(screen.getByRole("button", { name: "+2 more" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.cloud.legend.hiddenMore, { count: 2 }) }));
 
         rerender(
             <TagLegend
@@ -87,17 +92,20 @@ describe("TagLegend", () => {
             />,
         );
 
-        expect(screen.getByRole("button", { name: "Shown only" })).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByRole("button", { name: M.cloud.legend.shownOnly })).toHaveAttribute("aria-expanded", "true");
     });
 
     it("collapses back to the painted tags", async () => {
         render(<TagLegend tags={TAGS} painted={["SNARE"]} onToggle={vi.fn()} emptyCaption={EMPTY_CAPTION} />);
-        await userEvent.click(screen.getByRole("button", { name: "+2 more" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.cloud.legend.hiddenMore, { count: 2 }) }));
 
-        await userEvent.click(screen.getByRole("button", { name: "Shown only" }));
+        await userEvent.click(screen.getByRole("button", { name: M.cloud.legend.shownOnly }));
 
         expect(screen.queryByRole("button", { name: /LO-FI/ })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "+2 more" })).toHaveAttribute("aria-expanded", "false");
+        expect(screen.getByRole("button", { name: keyed(M.cloud.legend.hiddenMore, { count: 2 }) })).toHaveAttribute(
+            "aria-expanded",
+            "false",
+        );
     });
 
     it("offers the toggle only while some tags are hidden", () => {
@@ -110,7 +118,9 @@ describe("TagLegend", () => {
             />,
         );
 
-        expect(screen.queryByRole("button", { name: /more/ })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: (name) => name.startsWith(M.cloud.legend.hiddenMore) }),
+        ).not.toBeInTheDocument();
         expect(screen.getAllByRole("button")).toHaveLength(TAGS.length);
     });
 
@@ -119,7 +129,7 @@ describe("TagLegend", () => {
         render(<TagLegend tags={TAGS} painted={["SNARE"]} onToggle={onToggle} emptyCaption={EMPTY_CAPTION} />);
 
         await userEvent.click(screen.getByRole("button", { name: /SNARE/ }));
-        await userEvent.click(screen.getByRole("button", { name: "+2 more" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.cloud.legend.hiddenMore, { count: 2 }) }));
         await userEvent.click(screen.getByRole("button", { name: /LO-FI/ }));
 
         expect(onToggle).toHaveBeenNthCalledWith(1, "SNARE");

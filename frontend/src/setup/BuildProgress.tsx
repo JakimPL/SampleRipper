@@ -1,11 +1,20 @@
 import type { ReactElement } from "react";
 
 import type { BuildStep, BuildView, StepState } from "../api/setup";
+import { M, type MessageId } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
 import { buttonClassName } from "../shared/controls/buttonClassName";
 import { SetupMessage } from "./SetupMessage";
-import { stepName } from "./stepNames";
-import { describeElapsed, describeEstimate, estimateRemainingSeconds, secondsBetween, useClock } from "./timing";
+import { stepMessageId } from "./stepNames";
+import {
+    describeElapsed,
+    describeEstimate,
+    estimateRemainingSeconds,
+    secondsBetween,
+    type TextFormatter,
+    useClock,
+} from "./timing";
 
 interface BuildProgressProps {
     readonly build: BuildView | null;
@@ -20,69 +29,86 @@ const STEP_MARKS: Readonly<Record<StepState, string>> = {
     failed: "✕",
     skipped: "–",
 };
-const STEP_NOTES: Readonly<Record<StepState, string>> = {
-    waiting: "waiting",
-    "up to date": "already up to date",
-    running: "working…",
-    done: "done",
-    failed: "stopped",
-    skipped: "not reached",
+const STEP_NOTES: Readonly<Record<StepState, MessageId>> = {
+    waiting: M.setup.progress.notes.waiting,
+    "up to date": M.setup.progress.notes.alreadyCurrent,
+    running: M.setup.progress.notes.running,
+    done: M.setup.progress.notes.done,
+    failed: M.setup.progress.notes.failed,
+    skipped: M.setup.progress.notes.skipped,
 };
-const BUILD_HEADINGS: Readonly<Record<BuildView["status"], string>> = {
-    running: "Building your library…",
-    completed: "Your library is ready",
-    failed: "The build stopped",
-    canceled: "The build was canceled",
+const BUILD_HEADINGS: Readonly<Record<BuildView["status"], MessageId>> = {
+    running: M.setup.progress.headings.running,
+    completed: M.setup.progress.headings.completed,
+    failed: M.setup.progress.headings.failed,
+    canceled: M.setup.progress.headings.canceled,
 };
-const CLOCK_FORMAT: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
+
+function stepName(step: string, text: TextFormatter): string {
+    const id = stepMessageId(step);
+    return id === null ? step : text(id);
+}
 
 /** "Step 3 of 12": the first step still running or waiting, counted among all; null before the run lists its steps. */
-function stepPosition(steps: readonly BuildStep[]): string | null {
+function stepPosition(steps: readonly BuildStep[], text: TextFormatter): string | null {
     if (steps.length === 0) {
         return null;
     }
     const current = steps.findIndex((step) => step.state === "running" || step.state === "waiting");
     const position = current === -1 ? steps.length : current + 1;
-    return `Step ${String(position)} of ${String(steps.length)}`;
+    return text(M.setup.progress.position, { position, total: steps.length });
 }
 
-function describeBuildTimes(build: BuildView, now: number): string {
+function describeBuildTimes(build: BuildView, now: number, text: TextFormatter): string {
     if (build.status === "running") {
-        const startedAt = new Date(build.started_at).toLocaleTimeString([], CLOCK_FORMAT);
-        return `Started at ${startedAt} · ${describeElapsed(secondsBetween(build.started_at, now))} so far`;
+        return text(M.setup.progress.started, {
+            startedAt: new Date(build.started_at),
+            elapsed: describeElapsed(secondsBetween(build.started_at, now), text),
+        });
     }
-    return build.ended_at === null ? "" : `Took ${describeElapsed(secondsBetween(build.started_at, build.ended_at))}`;
+    return build.ended_at === null
+        ? ""
+        : text(M.setup.progress.took, {
+              duration: describeElapsed(secondsBetween(build.started_at, build.ended_at), text),
+          });
 }
 
-function describeRunningStep(step: BuildStep, now: number): string {
+function describeRunningStep(step: BuildStep, now: number, text: TextFormatter): string {
     const progress = step.progress;
     if (progress !== null) {
-        const count = `${progress.done.toLocaleString()} of ${progress.total.toLocaleString()}`;
+        const counts = { done: progress.done, total: progress.total };
         const remaining = estimateRemainingSeconds(progress);
-        return remaining === null ? count : `${count} · ${describeEstimate(remaining)}`;
+        return remaining === null
+            ? text(M.setup.progress.count, counts)
+            : text(M.setup.progress.countWithEstimate, { ...counts, estimate: describeEstimate(remaining, text) });
     }
     return step.started_at === null
-        ? STEP_NOTES.running
-        : `running for ${describeElapsed(secondsBetween(step.started_at, now))}`;
+        ? text(STEP_NOTES.running)
+        : text(M.setup.progress.notes.runningFor, {
+              duration: describeElapsed(secondsBetween(step.started_at, now), text),
+          });
 }
 
-function describeStep(step: BuildStep, now: number): string {
+function describeStep(step: BuildStep, now: number, text: TextFormatter): string {
     switch (step.state) {
         case "running":
-            return describeRunningStep(step, now);
+            return describeRunningStep(step, now, text);
         case "done":
             return step.started_at !== null && step.ended_at !== null
-                ? `took ${describeElapsed(secondsBetween(step.started_at, step.ended_at))}`
-                : STEP_NOTES.done;
+                ? text(M.setup.progress.notes.doneIn, {
+                      duration: describeElapsed(secondsBetween(step.started_at, step.ended_at), text),
+                  })
+                : text(STEP_NOTES.done);
         case "waiting":
         case "up to date":
         case "failed":
         case "skipped":
-            return STEP_NOTES[step.state];
+            return text(STEP_NOTES[step.state]);
     }
 }
 
 function StepRow({ step, now }: { readonly step: BuildStep; readonly now: number }): ReactElement {
+    const { text } = useMessages();
     const progress = step.progress;
     const fraction = progress !== null && progress.total > 0 ? progress.done / progress.total : undefined;
     return (
@@ -90,14 +116,14 @@ function StepRow({ step, now }: { readonly step: BuildStep; readonly now: number
             <span className="build-step-mark" aria-hidden>
                 {STEP_MARKS[step.state]}
             </span>
-            <span className="build-step-name">{stepName(step.name)}</span>
-            <span className="build-step-note">{describeStep(step, now)}</span>
+            <span className="build-step-name">{stepName(step.name, text)}</span>
+            <span className="build-step-note">{describeStep(step, now, text)}</span>
             {step.state === "running" && (
                 <progress
                     className="progress build-step-bar"
                     value={fraction}
                     max={1}
-                    aria-label={progress?.label ?? stepName(step.name)}
+                    aria-label={progress?.label ?? stepName(step.name, text)}
                 />
             )}
         </li>
@@ -111,36 +137,43 @@ function StepRow({ step, now }: { readonly step: BuildStep; readonly now: number
  * stopped, and the group says where builds show before any has started.
  */
 export function BuildProgress({ build, onCancel }: BuildProgressProps): ReactElement {
+    const { text } = useMessages();
     const running = build?.status === "running";
     const now = useClock(running);
 
     return (
         <fieldset className="group build-progress">
-            <legend>Progress</legend>
+            <legend>{text(M.setup.progress.legend)}</legend>
             {build === null ? (
-                <p className="build-placeholder setup-hint">Builds you start show their progress here.</p>
+                <p className="build-placeholder setup-hint">{text(M.setup.progress.placeholder)}</p>
             ) : (
                 <>
                     <div className="build-progress-heading">
-                        <h3 className="build-progress-title">{BUILD_HEADINGS[build.status]}</h3>
-                        <span className="build-progress-position">{running ? stepPosition(build.steps) : null}</span>
+                        <h3 className="build-progress-title">{text(BUILD_HEADINGS[build.status])}</h3>
+                        <span className="build-progress-position">
+                            {running ? stepPosition(build.steps, text) : null}
+                        </span>
                         {running && (
                             <Button variant="secondary" onClick={onCancel}>
-                                Cancel
+                                {text(M.shared.cancel)}
                             </Button>
                         )}
                     </div>
-                    <p className="build-progress-times setup-hint">{describeBuildTimes(build, now)}</p>
+                    <p className="build-progress-times setup-hint">{describeBuildTimes(build, now, text)}</p>
                     <ol className="listbox build-steps">
                         {build.steps.map((step) => (
                             <StepRow key={step.name} step={step} now={now} />
                         ))}
-                        {build.steps.length === 0 && <li className="listbox-row listbox-empty">Getting ready…</li>}
+                        {build.steps.length === 0 && (
+                            <li className="listbox-row listbox-empty">{text(M.setup.progress.gettingReady)}</li>
+                        )}
                     </ol>
-                    {build.problem !== null && <SetupMessage message={{ text: build.problem, tone: "error" }} />}
+                    {build.problem !== null && <SetupMessage message={{ content: build.problem, tone: "error" }} />}
                     {build.status === "failed" && build.log_tail.length > 0 && (
                         <details className="build-log">
-                            <summary className={buttonClassName({ variant: "quiet" })}>Show details</summary>
+                            <summary className={buttonClassName({ variant: "quiet" })}>
+                                {text(M.setup.progress.showDetails)}
+                            </summary>
                             <pre className="mono">{build.log_tail.join("\n")}</pre>
                         </details>
                     )}

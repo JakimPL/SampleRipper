@@ -4,9 +4,11 @@ import { type CloudDots, useCloudDotsStore } from "../cloud/cloudDotsStore";
 import { drawsFloat, type FloatRenderingSupport } from "../cloud/floatRendering";
 import type { InputMode, LayoutMode } from "../layout/layoutMode";
 import { useLayoutMode } from "../layout/useLayoutMode";
+import { M, type Message, type MessageId } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { BottomSheet } from "../shared/overlay/BottomSheet";
 
-export const DIAGNOSTICS_TITLE = "Diagnostics";
+export const DIAGNOSTICS_TITLE = M.shell.diagnostics.title;
 
 interface DiagnosticsSheetProps {
     readonly support: FloatRenderingSupport;
@@ -14,45 +16,61 @@ interface DiagnosticsSheetProps {
 }
 
 interface Fact {
-    readonly name: string;
-    readonly value: string;
+    readonly name: MessageId;
+    readonly value: Message | string;
 }
 
 interface DotsChoice {
     readonly dots: CloudDots;
-    readonly label: string;
+    readonly label: MessageId;
 }
 
 const DOTS_CHOICES: readonly DotsChoice[] = [
-    { dots: "auto", label: "As the browser allows" },
-    { dots: "plain", label: "Plain dots" },
+    { dots: "auto", label: M.shell.diagnostics.dotsAuto },
+    { dots: "plain", label: M.shell.diagnostics.dotsPlain },
 ];
 
-function yesOrNo(supported: boolean): string {
-    return supported ? "yes" : "no";
+function yesOrNo(supported: boolean): Message {
+    return { id: supported ? M.shell.diagnostics.yes : M.shell.diagnostics.no };
 }
 
 /** How the cloud's points draw here, in one line. */
-function cloudPointsFact(support: FloatRenderingSupport): string {
+function cloudPointsFact(support: FloatRenderingSupport): Message {
     if (!support.webgl) {
-        return "nothing draws without WebGL";
+        return { id: M.shell.diagnostics.pointsNeedWebgl };
     }
-    return drawsFloat(support) ? "the scatterplot draws them" : "plain dots stand in, since float blending is missing";
+    return {
+        id: drawsFloat(support) ? M.shell.diagnostics.pointsByScatterplot : M.shell.diagnostics.pointsPlainFallback,
+    };
+}
+
+function webglFact(support: FloatRenderingSupport): Message | string {
+    if (!support.webgl) {
+        return { id: M.shell.diagnostics.webglUnavailable };
+    }
+    return support.renderer ?? { id: M.shell.diagnostics.webglAvailable };
 }
 
 function factsOf(support: FloatRenderingSupport, layout: LayoutMode, input: InputMode): readonly Fact[] {
     return [
-        { name: "Browser", value: navigator.userAgent },
+        { name: M.shell.diagnostics.facts.browser, value: navigator.userAgent },
         {
-            name: "Screen",
-            value: `${String(window.innerWidth)} × ${String(window.innerHeight)} at ${String(window.devicePixelRatio)}×`,
+            name: M.shell.diagnostics.facts.screen,
+            value: {
+                id: M.shell.diagnostics.screenSize,
+                values: {
+                    width: String(window.innerWidth),
+                    height: String(window.innerHeight),
+                    ratio: String(window.devicePixelRatio),
+                },
+            },
         },
-        { name: "Layout", value: `${layout}, ${input}` },
-        { name: "WebGL", value: support.webgl ? (support.renderer ?? "available") : "unavailable" },
-        { name: "Float textures", value: yesOrNo(support.textureFloat) },
-        { name: "Float color buffers", value: yesOrNo(support.colorBufferFloat) },
-        { name: "Float blending", value: yesOrNo(support.floatBlend) },
-        { name: "Cloud points", value: cloudPointsFact(support) },
+        { name: M.shell.diagnostics.facts.layout, value: `${layout}, ${input}` },
+        { name: M.shell.diagnostics.facts.webgl, value: webglFact(support) },
+        { name: M.shell.diagnostics.facts.floatTextures, value: yesOrNo(support.textureFloat) },
+        { name: M.shell.diagnostics.facts.floatColorBuffers, value: yesOrNo(support.colorBufferFloat) },
+        { name: M.shell.diagnostics.facts.floatBlending, value: yesOrNo(support.floatBlend) },
+        { name: M.shell.diagnostics.facts.cloudPoints, value: cloudPointsFact(support) },
     ];
 }
 
@@ -62,22 +80,25 @@ function factsOf(support: FloatRenderingSupport, layout: LayoutMode, input: Inpu
  * them as plain dots regardless.
  */
 export function DiagnosticsSheet({ support, onClose }: DiagnosticsSheetProps): ReactElement {
+    const { text, textOf } = useMessages();
     const { layout, input } = useLayoutMode();
     const dots = useCloudDotsStore((state) => state.dots);
     const setDots = useCloudDotsStore((state) => state.setDots);
 
     return (
-        <BottomSheet title={DIAGNOSTICS_TITLE} onClose={onClose}>
+        <BottomSheet title={text(DIAGNOSTICS_TITLE)} onClose={onClose}>
             <dl className="fact-list">
                 {factsOf(support, layout, input).map((fact) => (
                     <div key={fact.name} className="fact">
-                        <dt className="fact-name">{fact.name}</dt>
-                        <dd className="fact-value">{fact.value}</dd>
+                        <dt className="fact-name">{text(fact.name)}</dt>
+                        <dd className="fact-value">
+                            {typeof fact.value === "string" ? fact.value : textOf(fact.value)}
+                        </dd>
                     </div>
                 ))}
             </dl>
             <fieldset className="diagnostics-choice">
-                <legend>Draw the points</legend>
+                <legend>{text(M.shell.diagnostics.drawThePoints)}</legend>
                 {DOTS_CHOICES.map((choice) => (
                     <label key={choice.dots}>
                         <input
@@ -89,7 +110,7 @@ export function DiagnosticsSheet({ support, onClose }: DiagnosticsSheetProps): R
                                 setDots(choice.dots);
                             }}
                         />
-                        {choice.label}
+                        {text(choice.label)}
                     </label>
                 ))}
             </fieldset>

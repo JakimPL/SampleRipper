@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { trackerColorProperty } from "../../src/cloud/cloudRenderSettings";
 import type { TrackerCount } from "../../src/cloud/trackerColoring";
 import { TrackerLegend } from "../../src/cloud/TrackerLegend";
+import { M } from "../../src/messages/messageIds";
 
 const COUNTS: readonly TrackerCount[] = [
     { format: "xm", moduleCount: 40 },
@@ -15,7 +16,7 @@ describe("TrackerLegend", () => {
     it("lists each format with its module count in the order given, pressed while painted", () => {
         render(<TrackerLegend counts={COUNTS} painted={["xm"]} onToggle={vi.fn()} />);
 
-        const chips = within(screen.getByRole("group", { name: "Formats shown" })).getAllByRole("button");
+        const chips = within(screen.getByRole("group", { name: M.cloud.legend.formatsShown })).getAllByRole("button");
         expect(chips.map((chip) => chip.textContent)).toEqual(["XM40", "S3M7"]);
         expect(chips.map((chip) => chip.getAttribute("aria-pressed"))).toEqual(["true", "false"]);
     });

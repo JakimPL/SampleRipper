@@ -1,6 +1,8 @@
 import type { ReactElement } from "react";
 
 import type { HomeNetworkReach } from "../api/setup";
+import { M, type Message } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { CheckOption } from "./CheckOption";
 
 interface NetworkOptionProps {
@@ -12,20 +14,16 @@ interface NetworkOptionProps {
     readonly onChoose: (openToNetwork: boolean) => void;
 }
 
-const NETWORK_TITLE = "Open on my home network";
-const NETWORK_NOTE =
-    "Phones and computers on the same network can browse and play your library, and see your folders and labels. Only this computer can change anything. Use it only on a network you trust, such as your home Wi-Fi.";
-export const RESTART_NOTE = "Restart SampleRipper to apply this.";
-const OFF_NETWORK_NOTE = "This computer isn't on a network right now.";
-
-function describeReach(chosen: boolean, reach: HomeNetworkReach): string | null {
+function describeReach(chosen: boolean, reach: HomeNetworkReach): Message | null {
     if (chosen !== reach.open) {
-        return RESTART_NOTE;
+        return { id: M.setup.network.restart };
     }
     if (!reach.open) {
         return null;
     }
-    return reach.address === null ? OFF_NETWORK_NOTE : `On another device, open ${reach.address}`;
+    return reach.address === null
+        ? { id: M.setup.network.offNetwork }
+        : { id: M.setup.network.address, values: { address: reach.address } };
 }
 
 /**
@@ -35,9 +33,17 @@ function describeReach(chosen: boolean, reach: HomeNetworkReach): string | null 
  * has something to say.
  */
 export function NetworkOption({ chosen, reach, disabled, onChoose }: NetworkOptionProps): ReactElement {
+    const { text, textOf } = useMessages();
+    const reachNote = describeReach(chosen, reach);
     return (
-        <CheckOption title={NETWORK_TITLE} note={NETWORK_NOTE} checked={chosen} disabled={disabled} onChange={onChoose}>
-            <span className="setup-hint network-reach">{describeReach(chosen, reach)}</span>
+        <CheckOption
+            title={text(M.setup.network.title)}
+            note={text(M.setup.network.note)}
+            checked={chosen}
+            disabled={disabled}
+            onChange={onChoose}
+        >
+            <span className="setup-hint network-reach">{reachNote === null ? null : textOf(reachNote)}</span>
         </CheckOption>
     );
 }

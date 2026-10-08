@@ -1,8 +1,10 @@
+import { M, type MessageId } from "../messages/messageIds";
+
 export type ThemePreference = "system" | "light" | "dark" | "openmpt";
 
 export interface ThemeOption {
     readonly id: ThemePreference;
-    readonly label: string;
+    readonly label: MessageId;
 }
 
 /**
@@ -10,10 +12,10 @@ export interface ThemeOption {
  * system's own light/dark preference instead of setting `data-theme` on the document at all.
  */
 export const THEME_OPTIONS: readonly ThemeOption[] = [
-    { id: "system", label: "System" },
-    { id: "light", label: "Light" },
-    { id: "dark", label: "Dark" },
-    { id: "openmpt", label: "OpenMPT" },
+    { id: "system", label: M.theme.system },
+    { id: "light", label: M.theme.light },
+    { id: "dark", label: M.theme.dark },
+    { id: "openmpt", label: M.theme.openmpt },
 ];
 
 export const DEFAULT_THEME_PREFERENCE: ThemePreference = "system";

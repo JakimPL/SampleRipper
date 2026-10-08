@@ -1,0 +1,25 @@
+export const MODULES_MESSAGES = {
+    fields: {
+        title: "Title",
+        filename: "Filename",
+        link: "Link",
+        tracker: "Tracker",
+        samples: "Samples",
+        size: "Size",
+        fileSize: "File Size",
+        channels: "Channels",
+        patterns: "Patterns",
+        instruments: "Instruments",
+        ingestedAt: "Ingested At",
+    },
+    sampleColumns: {
+        instrument: "Instrument",
+        slot: "Slot",
+        depth: "Depth",
+    },
+    open: "Open module",
+    openOn: "Open on {host}",
+    filterPlaceholder: "Filter modules…",
+    allTrackers: "All",
+    shownStatus: "{shown} of {total} shown",
+} as const;

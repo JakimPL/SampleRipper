@@ -13,6 +13,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Module, TrackerFormat } from "../api/modules";
 import { useContainerWidth } from "../layout/useContainerWidth";
 import { useLayoutMode } from "../layout/useLayoutMode";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { fitColumns } from "../shared/columnFit";
 import { PanelToolbar } from "../shared/panel/PanelToolbar";
 import { TableColgroup } from "../shared/TableColgroup";
@@ -22,7 +24,7 @@ import {
     TABLE_ROW_HEIGHT_BY_INPUT,
 } from "../shared/tableMetrics";
 import { useListingOrderStore } from "../workspace/listingOrderStore";
-import { MODULE_COLUMN_SPEC, MODULE_COLUMNS } from "./moduleColumns";
+import { createModuleColumns, MODULE_COLUMN_SPEC } from "./moduleColumns";
 import { ModuleRow } from "./ModuleRow";
 
 interface ModulesTableProps {
@@ -34,6 +36,7 @@ interface ModulesTableProps {
  * as its panel narrows so the title always keeps its room.
  */
 export function ModulesTable({ modules }: ModulesTableProps): ReactElement {
+    const { text } = useMessages();
     const [tracker, setTracker] = useState<TrackerFormat | null>(null);
     const [globalFilter, setGlobalFilter] = useState("");
     const [sorting, setSorting] = useState<SortingState>([]);
@@ -51,9 +54,11 @@ export function ModulesTable({ modules }: ModulesTableProps): ReactElement {
         [modules, tracker],
     );
 
+    const columns = useMemo(() => createModuleColumns(text), [text]);
+
     const table = useReactTable({
         data: filteredByTracker,
-        columns: MODULE_COLUMNS,
+        columns,
         state: { sorting, globalFilter, columnVisibility },
         onSortingChange: setSorting,
         onGlobalFilterChange: setGlobalFilter,
@@ -99,7 +104,7 @@ export function ModulesTable({ modules }: ModulesTableProps): ReactElement {
                     <input
                         type="text"
                         className="field"
-                        placeholder="Filter modules…"
+                        placeholder={text(M.modules.filterPlaceholder)}
                         value={globalFilter}
                         onChange={(event) => {
                             setGlobalFilter(event.target.value);
@@ -108,9 +113,9 @@ export function ModulesTable({ modules }: ModulesTableProps): ReactElement {
                 }
                 secondary={
                     <label>
-                        Tracker
+                        {text(M.modules.fields.tracker)}
                         <select className="field" value={tracker ?? ""} onChange={handleTrackerChange}>
-                            <option value="">All</option>
+                            <option value="">{text(M.modules.allTrackers)}</option>
                             <option value="xm">XM</option>
                             <option value="it">IT</option>
                             <option value="mod">MOD</option>
@@ -120,7 +125,7 @@ export function ModulesTable({ modules }: ModulesTableProps): ReactElement {
                 }
                 status={
                     <span className="cell-muted mono">
-                        {rows.length} of {modules.length} shown
+                        {text(M.modules.shownStatus, { shown: rows.length, total: modules.length })}
                     </span>
                 }
             />

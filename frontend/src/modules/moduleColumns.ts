@@ -1,6 +1,8 @@
-import { createColumnHelper } from "@tanstack/react-table";
+import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 import type { Module } from "../api/modules";
+import { M } from "../messages/messageIds";
+import type { Messages } from "../messages/useMessages";
 import type { FittableColumn } from "../shared/columnFit";
 import { UNTITLED_MODULE_LABEL } from "../shared/labels";
 
@@ -24,15 +26,17 @@ export const MODULE_COLUMN_SPEC: readonly FittableColumn<ModuleColumnId>[] = [
 
 const columnHelper = createColumnHelper<Module>();
 
-/** The listing's columns as TanStack sorts and filters them; their widths come from `MODULE_COLUMN_SPEC`. */
-export const MODULE_COLUMNS = [
-    columnHelper.accessor((module) => (module.title.trim() === "" ? UNTITLED_MODULE_LABEL : module.title), {
-        id: "title",
-        header: "Title",
-    }),
-    columnHelper.accessor("filename", { header: "Filename" }),
-    columnHelper.accessor("tracker", { header: "Tracker" }),
-    columnHelper.accessor("sample_count", { header: "Samples" }),
-    columnHelper.accessor("file_size", { header: "Size" }),
-    columnHelper.display({ id: "link", header: "" }),
-];
+/** The listing's columns as TanStack sorts and filters them, named and sorted by the words `text` gives; their widths come from `MODULE_COLUMN_SPEC`. */
+export function createModuleColumns(text: Messages["text"]): ColumnDef<Module>[] {
+    return [
+        columnHelper.accessor((module) => (module.title.trim() === "" ? text(UNTITLED_MODULE_LABEL) : module.title), {
+            id: "title",
+            header: text(M.modules.fields.title),
+        }),
+        columnHelper.accessor("filename", { header: text(M.modules.fields.filename) }),
+        columnHelper.accessor("tracker", { header: text(M.modules.fields.tracker) }),
+        columnHelper.accessor("sample_count", { header: text(M.modules.fields.samples) }),
+        columnHelper.accessor("file_size", { header: text(M.modules.fields.size) }),
+        columnHelper.display({ id: "link", header: "" }),
+    ];
+}

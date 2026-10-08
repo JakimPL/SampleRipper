@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { useEffect, useMemo } from "react";
 
+import { useMessages } from "../../messages/useMessages";
 import type { ShellView } from "../../navigation/shellView";
 import { PageBody, PageHeaderFor } from "./PageLayer";
 import { usePhoneShellStore } from "./phoneShellStore";
@@ -36,6 +37,7 @@ interface PhoneShellProps {
  * the stylesheet can give one tab's surface the tray's room where a short viewport asks for it.
  */
 export function PhoneShell({ view }: PhoneShellProps): ReactElement {
+    const { text } = useMessages();
     const tabs = useMemo(tabPanels, []);
     const lastTabPath = usePhoneShellStore((state) => state.lastTabPath);
     const rememberTab = usePhoneShellStore((state) => state.rememberTab);
@@ -55,7 +57,7 @@ export function PhoneShell({ view }: PhoneShellProps): ReactElement {
             <header className="phone-header">
                 {page === null ? (
                     <>
-                        <h1 className="phone-header-title">{tab.title}</h1>
+                        <h1 className="phone-header-title">{text(tab.title)}</h1>
                         <ScreenMenu />
                     </>
                 ) : (

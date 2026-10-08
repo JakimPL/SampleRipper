@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../src/api/client";
 import type * as SetupApi from "../../src/api/setup";
 import type { SetupState } from "../../src/api/setup";
+import { M } from "../../src/messages/messageIds";
 import { SetupView } from "../../src/setup/SetupView";
+import { keyed } from "../support/keyedMessages";
 
 const { getSetupState, getStats, quitApplication } = vi.hoisted(() => ({
     getSetupState: vi.fn(),
@@ -50,11 +52,11 @@ describe("SetupView", () => {
         getSetupState.mockResolvedValue(UNCONFIGURED);
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: "Folders" })).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "Library" })).toBeInTheDocument();
-        expect(screen.getByLabelText("Theme")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Quit" })).toBeEnabled();
-        expect(screen.getByRole("button", { name: "Open the library" })).toBeDisabled();
+        expect(await screen.findByRole("heading", { name: M.setup.folders.title })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: M.setup.library.title })).toBeInTheDocument();
+        expect(screen.getByLabelText(M.theme.menu)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: M.setup.topBar.quit })).toBeEnabled();
+        expect(screen.getByRole("button", { name: M.setup.library.openLibrary })).toBeDisabled();
     });
 
     it("quits to the closed page", async () => {
@@ -62,7 +64,7 @@ describe("SetupView", () => {
         quitApplication.mockResolvedValue(undefined);
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Quit" }));
+        fireEvent.click(await screen.findByRole("button", { name: M.setup.topBar.quit }));
 
         expect(await screen.findByText("The closed page")).toBeInTheDocument();
         expect(quitApplication).toHaveBeenCalledOnce();
@@ -72,14 +74,16 @@ describe("SetupView", () => {
         getSetupState.mockRejectedValue(new Error("connection refused"));
         renderPage();
 
-        expect(await screen.findByRole("alert")).toHaveTextContent(/connection refused/);
-        expect(screen.getByRole("button", { name: "Quit" })).toBeDisabled();
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+            keyed(M.setup.view.unreachable, { message: "connection refused" }),
+        );
+        expect(screen.getByRole("button", { name: M.setup.topBar.quit })).toBeDisabled();
     });
 
     it("explains where setup belongs when the server has no setup routes", async () => {
         getSetupState.mockRejectedValue(new ApiError(NOT_FOUND, "Not Found", null));
         renderPage();
 
-        expect(await screen.findByText("Setup isn't available here")).toBeInTheDocument();
+        expect(await screen.findByText(M.setup.view.unavailableTitle)).toBeInTheDocument();
     });
 });

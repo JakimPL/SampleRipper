@@ -1,6 +1,8 @@
 import type { ReactElement } from "react";
 
 import type { WaveformPeak } from "../api/samples";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { MiniWaveform } from "../samples/MiniWaveform";
 import { SampleName } from "../samples/SampleName";
 import { spokenNameOf, useSampleName } from "../samples/useSampleName";
@@ -13,15 +15,6 @@ import { isHeld, MORPH_ENDS } from "./morphHistory";
 import { END_LETTERS, type MorphEnd, useMorphStore } from "./morphStore";
 
 const NO_PEAKS: readonly WaveformPeak[] = [];
-const EMPTY_COLUMN = "Nothing yet.";
-const FORGET_LABEL = "Forget all";
-const UNDO_LABEL = "Undo";
-const REDO_LABEL = "Redo";
-
-/** How a column's caption counts its rows. */
-function countOf(count: number): string {
-    return count === 1 ? "1 sample" : `${String(count)} samples`;
-}
 
 interface HeldRowProps {
     readonly end: MorphEnd;
@@ -30,6 +23,7 @@ interface HeldRowProps {
 
 /** One sample an end has held: its thumbnail, name and short hash on the button that makes it that end again, pressed while it is. */
 function HeldRow({ end, hash }: HeldRowProps): ReactElement {
+    const { text } = useMessages();
     const name = useSampleName(hash);
     const preview = useSamplePreview(hash);
     const held = useMorphStore((state) => isHeld(state, end, hash));
@@ -47,7 +41,7 @@ function HeldRow({ end, hash }: HeldRowProps): ReactElement {
             <button
                 type="button"
                 className="morph-history-row"
-                aria-label={spokenNameOf(hash, name)}
+                aria-label={spokenNameOf(hash, name, text)}
                 aria-pressed={held}
                 onClick={handleClick}
             >
@@ -67,6 +61,7 @@ interface HeldColumnProps {
 
 /** The samples one end has held, newest first, under a caption that names the end and counts them. */
 function HeldColumn({ end }: HeldColumnProps): ReactElement {
+    const { text } = useMessages();
     const column = useMorphStore((state) => state.held[end]);
     const letter = END_LETTERS[end];
 
@@ -74,10 +69,10 @@ function HeldColumn({ end }: HeldColumnProps): ReactElement {
         <section className="morph-history-column" aria-label={letter}>
             <div className="morph-history-caption">
                 <span className="morph-history-letter mono">{letter}</span>
-                <span className="cell-muted">{countOf(column.length)}</span>
+                <span className="cell-muted">{text(M.morph.held.count, { count: column.length })}</span>
             </div>
             {column.length === 0 ? (
-                <p className="morph-history-empty">{EMPTY_COLUMN}</p>
+                <p className="morph-history-empty">{text(M.morph.held.emptyColumn)}</p>
             ) : (
                 <ul className="morph-history-list">
                     {column.map((hash) => (
@@ -97,6 +92,7 @@ function HeldColumn({ end }: HeldColumnProps): ReactElement {
  * now. A row keeps its place for as long as it stays, so undo and redo move the pressed rows alone.
  */
 export function MorphHistory(): ReactElement {
+    const { text } = useMessages();
     const canUndo = useMorphStore((state) => state.past.length > 0);
     const canRedo = useMorphStore((state) => state.future.length > 0);
     const empty = useMorphStore((state) => state.held.first.length === 0 && state.held.second.length === 0);
@@ -107,14 +103,26 @@ export function MorphHistory(): ReactElement {
     return (
         <div className="morph-history">
             <div className="morph-history-tools">
-                <Button variant="secondary" icon aria-label={UNDO_LABEL} disabled={!canUndo} onClick={undo}>
+                <Button
+                    variant="secondary"
+                    icon
+                    aria-label={text(M.morph.held.undo)}
+                    disabled={!canUndo}
+                    onClick={undo}
+                >
                     <Icon name="undo" label={null} />
                 </Button>
-                <Button variant="secondary" icon aria-label={REDO_LABEL} disabled={!canRedo} onClick={redo}>
+                <Button
+                    variant="secondary"
+                    icon
+                    aria-label={text(M.morph.held.redo)}
+                    disabled={!canRedo}
+                    onClick={redo}
+                >
                     <Icon name="redo" label={null} />
                 </Button>
                 <Button variant="quiet" disabled={empty} onClick={forgetHeld}>
-                    {FORGET_LABEL}
+                    {text(M.morph.held.forgetAll)}
                 </Button>
             </div>
             <div className="morph-history-columns">

@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { NO_DECISIONS } from "../../api/curation";
+import { M } from "../../messages/messageIds";
+import { useMessages } from "../../messages/useMessages";
 import { ModuleGlance } from "../../modules/ModuleGlance";
 import { useModule } from "../../modules/useModule";
 import { defaultScopeFor } from "../../samples/AnnotationEditor";
@@ -64,6 +66,7 @@ function TrayIdentity({ entity, children }: TrayIdentityProps): ReactElement {
 }
 
 function SampleTray({ hash }: EntityTrayProps): ReactElement {
+    const { text } = useMessages();
     const preview = useSamplePreview(hash);
     const detail = useSampleDetail(hash);
     const sample = detail.status === "success" ? detail.data.sample : null;
@@ -87,12 +90,12 @@ function SampleTray({ hash }: EntityTrayProps): ReactElement {
     }
 
     return (
-        <div className="tray" role="region" aria-label="Selected sample">
+        <div className="tray" role="region" aria-label={text(M.shell.tray.selectedSample)}>
             <div className="tray-row">
                 <button
                     type="button"
                     className={classNames("tray-play", isSounding && !paused && "is-playing")}
-                    aria-label={isSounding && !paused ? "Pause sample" : "Play sample"}
+                    aria-label={text(isSounding && !paused ? M.samples.player.pause : M.samples.player.play)}
                     aria-pressed={isSounding && !paused}
                     onClick={handlePlay}
                 >
@@ -107,7 +110,7 @@ function SampleTray({ hash }: EntityTrayProps): ReactElement {
                         {name === null ? (
                             <span className="mono">{shortHash(hash)}</span>
                         ) : (
-                            <OptionalLabel value={name} placeholder={UNNAMED_SAMPLE_LABEL} />
+                            <OptionalLabel value={name} placeholder={text(UNNAMED_SAMPLE_LABEL)} />
                         )}
                     </span>
                     <span className="entity-hash tray-meta mono">
@@ -150,10 +153,14 @@ function SampleTray({ hash }: EntityTrayProps): ReactElement {
                 )}
                 {message !== null && (
                     <span className="annotation-row-message" role="alert" title={message}>
-                        Not saved
+                        {text(M.samples.annotation.notSaved)}
                     </span>
                 )}
-                <Link to={entityRoute({ kind: "sample", hash })} className="tray-open" aria-label="Open sample">
+                <Link
+                    to={entityRoute({ kind: "sample", hash })}
+                    className="tray-open"
+                    aria-label={text(M.samples.openSample)}
+                >
                     ›
                 </Link>
             </div>
@@ -162,10 +169,11 @@ function SampleTray({ hash }: EntityTrayProps): ReactElement {
 }
 
 function ModuleTray({ hash }: EntityTrayProps): ReactElement {
+    const { text } = useMessages();
     const state = useModule(hash);
 
     return (
-        <div className="tray" role="region" aria-label="Selected module">
+        <div className="tray" role="region" aria-label={text(M.shell.tray.selectedModule)}>
             <div className="tray-row">
                 <span className="tray-glyph">
                     <Icon name="modules" label={null} />
@@ -177,7 +185,11 @@ function ModuleTray({ hash }: EntityTrayProps): ReactElement {
                         <span className="tray-name mono">{shortHash(hash)}</span>
                     )}
                 </TrayIdentity>
-                <Link to={entityRoute({ kind: "module", hash })} className="tray-open" aria-label="Open module">
+                <Link
+                    to={entityRoute({ kind: "module", hash })}
+                    className="tray-open"
+                    aria-label={text(M.modules.open)}
+                >
                     ›
                 </Link>
             </div>

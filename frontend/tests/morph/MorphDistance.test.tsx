@@ -2,7 +2,9 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type * as SamplesApi from "../../src/api/samples";
+import { M } from "../../src/messages/messageIds";
 import { MorphDistance } from "../../src/morph/MorphDistance";
+import { keyed } from "../support/keyedMessages";
 
 const { getSampleDistance } = vi.hoisted(() => ({ getSampleDistance: vi.fn() }));
 
@@ -17,7 +19,7 @@ describe("MorphDistance", () => {
 
         render(<MorphDistance first="abc" second="def" />);
 
-        expect(screen.getByText("Computing distance…")).toBeInTheDocument();
+        expect(screen.getByText(M.morph.distance.computing)).toBeInTheDocument();
     });
 
     it("shows the resolved distance between the two ends of the pair", async () => {
@@ -25,7 +27,7 @@ describe("MorphDistance", () => {
 
         render(<MorphDistance first="abc" second="def" />);
 
-        expect(await screen.findByText("distance 1.235")).toBeInTheDocument();
+        expect(await screen.findByText(keyed(M.morph.distance.value, { distance: "1.235" }))).toBeInTheDocument();
         expect(getSampleDistance).toHaveBeenCalledWith("abc", "def");
     });
 

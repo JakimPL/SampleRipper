@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 
 import type { SampleSummary } from "../api/samples";
 import type { InputMode } from "../layout/layoutMode";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { classNames } from "../shared/classNames";
 import { formatBytes, shortHash } from "../shared/format";
 import { useLongPress } from "../shared/gestures/useLongPress";
@@ -51,6 +53,7 @@ interface SampleRowProps {
  * they stand and its keys and sheet leave them alone.
  */
 export function SampleRow({ sample, groupByEquivalence, visibleColumns, input }: SampleRowProps): ReactElement {
+    const { text } = useMessages();
     const { href, isHighlighted, isFocused, onClick, onDoubleClick, onKeyDown } = useEntityRowInteractions({
         kind: "sample",
         hash: sample.hash,
@@ -115,7 +118,7 @@ export function SampleRow({ sample, groupByEquivalence, visibleColumns, input }:
             <td className="cell-name">
                 <Link to={href} className="cell-name-stack" onKeyDown={handleKeyDown}>
                     <span className="cell-primary">
-                        <OptionalLabel value={sample.display_name} placeholder={UNNAMED_SAMPLE_LABEL} />
+                        <OptionalLabel value={sample.display_name} placeholder={text(UNNAMED_SAMPLE_LABEL)} />
                     </span>
                     <span className="entity-hash mono">
                         {categoryInColumn && shortHash(sample.equivalence_class_hash ?? sample.hash)}
@@ -131,7 +134,7 @@ export function SampleRow({ sample, groupByEquivalence, visibleColumns, input }:
                         )}
                     </span>
                 </Link>
-                <RowOpenLink href={href} label="Open sample" />
+                <RowOpenLink href={href} label={text(M.samples.openSample)} />
             </td>
             {categoryInColumn && (
                 <td className="cell-muted cell-stamp">
@@ -179,7 +182,7 @@ export function SampleRow({ sample, groupByEquivalence, visibleColumns, input }:
                     />
                     {message !== null && (
                         <span className="annotation-row-message" role="alert" title={message}>
-                            Not saved
+                            {text(M.samples.annotation.notSaved)}
                         </span>
                     )}
                 </td>

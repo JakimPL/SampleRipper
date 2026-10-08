@@ -1,22 +1,23 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import { M, type MessageId } from "../../../src/messages/messageIds";
 import { PhoneSurfaces } from "../../../src/shell/phone/PhoneSurfaces";
 import type { PhoneTab } from "../../../src/shell/phone/phoneView";
 
 const TABS: readonly PhoneTab[] = [
     {
         id: "samples-list",
-        title: "Samples",
-        shortTitle: "Samples",
+        title: M.workspace.panels.samples,
+        shortTitle: M.workspace.panels.samples,
         icon: "samples",
         component: () => <p>samples surface</p>,
         path: "/",
     },
     {
         id: "cloud",
-        title: "Cloud",
-        shortTitle: "Cloud",
+        title: M.workspace.panels.cloud,
+        shortTitle: M.workspace.panels.cloud,
         icon: "cloud",
         component: () => <p>cloud surface</p>,
         path: "/cloud",
@@ -24,7 +25,7 @@ const TABS: readonly PhoneTab[] = [
 ];
 
 /** The surface titled `title`, found by its label since a hidden region carries no accessible name. */
-function surface(title: string): HTMLElement {
+function surface(title: MessageId): HTMLElement {
     const element = document.querySelector<HTMLElement>(`section.phone-surface[aria-label="${title}"]`);
     if (element === null) {
         throw new Error(`no surface is titled ${title}`);
@@ -42,11 +43,11 @@ describe("PhoneSurfaces", () => {
 
         expect(screen.getByText("cloud surface")).toBeInTheDocument();
         expect(screen.getByText("samples surface")).toBeInTheDocument();
-        expect(surface("Samples")).toHaveAttribute("aria-hidden", "true");
-        expect(surface("Samples")).toHaveAttribute("inert");
-        expect(surface("Samples")).toHaveAttribute("data-active", "false");
-        expect(surface("Cloud")).not.toHaveAttribute("inert");
-        expect(surface("Cloud")).toHaveAttribute("data-active", "true");
+        expect(surface(M.workspace.panels.samples)).toHaveAttribute("aria-hidden", "true");
+        expect(surface(M.workspace.panels.samples)).toHaveAttribute("inert");
+        expect(surface(M.workspace.panels.samples)).toHaveAttribute("data-active", "false");
+        expect(surface(M.workspace.panels.cloud)).not.toHaveAttribute("inert");
+        expect(surface(M.workspace.panels.cloud)).toHaveAttribute("data-active", "true");
     });
 
     it("hides every surface while a page covers them", () => {
@@ -54,7 +55,7 @@ describe("PhoneSurfaces", () => {
 
         rerender(<PhoneSurfaces tabs={TABS} activeTabId={null} />);
 
-        expect(surface("Samples")).toHaveAttribute("inert");
+        expect(surface(M.workspace.panels.samples)).toHaveAttribute("inert");
         expect(screen.queryByText("cloud surface")).not.toBeInTheDocument();
     });
 });
