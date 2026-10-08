@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import { M } from "../../src/messages/messageIds";
 import { Thumbnail } from "../../src/samples/Thumbnail";
 
 describe("Thumbnail", () => {
@@ -20,7 +21,7 @@ describe("Thumbnail", () => {
             />,
         );
 
-        const button = screen.getByRole("button", { name: "Play sample preview" });
+        const button = screen.getByRole("button", { name: M.samples.preview.play });
         expect(button.querySelector("canvas")).toBeInTheDocument();
 
         fireEvent.click(button);

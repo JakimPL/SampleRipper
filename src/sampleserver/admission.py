@@ -7,8 +7,9 @@ from starlette.requests import HTTPConnection
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from sampleserver.messages import NOT_ADMITTED
+from samplecore.problems import MessageCode
 from sampleserver.policy import ServingPolicy
+from sampleserver.problems import plain_problem
 from sampleserver.request_source import host_of, sent_by_another_site
 
 POLICY_VIOLATION_CLOSE_CODE: Final[int] = 1008
@@ -31,7 +32,10 @@ class AdmittedRequestsOnly:
             if scope["type"] == "websocket":
                 await send({"type": "websocket.close", "code": POLICY_VIOLATION_CLOSE_CODE})
                 return
-            response = JSONResponse({"detail": NOT_ADMITTED}, status_code=status.HTTP_403_FORBIDDEN)
+            response = JSONResponse(
+                {"detail": plain_problem(MessageCode.NOT_ADMITTED).model_dump(mode="json")},
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
             await response(scope, receive, send)
             return
         await self._app(scope, receive, send)

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { M } from "../../../src/messages/messageIds";
 import { BottomSheet } from "../../../src/shared/overlay/BottomSheet";
 
 describe("BottomSheet", () => {
@@ -27,7 +28,7 @@ describe("BottomSheet", () => {
             </BottomSheet>,
         );
 
-        fireEvent.click(screen.getByRole("button", { name: "Close" }));
+        fireEvent.click(screen.getByRole("button", { name: M.shared.close }));
         fireEvent.keyDown(document, { key: "Escape" });
 
         expect(onClose).toHaveBeenCalledTimes(2);

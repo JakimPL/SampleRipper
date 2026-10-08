@@ -14,6 +14,7 @@ from samplecore.config import (
     LibraryConfig,
     parse_config,
 )
+from samplecore.messages import WEAK_READER_PASSWORD
 from samplecore.storage.cluster.provisioning import ADMIN_URL_ENVIRONMENT_VARIABLE
 from sampleripper.site.admission import SiteRefusedError, admit_site, site_port, site_warnings
 from sampleripper.site.messages import (
@@ -26,7 +27,6 @@ from sampleripper.site.messages import (
     PORT_TAKEN_BY_RENDERER,
     RENDERER_BEYOND_THIS_COMPUTER,
     UNREADABLE_AUDIO_STORE,
-    WEAK_READER_PASSWORD,
 )
 from tests.sampleserver.conftest import SITE_VISITORS_TABLE
 
@@ -195,4 +195,4 @@ def test_a_port_the_platform_names_no_port_is_refused(environment: dict[str, str
     with pytest.raises(SiteRefusedError) as refusal:
         site_port(environment)
 
-    assert refusal.value.problems[0] == NO_PORT or "names no port" in refusal.value.problems[0]
+    assert refusal.value.problems[0] == NO_PORT or "isn't a valid port" in refusal.value.problems[0]

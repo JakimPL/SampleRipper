@@ -1,5 +1,8 @@
 import type { ReactElement } from "react";
 
+import type { MessageId } from "../messages/messageIds";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { useCurationAccess } from "../samples/useCurationAccess";
 import { BottomSheet } from "../shared/overlay/BottomSheet";
 import { useLabelColor } from "../theme/useLabelColor";
@@ -14,7 +17,7 @@ interface LegendSheetProps {
     readonly painted: readonly string[];
     readonly onToggle: (name: string) => void;
     /** What the sheet says while the chosen mode has no tag to paint yet. */
-    readonly emptyCaption: string;
+    readonly emptyCaption: MessageId;
     readonly onClose: () => void;
 }
 
@@ -32,21 +35,22 @@ export function LegendSheet({
     emptyCaption,
     onClose,
 }: LegendSheetProps): ReactElement {
+    const { text } = useMessages();
     const { curationShown } = useCurationAccess();
     const colorOf = useLabelColor();
 
     return (
-        <BottomSheet title="Legend" onClose={onClose}>
+        <BottomSheet title={text(M.cloud.legend.title)} onClose={onClose}>
             {curationShown && (
                 <fieldset className="legend-sheet-mode">
-                    <legend>Color by</legend>
+                    <legend>{text(M.cloud.legend.colorBy)}</legend>
                     <ColoringModeChoice mode={mode} onModeChange={onModeChange} />
                 </fieldset>
             )}
             {tags.length === 0 ? (
-                <p className="legend-sheet-empty">{emptyCaption}</p>
+                <p className="legend-sheet-empty">{text(emptyCaption)}</p>
             ) : (
-                <div className="legend-sheet-chips" role="group" aria-label="Painted tags">
+                <div className="legend-sheet-chips" role="group" aria-label={text(M.cloud.legend.tagsShown)}>
                     {tags.map((tag) => (
                         <LegendChip
                             key={tag.name}

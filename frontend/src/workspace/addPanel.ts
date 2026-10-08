@@ -1,5 +1,6 @@
 import type { DockviewApi } from "dockview-react";
 
+import type { Messages } from "../messages/useMessages";
 import type { PanelDefinition } from "./panelRegistry";
 
 /**
@@ -8,7 +9,7 @@ import type { PanelDefinition } from "./panelRegistry";
  * panel's own address and a saved arrangement gaining a panel all open panels through this one
  * rule, so the three agree on where a panel belongs.
  */
-export function addRegisteredPanel(api: DockviewApi, definition: PanelDefinition): void {
+export function addRegisteredPanel(api: DockviewApi, definition: PanelDefinition, text: Messages["text"]): void {
     const placement =
         definition.placement !== null && api.panels.some((panel) => panel.id === definition.placement?.referencePanel)
             ? definition.placement
@@ -16,7 +17,7 @@ export function addRegisteredPanel(api: DockviewApi, definition: PanelDefinition
     api.addPanel({
         id: definition.id,
         component: definition.id,
-        title: definition.title,
+        title: text(definition.title),
         renderer: definition.renderer,
         ...(placement !== null ? { position: placement } : {}),
     });

@@ -2,8 +2,11 @@ import type { ReactElement } from "react";
 import { useMemo } from "react";
 
 import { morphAudioUrl } from "../api/morph";
+import { messageOfProblem } from "../api/problem";
 import { sampleAudioUrl } from "../api/samples";
 import { useLayoutMode } from "../layout/useLayoutMode";
+import { M, type Message } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { type AudioReading, useAudioPeaks } from "../samples/audioPeaks";
 import { useAudioPreview, usePreviewProgress } from "../samples/useAudioPreview";
 import { type ContourStyle, NO_TRACES, type WaveformTrace, WaveformView } from "../samples/WaveformView";
@@ -72,6 +75,7 @@ export function MorphWaveform({
     renderedWeight,
     available,
 }: MorphWaveformProps): ReactElement {
+    const { text } = useMessages();
     const { playAnswered, failure } = useAudioPreview();
     const progress = usePreviewProgress();
     const themeSignal = useThemeSignal();
@@ -105,7 +109,18 @@ export function MorphWaveform({
     const sounding = renderUrl !== null && progress.key === renderUrl;
     const playheadFraction =
         sounding && axisSeconds !== null ? Math.min(WHOLE_FRAME, progress.currentTimeSeconds / axisSeconds) : null;
-    const playFailure = failure?.key === renderUrl ? failure.message : null;
+    const playFailure: Message | null =
+        failure?.key === renderUrl
+            ? failure.problem === null
+                ? { id: M.samples.preview.unplayable }
+                : messageOfProblem(failure.problem)
+            : null;
+    const refusalText: Message | null =
+        render.refusal === null
+            ? null
+            : render.refusal.problem === null
+              ? { id: M.samples.preview.audioStatus, values: { status: render.refusal.status } }
+              : messageOfProblem(render.refusal.problem);
     const canPlay = renderedWeight !== null && available && render.refusal === null;
 
     function replay(): void {
@@ -123,7 +138,7 @@ export function MorphWaveform({
                 <button
                     type="button"
                     className="play-btn"
-                    aria-label="Play the morph"
+                    aria-label={text(M.morph.playMorph)}
                     onClick={replay}
                     disabled={!canPlay}
                 >
@@ -140,14 +155,14 @@ export function MorphWaveform({
                 />
             }
             readout={readout}
-            failure={render.refusal ?? playFailure}
+            failure={refusalText ?? playFailure}
             controls={null}
             download={
                 renderUrl !== null && renderedWeight !== null && render.refusal === null ? (
                     <DownloadLink
                         href={renderUrl}
                         fileName={renderFileName(first, second, renderedWeight)}
-                        label="Save this render"
+                        label={text(M.morph.saveRender)}
                     />
                 ) : null
             }

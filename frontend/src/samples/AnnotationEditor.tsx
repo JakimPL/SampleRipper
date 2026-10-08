@@ -2,6 +2,8 @@ import type { ReactElement } from "react";
 
 import type { AnnotationScope } from "../api/curation";
 import type { SampleDetail } from "../api/samples";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
 import { decisionsOf, useSampleAnnotation } from "./annotationStore";
 import { FavoriteToggle } from "./FavoriteToggle";
@@ -35,6 +37,7 @@ export function defaultScopeFor(sample: SampleDetail): AnnotationScope {
  * shows the decisions as they stand.
  */
 export function AnnotationEditor({ sample, scope, onScopeChange }: AnnotationEditorProps): ReactElement {
+    const { text, textOf } = useMessages();
     const current = useSampleAnnotation(sample.hash, decisionsOf(sample));
     const { change, message } = useAnnotationWriter(sample.hash, scope);
 
@@ -46,7 +49,7 @@ export function AnnotationEditor({ sample, scope, onScopeChange }: AnnotationEdi
         return (
             <div className="annotation-editor">
                 <div className="annotation-editor-row">
-                    <span className="annotation-editor-label">{label ?? "No label"}</span>
+                    <span className="annotation-editor-label">{label ?? text(M.samples.label.none)}</span>
                 </div>
                 <div className="annotation-editor-row">
                     <RatingStars rating={rating} onRatingChange={null} />
@@ -75,7 +78,7 @@ export function AnnotationEditor({ sample, scope, onScopeChange }: AnnotationEdi
                         change({ label: null });
                     }}
                 >
-                    Clear
+                    {text(M.samples.label.clear)}
                 </Button>
             </div>
             <div className="annotation-editor-row">
@@ -101,11 +104,11 @@ export function AnnotationEditor({ sample, scope, onScopeChange }: AnnotationEdi
                                 onScopeChange(event.target.checked ? "equivalence_class" : "sample");
                             }}
                         />
-                        Apply to all {sample.equivalence_member_count} near-duplicates
+                        {text(M.samples.annotation.applyToAll, { count: sample.equivalence_member_count })}
                     </label>
                 )}
             </div>
-            {message !== null && <p className="annotation-editor-message">{message}</p>}
+            {message !== null && <p className="annotation-editor-message">{textOf(message)}</p>}
         </div>
     );
 }

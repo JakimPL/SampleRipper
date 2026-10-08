@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 
+import { useMessages } from "../messages/useMessages";
 import { UNLABELED_SAMPLE_LABEL } from "../shared/labels";
 import { useSampleAnnotation } from "./annotationStore";
 import { useCategoryColor } from "./useCategoryColor";
@@ -22,6 +23,7 @@ interface CategoryBadgeProps {
  * ellipsis, whole in its tooltip.
  */
 export function CategoryBadge({ sampleHash, category, handLabel }: CategoryBadgeProps): ReactElement {
+    const { text } = useMessages();
     const annotation = useSampleAnnotation(sampleHash, { label: handLabel, rating: null, favorite: false });
     const colorOf = useCategoryColor();
     const resolved = annotation?.label ?? null;
@@ -33,7 +35,7 @@ export function CategoryBadge({ sampleHash, category, handLabel }: CategoryBadge
         );
     }
     if (category === null || category === undefined) {
-        return <span className="badge badge-unlabeled">{UNLABELED_SAMPLE_LABEL}</span>;
+        return <span className="badge badge-unlabeled">{text(UNLABELED_SAMPLE_LABEL)}</span>;
     }
 
     const color = colorOf(category);

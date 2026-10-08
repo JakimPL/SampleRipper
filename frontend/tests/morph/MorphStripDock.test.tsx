@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type * as MorphApi from "../../src/api/morph";
+import { M } from "../../src/messages/messageIds";
 import { useMorphStore } from "../../src/morph/morphStore";
 import { MorphStripDock } from "../../src/morph/MorphStripDock";
 import { installControllableResizeObserver, resizeTo } from "../support/resizeObserver";
@@ -46,14 +47,14 @@ describe("MorphStripDock", () => {
 
     it("slides the strip away as the morph turns off, and back as it turns on", () => {
         render(<MorphStripDock onHeightChange={vi.fn()} />);
-        expect(screen.getByRole("region", { name: "Morph" })).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: M.morph.strip })).toBeInTheDocument();
 
         act(() => {
             useMorphStore.getState().setEnabled(false);
         });
         const sliding = dock().firstElementChild;
         expect(sliding).toHaveClass("is-collapsed");
-        expect(screen.queryByRole("region", { name: "Morph" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: M.morph.strip })).not.toBeInTheDocument();
 
         if (sliding !== null) {
             fireEvent.transitionEnd(sliding);
@@ -63,6 +64,6 @@ describe("MorphStripDock", () => {
         act(() => {
             useMorphStore.getState().setEnabled(true);
         });
-        expect(screen.getByRole("region", { name: "Morph" })).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: M.morph.strip })).toBeInTheDocument();
     });
 });

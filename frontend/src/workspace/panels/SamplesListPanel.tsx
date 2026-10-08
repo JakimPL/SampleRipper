@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { type SampleSelection, WHOLE_CATALOG } from "../../api/samples";
+import { M } from "../../messages/messageIds";
 import { SamplesTable } from "../../samples/SamplesTable";
 import { useWindowedSamples } from "../../samples/useWindowedSamples";
 import { ErrorNotice } from "../../shared/ErrorNotice";
@@ -18,7 +19,7 @@ export function SamplesListPanel(): ReactElement {
         return <Loading />;
     }
     if (state.status === "error" && state.items.length === 0) {
-        return <ErrorNotice message={state.message ?? "Unknown error"} />;
+        return <ErrorNotice message={state.message ?? { id: M.workspace.samplesList.unknownError }} />;
     }
 
     return (

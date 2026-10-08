@@ -6,6 +6,7 @@ from typing import Final
 from sqlalchemy.engine import make_url
 
 from samplecore.config import PUBLISH_DATABASE_URL_ENVIRONMENT_VARIABLE, LibraryConfig
+from samplecore.messages import WEAK_READER_PASSWORD
 from samplecore.passwords import MINIMUM_SERVICE_PASSWORD_LENGTH
 from samplecore.ports import MAXIMUM_PORT, MINIMUM_PORT
 from samplecore.storage.audio_store import OBJECTS_DIRECTORY_NAME, store_holds_audio, store_is_readable
@@ -21,7 +22,6 @@ from sampleripper.site.messages import (
     PORT_TAKEN_BY_RENDERER,
     RENDERER_BEYOND_THIS_COMPUTER,
     UNREADABLE_AUDIO_STORE,
-    WEAK_READER_PASSWORD,
 )
 from sampleserver.addresses import names_loopback
 from sampleserver.policy import ServingPolicy

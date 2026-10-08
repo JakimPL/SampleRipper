@@ -1,6 +1,8 @@
 import type { DockviewApi } from "dockview-react";
 import { type ReactElement, useEffect, useState } from "react";
 
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
 import { DisclosureMenu } from "../shared/overlay/DisclosureMenu";
 import { addRegisteredPanel } from "../workspace/addPanel";
@@ -33,6 +35,7 @@ function openPanelIds(api: DockviewApi): ReadonlySet<PanelId> {
  * ready.
  */
 export function ViewMenu({ api }: ViewMenuProps): ReactElement {
+    const { text } = useMessages();
     const [openIds, setOpenIds] = useState<ReadonlySet<PanelId>>(new Set());
 
     useEffect(() => {
@@ -55,7 +58,7 @@ export function ViewMenu({ api }: ViewMenuProps): ReactElement {
         }
         const panel = api.getPanel(definition.id);
         if (panel === undefined) {
-            addRegisteredPanel(api, definition);
+            addRegisteredPanel(api, definition, text);
         } else {
             panel.api.close();
         }
@@ -63,12 +66,12 @@ export function ViewMenu({ api }: ViewMenuProps): ReactElement {
 
     function handleReset(): void {
         if (api !== null) {
-            resetLayout(api);
+            resetLayout(api, text);
         }
     }
 
     return (
-        <DisclosureMenu label="View" className="view-menu" variant="quiet">
+        <DisclosureMenu label={text(M.shell.menus.view)} className="view-menu" variant="quiet">
             <ul className="view-menu-list">
                 {Object.values(PANEL_REGISTRY).map((definition) => (
                     <li key={definition.id}>
@@ -82,13 +85,13 @@ export function ViewMenu({ api }: ViewMenuProps): ReactElement {
                                     handleToggle(definition);
                                 }}
                             />
-                            {definition.title}
+                            {text(definition.title)}
                         </label>
                     </li>
                 ))}
             </ul>
             <Button variant="quiet" wide className="menu-action" disabled={api === null} onClick={handleReset}>
-                Reset layout
+                {text(M.shell.menus.resetLayout)}
             </Button>
         </DisclosureMenu>
     );

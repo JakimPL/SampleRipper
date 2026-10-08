@@ -786,4 +786,4 @@ def test_the_audio_of_a_sample_whose_file_is_gone_is_not_found_naming_the_file(
     response = client.get(f"/samples/{cataloged_kick_file.sample_hash}/audio")
 
     assert response.status_code == 404
-    assert "Deep 01.wav" in response.json()["detail"]
+    assert "Deep 01.wav" in response.json()["detail"]["reason"]

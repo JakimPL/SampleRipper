@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type * as ModulesApi from "../../src/api/modules";
 import type { Module } from "../../src/api/modules";
+import { M } from "../../src/messages/messageIds";
 import { BULK_FETCH_PAGE_LIMIT, useAllModules } from "../../src/modules/useAllModules";
 
 const { listModules } = vi.hoisted(() => ({ listModules: vi.fn() }));
@@ -100,6 +101,6 @@ describe("useAllModules", () => {
         if (result.current.status !== "error") {
             throw new Error("expected error");
         }
-        expect(result.current.message).toBe("network down");
+        expect(result.current.message).toEqual({ id: M.errors.unexpected, values: { reason: "network down" } });
     });
 });

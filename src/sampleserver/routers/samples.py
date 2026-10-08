@@ -32,6 +32,7 @@ from samplecore.pitch import (
     playback_rates_of,
     tally_playback_rates,
 )
+from samplecore.problems import MessageCode
 from samplecore.spectral_distance import SpectralVectors, euclidean_distance, nearest_neighbors
 from samplecore.storage import audio_store
 from samplecore.storage.playback_rates import resolved_playback_rates
@@ -59,10 +60,10 @@ from sampleserver.dependencies import (
     get_spectral_vectors,
 )
 from sampleserver.equivalence import equivalence_class_members
-from sampleserver.messages import CURATION_WITHHELD, NOT_FOUND
 from sampleserver.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page
 from sampleserver.parameters import MAX_PAGE_OFFSET, NOT_FOUND_RESPONSE, WAV_CONTENT, WAV_MEDIA_TYPE, SampleHashPath
 from sampleserver.policy import ServingPolicy
+from sampleserver.problems import plain_problem, refusal
 from sampleserver.sample_files import files_inside, unreadable_audio
 
 router = APIRouter(prefix="/samples", tags=["samples"])
@@ -195,7 +196,7 @@ def get_selection(
     """
     selection = SampleSelection(favorites_only=favorites_only, minimum_rating=minimum_rating, sort=sort)
     if not policy.shows_curation and selection != UNDECIDED_SELECTION:
-        raise HTTPException(status_code=HTTPStatus.UNPROCESSABLE_ENTITY, detail=CURATION_WITHHELD)
+        raise refusal(HTTPStatus.UNPROCESSABLE_ENTITY, plain_problem(MessageCode.CURATION_WITHHELD))
     return selection
 
 
@@ -386,7 +387,7 @@ def get_sample_audio(
     if not policy.serves_uncataloged_audio:
         with open_connection() as connection:
             if PostgresSampleRepository(connection).get(sample_hash) is None:
-                raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=NOT_FOUND)
+                raise refusal(HTTPStatus.NOT_FOUND, plain_problem(MessageCode.NOT_FOUND))
     path = audio_store.object_path(library_root, sample_hash)
     if path.is_file():
         return FileResponse(path, media_type=WAV_MEDIA_TYPE, headers={"Cache-Control": IMMUTABLE_CACHE_CONTROL})

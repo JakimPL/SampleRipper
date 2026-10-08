@@ -2,11 +2,13 @@ import { type ReactElement, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { quitApplication } from "../api/setup";
+import { M, type Message } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { CLOSED_PATH } from "../setup/ClosedView";
-import { describeRefusal } from "../setup/refusal";
 import { SETUP_PATH } from "../setup/SetupGate";
 import { useSetupProbe } from "../setup/useSetupProbe";
 import { Button } from "../shared/controls/Button";
+import { failureOf } from "../shared/failure";
 import { DisclosureMenu } from "../shared/overlay/DisclosureMenu";
 
 /**
@@ -16,8 +18,9 @@ import { DisclosureMenu } from "../shared/overlay/DisclosureMenu";
  */
 export function LibraryMenu(): ReactElement | null {
     const setup = useSetupProbe();
+    const { text, textOf } = useMessages();
     const navigate = useNavigate();
-    const [refusal, setRefusal] = useState<string | null>(null);
+    const [refusal, setRefusal] = useState<Message | null>(null);
 
     async function handleQuit(): Promise<void> {
         setRefusal(null);
@@ -25,7 +28,7 @@ export function LibraryMenu(): ReactElement | null {
             await quitApplication();
             void navigate(CLOSED_PATH, { replace: true });
         } catch (error: unknown) {
-            setRefusal(describeRefusal(error));
+            setRefusal(failureOf(error));
         }
     }
 
@@ -33,7 +36,7 @@ export function LibraryMenu(): ReactElement | null {
         return null;
     }
     return (
-        <DisclosureMenu label="Library" className="library-menu" variant="quiet">
+        <DisclosureMenu label={text(M.shell.menus.library)} className="library-menu" variant="quiet">
             <Button
                 variant="quiet"
                 wide
@@ -42,7 +45,7 @@ export function LibraryMenu(): ReactElement | null {
                     void navigate(SETUP_PATH);
                 }}
             >
-                Setup
+                {text(M.shell.menus.setup)}
             </Button>
             <Button
                 variant="quiet"
@@ -52,11 +55,11 @@ export function LibraryMenu(): ReactElement | null {
                     void handleQuit();
                 }}
             >
-                Quit SampleRipper
+                {text(M.shell.menus.quit)}
             </Button>
             {refusal !== null && (
                 <p className="menu-note" role="alert">
-                    {refusal}
+                    {textOf(refusal)}
                 </p>
             )}
         </DisclosureMenu>

@@ -4,6 +4,8 @@ import { flushSync } from "react-dom";
 import createScatterplot from "regl-scatterplot";
 
 import { useLayoutMode } from "../layout/useLayoutMode";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { classNames } from "../shared/classNames";
 import { createDoubleTapRecognizer } from "../shared/gestures/doubleTap";
 import {
@@ -451,6 +453,7 @@ export function CloudView({
     const nodeCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
     const settings = useCloudRenderSettings();
+    const { text } = useMessages();
     const { layout } = useLayoutMode();
     const scatterplotSettings = useMemo(() => settingsForLayout(settings, layout), [settings, layout]);
     const plainDots = usePlainDots() !== null;
@@ -1040,8 +1043,8 @@ export function CloudView({
             )}
             {points.length === 0 && (
                 <div className="cloud-empty">
-                    <h4>No cloud coordinates yet</h4>
-                    <p>Run the embedding pipeline to populate this view with positions.</p>
+                    <h4>{text(M.cloud.empty.title)}</h4>
+                    <p>{text(M.cloud.empty.body)}</p>
                 </div>
             )}
         </div>

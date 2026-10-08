@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import type * as CurationApi from "../../src/api/curation";
 import type { SampleDetail } from "../../src/api/samples";
-import { CategoryChoices, NO_CATEGORIES } from "../../src/samples/CategoryChoices";
+import { M } from "../../src/messages/messageIds";
+import { CategoryChoices } from "../../src/samples/CategoryChoices";
 import { useCurationAccess } from "../../src/samples/useCurationAccess";
 
 const { changeSampleAnnotation } = vi.hoisted(() => ({
@@ -149,14 +150,16 @@ describe("CategoryChoices", () => {
     it("says so when no scoring has reached the sample", () => {
         render(<CategoryChoices sample={buildSample({ categories: [] })} scope="sample" />);
 
-        expect(screen.getByText(NO_CATEGORIES)).toBeInTheDocument();
+        expect(screen.getByText(M.samples.categoryChoices.none)).toBeInTheDocument();
     });
 
     it("shows the categories with their scores alone where labels may only be seen", () => {
         vi.mocked(useCurationAccess).mockReturnValue({ curationShown: true, labelEditing: false });
         render(<CategoryChoices sample={buildSample()} scope="sample" />);
 
-        expect(screen.getByRole("group", { name: "Categories" })).toHaveTextContent("BASS DRUM");
+        expect(screen.getByRole("group", { name: M.samples.categoryChoices.groupLabel })).toHaveTextContent(
+            "BASS DRUM",
+        );
         expect(screen.queryAllByRole("button")).toHaveLength(0);
     });
 });

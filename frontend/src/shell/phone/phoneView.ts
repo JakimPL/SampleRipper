@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import type { MessageId } from "../../messages/messageIds";
 import type { ShellView } from "../../navigation/shellView";
 import type { IconName } from "../../shared/icons/iconPaths";
 import { PANEL_REGISTRY, type PanelDefinition, type PanelId } from "../../workspace/panelRegistry";
@@ -7,8 +8,8 @@ import { PANEL_REGISTRY, type PanelDefinition, type PanelId } from "../../worksp
 /** One of the bottom tabs: a registered panel with an address of its own, in the order the bar shows them. */
 export interface PhoneTab {
     readonly id: PanelId;
-    readonly title: string;
-    readonly shortTitle: string;
+    readonly title: MessageId;
+    readonly shortTitle: MessageId;
     readonly icon: IconName;
     readonly component: ComponentType;
     readonly path: string;

@@ -7,6 +7,7 @@ import {
     ESTIMATE_WARMUP_SECONDS,
     estimateRemainingSeconds,
 } from "../../src/setup/timing";
+import { englishText } from "../support/englishMessages";
 
 const STARTED_AT = "2026-09-24T10:00:00Z";
 
@@ -46,7 +47,7 @@ describe("describeEstimate", () => {
         [58 * 60, "about 1 h left"],
         [134 * 60, "about 2 h 10 min left"],
     ])("rounds %d seconds to %s", (seconds, text) => {
-        expect(describeEstimate(seconds)).toBe(text);
+        expect(describeEstimate(seconds, englishText)).toBe(text);
     });
 });
 
@@ -58,6 +59,6 @@ describe("describeElapsed", () => {
         [65 * 60, "1 h 5 min"],
         [120 * 60, "2 h"],
     ])("reads %d seconds as %s", (seconds, text) => {
-        expect(describeElapsed(seconds)).toBe(text);
+        expect(describeElapsed(seconds, englishText)).toBe(text);
     });
 });

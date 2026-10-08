@@ -2,13 +2,13 @@ import type { ReactElement } from "react";
 
 import type { AnnotationScope } from "../api/curation";
 import type { SampleDetail } from "../api/samples";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { decisionsOf, useSampleAnnotation } from "./annotationStore";
 import { assertsTag, withTag } from "./labelText";
 import { useAnnotationWriter } from "./useAnnotationWriter";
 
 const SCORE_DECIMAL_PLACES = 2;
-
-export const NO_CATEGORIES = "No categories yet — a scoring of the listening model writes them.";
 
 interface CategoryChoicesProps {
     readonly sample: SampleDetail;
@@ -27,17 +27,18 @@ interface CategoryChoicesProps {
  * Where the person here may change nothing, the categories are shown with their scores alone.
  */
 export function CategoryChoices({ sample, scope }: CategoryChoicesProps): ReactElement {
+    const { text, textOf } = useMessages();
     const current = useSampleAnnotation(sample.hash, decisionsOf(sample));
     const { change, message } = useAnnotationWriter(sample.hash, scope);
     const label = current?.label ?? null;
 
     if (sample.categories.length === 0) {
-        return <p className="placeholder-box">{NO_CATEGORIES}</p>;
+        return <p className="placeholder-box">{text(M.samples.categoryChoices.none)}</p>;
     }
 
     return (
         <div className="category-choices">
-            <div className="category-choices-row" role="group" aria-label="Categories">
+            <div className="category-choices-row" role="group" aria-label={text(M.samples.categoryChoices.groupLabel)}>
                 {sample.categories.map((category) => {
                     const content = (
                         <>
@@ -69,7 +70,7 @@ export function CategoryChoices({ sample, scope }: CategoryChoicesProps): ReactE
                     );
                 })}
             </div>
-            {message !== null && <p className="annotation-editor-message">{message}</p>}
+            {message !== null && <p className="annotation-editor-message">{textOf(message)}</p>}
         </div>
     );
 }

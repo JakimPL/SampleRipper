@@ -8,9 +8,10 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from samplecore.models.sample_file import SampleFile
+from samplecore.problems import MessageCode
 from samplecore.storage.sample_audio import SampleUnavailableError
-from sampleserver.messages import UNREADABLE_AUDIO
 from sampleserver.policy import ServingPolicy
+from sampleserver.problems import refusal
 
 _logger = logging.getLogger(__name__)
 
@@ -28,4 +29,4 @@ def files_inside(sample_files: Iterable[SampleFile], directories: tuple[Path, ..
 def unreadable_audio(error: SampleUnavailableError, policy: ServingPolicy) -> HTTPException:
     """The 404 for a sample none of whose files reads as it was scanned, naming the file where the policy names internals."""
     _logger.warning("%s", error)
-    return HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=policy.refusal(str(error), plain=UNREADABLE_AUDIO))
+    return refusal(HTTPStatus.NOT_FOUND, policy.refusal(str(error), code=MessageCode.UNREADABLE_AUDIO))

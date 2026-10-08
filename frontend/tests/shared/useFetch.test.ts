@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { M } from "../../src/messages/messageIds";
 import { cachedRequest, invalidateRequest } from "../../src/shared/requestCache";
 import { useFetch } from "../../src/shared/useFetch";
 
@@ -19,7 +20,10 @@ describe("useFetch", () => {
         const { result } = renderHook(() => useFetch(() => Promise.reject(new Error("boom")), []));
 
         await waitFor(() => {
-            expect(result.current).toEqual({ status: "error", message: "boom" });
+            expect(result.current).toEqual({
+                status: "error",
+                message: { id: M.errors.unexpected, values: { reason: "boom" } },
+            });
         });
     });
 

@@ -2,6 +2,8 @@ import type { ReactElement } from "react";
 import { useCallback } from "react";
 
 import { getSampleDistance } from "../api/samples";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { useFetch } from "../shared/useFetch";
 
 const DISTANCE_DECIMAL_PLACES = 3;
@@ -19,15 +21,18 @@ interface MorphDistanceProps {
  * traveling before they hear it.
  */
 export function MorphDistance({ first, second }: MorphDistanceProps): ReactElement {
+    const { text, textOf } = useMessages();
     const loader = useCallback(() => getSampleDistance(first, second), [first, second]);
     const state = useFetch(loader, [first, second]);
 
     return (
         <p className="morph-distance">
-            {state.status === "loading" && <span className="cell-muted">Computing distance…</span>}
-            {state.status === "error" && <span className="error-notice">{state.message}</span>}
+            {state.status === "loading" && <span className="cell-muted">{text(M.morph.distance.computing)}</span>}
+            {state.status === "error" && <span className="error-notice">{textOf(state.message)}</span>}
             {state.status === "success" && (
-                <span className="mono">distance {state.data.distance.toFixed(DISTANCE_DECIMAL_PLACES)}</span>
+                <span className="mono">
+                    {text(M.morph.distance.value, { distance: state.data.distance.toFixed(DISTANCE_DECIMAL_PLACES) })}
+                </span>
             )}
         </p>
     );

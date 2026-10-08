@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { getSetupState, type SetupState } from "../api/setup";
-import { describeError } from "../shared/fetchState";
+import type { Message } from "../messages/messageIds";
+import { failureOf } from "../shared/failure";
 
 /** How often the page asks again while the library opens or a build runs, and while it waits otherwise. */
 const BUSY_POLL_MS = 1000;
@@ -13,7 +14,7 @@ const MISSING_STATUS = 404;
 export type SetupSource =
     | { readonly status: "loading" }
     | { readonly status: "absent" }
-    | { readonly status: "unreachable"; readonly message: string; readonly state: SetupState | null }
+    | { readonly status: "unreachable"; readonly failure: Message; readonly state: SetupState | null }
     | { readonly status: "ready"; readonly state: SetupState };
 
 export interface SetupStateHandle {
@@ -73,8 +74,8 @@ export function useSetupState(): SetupStateHandle {
                     setSource({ status: "absent" });
                     return;
                 }
-                const message = describeError(error);
-                setSource((current) => ({ status: "unreachable", message, state: lastKnownState(current) }));
+                const failure = failureOf(error);
+                setSource((current) => ({ status: "unreachable", failure, state: lastKnownState(current) }));
                 schedule(IDLE_POLL_MS);
             }
         }

@@ -1,6 +1,8 @@
 import type { ReactElement } from "react";
 import { Link } from "react-router-dom";
 
+import { M } from "../../messages/messageIds";
+import { useMessages } from "../../messages/useMessages";
 import { ModuleGlance } from "../../modules/ModuleGlance";
 import { useModule } from "../../modules/useModule";
 import { SampleGlance } from "../../samples/SampleGlance";
@@ -28,15 +30,20 @@ function ModuleGlanceOf({ hash }: { readonly hash: string }): ReactElement | nul
  * point itself.
  */
 export function CloudTapCard({ entity }: CloudTapCardProps): ReactElement {
+    const { text } = useMessages();
     return (
-        <div className="cloud-tap-card" role="region" aria-label="Tapped point">
+        <div className="cloud-tap-card" role="region" aria-label={text(M.workspace.tapCard.region)}>
             <div className="cloud-tap-card-row">
                 {entity.kind === "sample" ? (
                     <SampleGlanceOf hash={entity.hash} />
                 ) : (
                     <ModuleGlanceOf hash={entity.hash} />
                 )}
-                <Link to={entityRoute(entity)} className="cloud-tap-card-open" aria-label={`Open ${entity.kind}`}>
+                <Link
+                    to={entityRoute(entity)}
+                    className="cloud-tap-card-open"
+                    aria-label={text(entity.kind === "sample" ? M.samples.openSample : M.modules.open)}
+                >
                     ›
                 </Link>
             </div>

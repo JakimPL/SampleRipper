@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type * as CloudApi from "../../src/api/cloud";
 import type { SimilarSample } from "../../src/api/samples";
 import { COARSE_POINTER_MEDIA_QUERY } from "../../src/layout/layoutMode";
+import { M } from "../../src/messages/messageIds";
 import { SimilarSampleRow } from "../../src/samples/SimilarSampleRow";
 import { useAudioPreview } from "../../src/samples/useAudioPreview";
 import { useSelectionStore } from "../../src/workspace/selectionStore";
@@ -94,7 +95,7 @@ describe("SimilarSampleRow", () => {
     it("plays the neighbor from a plain play button while no thumbnail is stored", () => {
         const { container } = renderRow();
 
-        const button = screen.getByRole("button", { name: "Play sample preview" });
+        const button = screen.getByRole("button", { name: M.samples.preview.play });
         fireEvent.click(button);
 
         expect(button).toHaveAttribute("aria-pressed", "true");
@@ -105,6 +106,6 @@ describe("SimilarSampleRow", () => {
         const { container } = renderRow(buildSimilar({ thumbnail: [{ minimum: -0.5, maximum: 0.5 }] }));
 
         expect(container.querySelector("canvas")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Play sample preview" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: M.samples.preview.play })).toBeInTheDocument();
     });
 });

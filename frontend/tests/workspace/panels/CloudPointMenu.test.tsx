@@ -2,7 +2,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
-import { END_LETTERS, type MorphEnd, OTHER_END, useMorphStore } from "../../../src/morph/morphStore";
+import { M, type MessageId } from "../../../src/messages/messageIds";
+import { type MorphEnd, OTHER_END, useMorphStore } from "../../../src/morph/morphStore";
 import type * as AudioPreview from "../../../src/samples/useAudioPreview";
 import { CloudPointMenu } from "../../../src/workspace/panels/CloudPointMenu";
 import type { EntityRef } from "../../../src/workspace/selectionStore";
@@ -20,6 +21,10 @@ vi.mock("../../../src/samples/useAudioPreview", async () => {
 const SAMPLE: EntityRef = { kind: "sample", hash: "a".repeat(64) };
 const MODULE: EntityRef = { kind: "module", hash: "b".repeat(64) };
 const MORPH_ENDS: readonly MorphEnd[] = ["first", "second"];
+const USE_AS: Readonly<Record<MorphEnd, MessageId>> = {
+    first: M.workspace.pointMenu.useAsFirst,
+    second: M.workspace.pointMenu.useAsSecond,
+};
 
 interface MenuCallbacks {
     readonly onSelectAtOtherEnd: (entity: EntityRef) => void;
@@ -49,7 +54,7 @@ describe("CloudPointMenu", () => {
             const onClose = vi.fn();
             renderMenu(SAMPLE, { onSelectAtOtherEnd, onClose });
 
-            fireEvent.click(screen.getByRole("button", { name: `Use as ${END_LETTERS[OTHER_END[selectedEnd]]}` }));
+            fireEvent.click(screen.getByRole("button", { name: USE_AS[OTHER_END[selectedEnd]] }));
 
             expect(onSelectAtOtherEnd).toHaveBeenCalledWith(SAMPLE);
             expect(onClose).toHaveBeenCalledTimes(1);
@@ -59,7 +64,9 @@ describe("CloudPointMenu", () => {
     it("keeps a module out of the morph", () => {
         renderMenu(MODULE, { onSelectAtOtherEnd: vi.fn(), onClose: vi.fn() });
 
-        expect(screen.queryByRole("button", { name: /^Use as/ })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Open" })).toBeInTheDocument();
+        for (const end of MORPH_ENDS) {
+            expect(screen.queryByRole("button", { name: USE_AS[end] })).not.toBeInTheDocument();
+        }
+        expect(screen.getByRole("button", { name: M.samples.rowActions.open })).toBeInTheDocument();
     });
 });

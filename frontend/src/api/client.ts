@@ -1,3 +1,5 @@
+import { type Problem, problemFromDetail } from "./problem";
+
 // Kept equal to `API_PREFIX` in `src/sampleserver/app.py`.
 const API_PREFIX = "/api";
 
@@ -8,13 +10,13 @@ export function apiUrl(path: string): string {
 
 export class ApiError extends Error {
     public readonly status: number;
-    /** The server's own words about the refusal, where it gave a `detail`. */
-    public readonly detail: string | null;
+    /** What the server says went wrong, where its refusal names a problem. */
+    public readonly problem: Problem | null;
 
-    constructor(status: number, message: string, detail: string | null) {
+    constructor(status: number, message: string, problem: Problem | null) {
         super(message);
         this.status = status;
-        this.detail = detail;
+        this.problem = problem;
     }
 }
 
@@ -28,27 +30,23 @@ export interface JsonRequest {
 
 async function readJson<T>(url: string, response: Response): Promise<T> {
     if (!response.ok) {
-        const detail = await refusalDetail(response);
-        throw new ApiError(response.status, failureMessage(url, response.status, detail), detail);
+        const problem = await readProblem(response);
+        throw new ApiError(response.status, failureMessage(url, response.status, problem), problem);
     }
     return (await response.json()) as T;
 }
 
-/** The server's own words about a refusal, where it gave a `detail`, and `null` where it gave none. */
-export async function refusalDetail(response: Response): Promise<string | null> {
+/** The problem a refusal names in its `detail`, and `null` where it names none. */
+export async function readProblem(response: Response): Promise<Problem | null> {
     const body: unknown = await Promise.resolve()
         .then(() => response.json())
         .catch(() => null);
-    if (typeof body === "object" && body !== null && "detail" in body && typeof body.detail === "string") {
-        return body.detail;
-    }
-    return null;
+    return typeof body === "object" && body !== null && "detail" in body ? problemFromDetail(body.detail) : null;
 }
 
-/** What went wrong with a request, in the server's own words where it gave a `detail`. */
-function failureMessage(url: string, status: number, detail: string | null): string {
+function failureMessage(url: string, status: number, problem: Problem | null): string {
     const general = `request to ${url} failed with status ${String(status)}`;
-    return detail === null ? general : `${general}: ${detail}`;
+    return problem === null ? general : `${general}: ${problem.code}`;
 }
 
 export async function requestJson<T>(path: string): Promise<T> {

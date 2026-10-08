@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as CloudApi from "../../../src/api/cloud";
 import type * as SamplesApi from "../../../src/api/samples";
 import { PHONE_MEDIA_QUERY } from "../../../src/layout/layoutMode";
+import { M, type MessageId } from "../../../src/messages/messageIds";
 import { routes } from "../../../src/navigation/router";
 import { useSelectionStore } from "../../../src/workspace/selectionStore";
 import { stubMatchMedia } from "../../support/matchMedia";
@@ -48,7 +49,7 @@ function renderShellAt(...entries: readonly string[]): ReturnType<typeof createM
 }
 
 /** The surface titled `title`, found by its label since a hidden region carries no accessible name. */
-function surface(title: string): HTMLElement {
+function surface(title: MessageId): HTMLElement {
     const element = document.querySelector<HTMLElement>(`section.phone-surface[aria-label="${title}"]`);
     if (element === null) {
         throw new Error(`no surface is titled ${title}`);
@@ -85,20 +86,20 @@ describe("PhoneShell", () => {
     it("opens on the samples tab, with the tab bar and the screen menu", () => {
         renderShellAt("/");
 
-        expect(screen.getByRole("heading", { level: 1, name: "Samples" })).toBeInTheDocument();
-        expect(screen.getByRole("navigation", { name: "Sections" })).toBeInTheDocument();
-        expect(screen.getByText("More")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Samples" })).toHaveAttribute("aria-current", "page");
+        expect(screen.getByRole("heading", { level: 1, name: M.workspace.panels.samples })).toBeInTheDocument();
+        expect(screen.getByRole("navigation", { name: M.shell.tabBar.label })).toBeInTheDocument();
+        expect(screen.getByText(M.shell.menus.more)).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: M.workspace.panels.samples })).toHaveAttribute("aria-current", "page");
     });
 
     it("leaves the Cloud tab the whole height while nothing is in hand", async () => {
         renderShellAt("/cloud");
 
-        expect(await screen.findByRole("heading", { level: 1, name: "Cloud" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { level: 1, name: M.workspace.panels.cloud })).toBeInTheDocument();
         expect(document.querySelector(".phone-shell")).toHaveAttribute("data-tab", "cloud");
         expect(document.querySelector(".tray")).not.toBeInTheDocument();
-        fireEvent.click(screen.getByRole("link", { name: "Samples" }));
-        await screen.findByRole("heading", { level: 1, name: "Samples" });
+        fireEvent.click(screen.getByRole("link", { name: M.workspace.panels.samples }));
+        await screen.findByRole("heading", { level: 1, name: M.workspace.panels.samples });
 
         expect(document.querySelector(".tray")).not.toBeInTheDocument();
     });
@@ -106,11 +107,11 @@ describe("PhoneShell", () => {
     it("keeps a tab mounted out of sight once it has been visited", async () => {
         renderShellAt("/");
 
-        fireEvent.click(screen.getByRole("link", { name: "Modules" }));
+        fireEvent.click(screen.getByRole("link", { name: M.workspace.panels.modules }));
 
-        expect(await screen.findByRole("heading", { level: 1, name: "Modules" })).toBeInTheDocument();
-        expect(surface("Samples")).toHaveAttribute("inert");
-        expect(surface("Modules")).not.toHaveAttribute("inert");
+        expect(await screen.findByRole("heading", { level: 1, name: M.workspace.panels.modules })).toBeInTheDocument();
+        expect(surface(M.workspace.panels.samples)).toHaveAttribute("inert");
+        expect(surface(M.workspace.panels.modules)).not.toHaveAttribute("inert");
     });
 
     it("opens a sample as a page over the tabs, focusing it and keeping the tray away", async () => {
@@ -118,19 +119,19 @@ describe("PhoneShell", () => {
 
         expect(await screen.findByRole("heading", { level: 1, name: "kick" })).toBeInTheDocument();
         expect(useSelectionStore.getState().focusedSampleHash).toBe("abc");
-        expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
-        expect(screen.queryByRole("region", { name: "Sample in hand" })).not.toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Samples" })).toHaveAttribute("aria-current", "page");
+        expect(screen.getByRole("button", { name: M.shell.page.back })).toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: M.shell.tray.selectedSample })).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: M.workspace.panels.samples })).toHaveAttribute("aria-current", "page");
     });
 
     it("returns from a page opened cold to the samples tab, where the tray then names the sample", async () => {
         renderShellAt("/samples/abc");
         await screen.findByRole("heading", { level: 1, name: "kick" });
 
-        fireEvent.click(screen.getByRole("button", { name: "Back" }));
+        fireEvent.click(screen.getByRole("button", { name: M.shell.page.back }));
 
-        expect(await screen.findByRole("heading", { level: 1, name: "Samples" })).toBeInTheDocument();
-        expect(await screen.findByRole("region", { name: "Sample in hand" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { level: 1, name: M.workspace.panels.samples })).toBeInTheDocument();
+        expect(await screen.findByRole("region", { name: M.shell.tray.selectedSample })).toBeInTheDocument();
     });
 
     it("returns from a page to the tab it was opened from", async () => {
@@ -139,9 +140,9 @@ describe("PhoneShell", () => {
             await router.navigate("/samples/abc");
         });
         await screen.findByRole("heading", { level: 1, name: "kick" });
-        expect(screen.getByRole("link", { name: "Modules" })).toHaveAttribute("aria-current", "page");
+        expect(screen.getByRole("link", { name: M.workspace.panels.modules })).toHaveAttribute("aria-current", "page");
 
-        fireEvent.click(screen.getByRole("button", { name: "Back" }));
+        fireEvent.click(screen.getByRole("button", { name: M.shell.page.back }));
 
         await waitFor(() => {
             expect(router.state.location.pathname).toBe("/modules");
@@ -151,37 +152,37 @@ describe("PhoneShell", () => {
     it("opens the guide to the gestures from the screen menu", () => {
         renderShellAt("/");
 
-        fireEvent.click(screen.getByText("More"));
-        fireEvent.click(screen.getByRole("button", { name: "Keyboard and mouse" }));
+        fireEvent.click(screen.getByText(M.shell.menus.more));
+        fireEvent.click(screen.getByRole("button", { name: M.shell.guide.titles.pointer }));
 
-        expect(screen.getByRole("dialog", { name: "Keyboard and mouse" })).toBeInTheDocument();
+        expect(screen.getByRole("dialog", { name: M.shell.guide.titles.pointer })).toBeInTheDocument();
     });
 
     it("opens the diagnostics from the screen menu", () => {
         renderShellAt("/");
 
-        fireEvent.click(screen.getByText("More"));
-        fireEvent.click(screen.getByRole("button", { name: "Diagnostics" }));
+        fireEvent.click(screen.getByText(M.shell.menus.more));
+        fireEvent.click(screen.getByRole("button", { name: M.shell.diagnostics.title }));
 
-        expect(screen.getByRole("dialog", { name: "Diagnostics" })).toBeInTheDocument();
+        expect(screen.getByRole("dialog", { name: M.shell.diagnostics.title })).toBeInTheDocument();
     });
 
     it("opens About from the screen menu", () => {
         renderShellAt("/");
 
-        fireEvent.click(screen.getByText("More"));
-        fireEvent.click(screen.getByRole("button", { name: "About" }));
+        fireEvent.click(screen.getByText(M.shell.menus.more));
+        fireEvent.click(screen.getByRole("button", { name: M.shell.about.title }));
 
-        expect(screen.getByRole("dialog", { name: "About" })).toBeInTheDocument();
+        expect(screen.getByRole("dialog", { name: M.shell.about.title })).toBeInTheDocument();
     });
 
     it("shows a panel with no tab as a page from the screen menu", async () => {
         renderShellAt("/");
 
-        fireEvent.click(screen.getByText("More"));
-        fireEvent.click(screen.getByRole("link", { name: "Stats" }));
+        fireEvent.click(screen.getByText(M.shell.menus.more));
+        fireEvent.click(screen.getByRole("link", { name: M.workspace.panels.stats }));
 
-        expect(await screen.findByRole("heading", { level: 1, name: "Stats" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { level: 1, name: M.workspace.panels.stats })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: M.shell.page.back })).toBeInTheDocument();
     });
 });

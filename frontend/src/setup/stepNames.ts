@@ -1,25 +1,27 @@
-/** Each pipeline step as a person reads it on the build's checklist; a step missing here shows its own name. */
-const STEP_NAMES: Readonly<Record<string, string>> = {
-    labels: "Importing your labels",
-    modules: "Reading your modules",
-    "sample-files": "Reading your sample folders",
-    notes: "Reading module notes",
-    thumbnails: "Drawing waveforms",
-    equivalence: "Finding near-duplicates",
-    relink: "Matching your labels to samples",
-    teacher: "Analyzing samples",
-    "hearing-teacher": "Analyzing samples at their played pitch",
-    categories: "Suggesting categories",
-    "grid-cache": "Preparing spectrograms",
-    descriptor: "Preparing the descriptor",
-    embedding: "Describing samples",
-    completion: "Describing new samples",
-    evaluation: "Checking descriptor quality",
-    "module-evaluation": "Checking descriptor quality on modules",
-    cloud: "Building the cloud",
-    "module-cloud": "Building the module cloud",
+import { M, type MessageId } from "../messages/messageIds";
+
+/** Each pipeline step's message on the build's checklist; a step missing here shows its own name. */
+const STEP_NAMES: Readonly<Record<string, MessageId>> = {
+    labels: M.setup.steps.labels,
+    modules: M.setup.steps.modules,
+    "sample-files": M.setup.steps.sampleFiles,
+    notes: M.setup.steps.notes,
+    thumbnails: M.setup.steps.thumbnails,
+    equivalence: M.setup.steps.equivalence,
+    relink: M.setup.steps.relink,
+    teacher: M.setup.steps.teacher,
+    "hearing-teacher": M.setup.steps.hearingTeacher,
+    categories: M.setup.steps.categories,
+    "grid-cache": M.setup.steps.gridCache,
+    descriptor: M.setup.steps.descriptor,
+    embedding: M.setup.steps.embedding,
+    completion: M.setup.steps.completion,
+    evaluation: M.setup.steps.evaluation,
+    "module-evaluation": M.setup.steps.moduleEvaluation,
+    cloud: M.setup.steps.cloud,
+    "module-cloud": M.setup.steps.moduleCloud,
 };
 
-export function stepName(step: string): string {
-    return STEP_NAMES[step] ?? step;
+export function stepMessageId(step: string): MessageId | null {
+    return STEP_NAMES[step] ?? null;
 }

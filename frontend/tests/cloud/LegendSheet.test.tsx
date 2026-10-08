@@ -4,9 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { ColoringMode } from "../../src/cloud/ColoringModeChoice";
 import type { TopLevelTag } from "../../src/cloud/labelColoring";
 import { LegendSheet } from "../../src/cloud/LegendSheet";
+import { M } from "../../src/messages/messageIds";
 import { useCurationAccess } from "../../src/samples/useCurationAccess";
 
-const EMPTY_CAPTION = "No sample carries a tag yet.";
+const EMPTY_CAPTION = M.cloud.empty.body;
 
 const TAGS: readonly TopLevelTag[] = [
     { name: "SNARE", sampleCount: 21, rank: 0 },
@@ -38,12 +39,15 @@ describe("LegendSheet", () => {
         const onModeChange = vi.fn();
         renderSheet({ onModeChange });
 
-        const choice = screen.getByRole("group", { name: "Color by" });
-        expect(within(choice).getByRole("button", { name: "Category" })).toHaveAttribute("aria-pressed", "true");
-        fireEvent.click(within(choice).getByRole("button", { name: "Labels" }));
+        const choice = screen.getByRole("group", { name: M.cloud.legend.colorBy });
+        expect(within(choice).getByRole("button", { name: M.cloud.coloring.category })).toHaveAttribute(
+            "aria-pressed",
+            "true",
+        );
+        fireEvent.click(within(choice).getByRole("button", { name: M.cloud.coloring.labels }));
 
         expect(onModeChange).toHaveBeenCalledWith("label");
-        expect(screen.getByRole("dialog", { name: "Legend" })).toBeInTheDocument();
+        expect(screen.getByRole("dialog", { name: M.cloud.legend.title })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /SNARE/ })).toHaveAttribute("aria-pressed", "true");
     });
 
@@ -51,15 +55,15 @@ describe("LegendSheet", () => {
         vi.mocked(useCurationAccess).mockReturnValue({ curationShown: false, labelEditing: false });
         renderSheet();
 
-        expect(screen.queryByRole("group", { name: "Color by" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Labels" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("group", { name: M.cloud.legend.colorBy })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: M.cloud.coloring.labels })).not.toBeInTheDocument();
     });
 
     it("says so while the chosen mode has no tag yet", () => {
         renderSheet({ tags: [] });
 
         expect(screen.getByText(EMPTY_CAPTION)).toBeInTheDocument();
-        expect(screen.queryByRole("group", { name: "Painted tags" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("group", { name: M.cloud.legend.tagsShown })).not.toBeInTheDocument();
     });
 
     it("reports the tag a person toggles", () => {

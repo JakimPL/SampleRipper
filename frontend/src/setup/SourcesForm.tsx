@@ -1,11 +1,13 @@
 import { type ReactElement, useState } from "react";
 
 import { chooseSources, type LibrarySources, type SetupState } from "../api/setup";
+import { M, type Message, type MessageId } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
+import { failureOf } from "../shared/failure";
 import { FolderPath } from "./FolderPath";
 import { FolderPicker } from "./FolderPicker";
 import { PathRow } from "./PathRow";
-import { describeRefusal } from "./refusal";
 import { SetupMessage, type SetupMessageText } from "./SetupMessage";
 import { SetupPane } from "./SetupPane";
 import type { SourcesDraft } from "./useSourcesDraft";
@@ -18,10 +20,10 @@ interface SourcesFormProps {
 
 type PickerTarget = "modules" | "samples" | "library";
 
-const PICKER_TITLES: Readonly<Record<PickerTarget, string>> = {
-    modules: "Choose your module folder",
-    samples: "Add a sample folder",
-    library: "Choose where to store the library",
+const PICKER_TITLES: Readonly<Record<PickerTarget, MessageId>> = {
+    modules: M.setup.folders.pickModules,
+    samples: M.setup.folders.pickSamples,
+    library: M.setup.folders.pickLibrary,
 };
 const REMOVE_GLYPH = "×";
 
@@ -40,29 +42,26 @@ function withChosenFolder(sources: LibrarySources, target: PickerTarget, path: s
 
 interface FooterConditions {
     readonly saving: boolean;
-    readonly refusal: string | null;
+    readonly refusal: Message | null;
     readonly buildRunning: boolean;
     readonly hasSources: boolean;
     readonly saved: boolean;
 }
 
-export const WAIT_FOR_THE_BUILD = "Wait for the build to finish or cancel it.";
-export const CHOOSE_A_FOLDER_FIRST = "Choose at least one folder first.";
-
 function footerMessage(conditions: FooterConditions): SetupMessageText | null {
     if (conditions.saving) {
-        return { text: "Saving…", tone: "normal" };
+        return { content: { id: M.setup.folders.saving }, tone: "normal" };
     }
     if (conditions.refusal !== null) {
-        return { text: conditions.refusal, tone: "error" };
+        return { content: conditions.refusal, tone: "error" };
     }
     if (conditions.buildRunning) {
-        return { text: WAIT_FOR_THE_BUILD, tone: "normal" };
+        return { content: { id: M.setup.folders.waitForBuild }, tone: "normal" };
     }
     if (!conditions.hasSources) {
-        return { text: CHOOSE_A_FOLDER_FIRST, tone: "normal" };
+        return { content: { id: M.setup.folders.chooseFolderFirst }, tone: "normal" };
     }
-    return conditions.saved ? { text: "Saved.", tone: "normal" } : null;
+    return conditions.saved ? { content: { id: M.setup.folders.saved }, tone: "normal" } : null;
 }
 
 /**
@@ -71,9 +70,10 @@ function footerMessage(conditions: FooterConditions): SetupMessageText | null {
  * row whatever is chosen, and the footer's message line takes what the form has to say.
  */
 export function SourcesForm({ state, draft, onSaved }: SourcesFormProps): ReactElement {
+    const { text } = useMessages();
     const [picker, setPicker] = useState<PickerTarget | null>(null);
     const [saving, setSaving] = useState(false);
-    const [refusal, setRefusal] = useState<string | null>(null);
+    const [refusal, setRefusal] = useState<Message | null>(null);
 
     const sources = draft.sources;
     const configured = state.sources !== null;
@@ -100,7 +100,7 @@ export function SourcesForm({ state, draft, onSaved }: SourcesFormProps): ReactE
             onSaved(saved);
             draft.reset(saved.sources ?? sources);
         } catch (error: unknown) {
-            setRefusal(describeRefusal(error));
+            setRefusal(failureOf(error));
         } finally {
             setSaving(false);
         }
@@ -116,24 +116,22 @@ export function SourcesForm({ state, draft, onSaved }: SourcesFormProps): ReactE
                     void handleSave();
                 }}
             >
-                {configured ? "Save changes" : "Save and open the library"}
+                {text(configured ? M.setup.folders.saveChanges : M.setup.folders.saveAndOpen)}
             </Button>
         </>
     );
 
     return (
         <>
-            <SetupPane title="Folders" titleId="setup-sources-title" footer={footer}>
-                <p className="setup-lead">
-                    Choose where your tracker modules and sample packs are. You need at least one.
-                </p>
+            <SetupPane title={text(M.setup.folders.title)} titleId="setup-sources-title" footer={footer}>
+                <p className="setup-lead">{text(M.setup.folders.lead)}</p>
 
                 <fieldset className="group">
-                    <legend>Tracker modules</legend>
-                    <p className="setup-hint">A folder with your XM, IT, MOD and S3M files. Subfolders are included.</p>
+                    <legend>{text(M.setup.folders.modulesLegend)}</legend>
+                    <p className="setup-hint">{text(M.setup.folders.modulesHint)}</p>
                     <PathRow
                         path={sources.module_source_directory}
-                        placeholder="No folder chosen"
+                        placeholder={text(M.setup.folders.noFolder)}
                         onBrowse={() => {
                             setPicker("modules");
                         }}
@@ -144,12 +142,12 @@ export function SourcesForm({ state, draft, onSaved }: SourcesFormProps): ReactE
                 </fieldset>
 
                 <fieldset className="group">
-                    <legend>Sample folders</legend>
-                    <p className="setup-hint">Folders with WAV, AIFF or FLAC files. The files stay where they are.</p>
+                    <legend>{text(M.setup.folders.samplesLegend)}</legend>
+                    <p className="setup-hint">{text(M.setup.folders.samplesHint)}</p>
                     <ul className="listbox setup-folder-list">
                         {sources.sample_directories.length === 0 && (
                             <li className="listbox-row listbox-empty">
-                                <FolderPath path={null} placeholder="No sample folders yet" />
+                                <FolderPath path={null} placeholder={text(M.setup.folders.noSampleFolders)} />
                             </li>
                         )}
                         {sources.sample_directories.map((directory) => (
@@ -158,7 +156,7 @@ export function SourcesForm({ state, draft, onSaved }: SourcesFormProps): ReactE
                                 <Button
                                     variant="quiet"
                                     icon
-                                    aria-label="Remove"
+                                    aria-label={text(M.setup.folders.remove)}
                                     onClick={() => {
                                         change((current) => ({
                                             ...current,
@@ -180,15 +178,15 @@ export function SourcesForm({ state, draft, onSaved }: SourcesFormProps): ReactE
                                 setPicker("samples");
                             }}
                         >
-                            Add a folder…
+                            {text(M.setup.folders.addFolder)}
                         </Button>
                     </div>
                     <label className="setup-label">
-                        Skip files matching
+                        {text(M.setup.folders.exclusionsLabel)}
                         <input
                             type="text"
                             className="field"
-                            placeholder="*loop*, *.aif"
+                            placeholder={text(M.setup.folders.exclusionsPlaceholder)}
                             value={draft.exclusionsText}
                             onChange={(event) => {
                                 setRefusal(null);
@@ -196,15 +194,12 @@ export function SourcesForm({ state, draft, onSaved }: SourcesFormProps): ReactE
                             }}
                         />
                     </label>
-                    <p className="setup-hint">Separate patterns with commas.</p>
+                    <p className="setup-hint">{text(M.setup.folders.exclusionsHint)}</p>
                 </fieldset>
 
                 <fieldset className="group">
-                    <legend>Library location</legend>
-                    <p className="setup-hint">
-                        Where SampleRipper keeps its database and everything it creates. Choose a drive with plenty of
-                        free space.
-                    </p>
+                    <legend>{text(M.setup.folders.locationLegend)}</legend>
+                    <p className="setup-hint">{text(M.setup.folders.locationHint)}</p>
                     <PathRow
                         path={sources.library_root}
                         placeholder=""
@@ -218,7 +213,7 @@ export function SourcesForm({ state, draft, onSaved }: SourcesFormProps): ReactE
 
             {picker !== null && (
                 <FolderPicker
-                    title={PICKER_TITLES[picker]}
+                    title={text(PICKER_TITLES[picker])}
                     initialPath={picker === "modules" ? sources.module_source_directory : null}
                     onChoose={(path) => {
                         setPicker(null);

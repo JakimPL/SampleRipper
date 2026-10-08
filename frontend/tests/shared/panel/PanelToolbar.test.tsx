@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { M } from "../../../src/messages/messageIds";
 import { PanelToolbar, TOOLBAR_COLLAPSE_WIDTH_PX } from "../../../src/shared/panel/PanelToolbar";
 
 function rectOfWidth(width: number): DOMRect {
@@ -23,7 +24,7 @@ describe("PanelToolbar", () => {
         renderToolbar(TOOLBAR_COLLAPSE_WIDTH_PX);
 
         expect(screen.getByRole("button", { name: "Favorites" })).toBeVisible();
-        expect(screen.queryByText("Filters")).not.toBeInTheDocument();
+        expect(screen.queryByText(M.shared.filters)).not.toBeInTheDocument();
         expect(screen.getByText("3 of 40 loaded")).toBeInTheDocument();
     });
 
@@ -33,7 +34,7 @@ describe("PanelToolbar", () => {
         expect(screen.getByLabelText("Filter")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Favorites" })).not.toBeVisible();
 
-        fireEvent.click(screen.getByText("Filters"));
+        fireEvent.click(screen.getByText(M.shared.filters));
 
         expect(screen.getByRole("button", { name: "Favorites" })).toBeVisible();
     });

@@ -2,10 +2,12 @@ import { type ReactElement, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { quitApplication, type SetupState } from "../api/setup";
+import { M, type Message } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
+import { failureOf } from "../shared/failure";
 import { Loading } from "../shared/Loading";
 import { CLOSED_PATH } from "./ClosedView";
 import { LibraryPanel } from "./LibraryPanel";
-import { describeRefusal } from "./refusal";
 import { SetupTopBar } from "./SetupTopBar";
 import { SourcesForm } from "./SourcesForm";
 import { lastKnownState, type SetupSource, useSetupState } from "./useSetupState";
@@ -28,17 +30,15 @@ function SetupPanes({ state, onChanged }: SetupPanesProps): ReactElement {
 }
 
 function SetupPlaceholder({ source }: { readonly source: SetupSource }): ReactElement | null {
+    const { text } = useMessages();
     switch (source.status) {
         case "loading":
             return <Loading />;
         case "absent":
             return (
                 <section className="setup-card">
-                    <h2>Setup isn&apos;t available here</h2>
-                    <p className="setup-hint">
-                        This server only shows the library. To choose folders and build the library, start SampleRipper
-                        with `sampleripper app`.
-                    </p>
+                    <h2>{text(M.setup.view.unavailableTitle)}</h2>
+                    <p className="setup-hint">{text(M.setup.view.unavailableBody)}</p>
                 </section>
             );
         case "unreachable":
@@ -55,11 +55,15 @@ function SetupPlaceholder({ source }: { readonly source: SetupSource }): ReactEl
  */
 export function SetupView(): ReactElement {
     const { source, accept } = useSetupState();
+    const { textOf } = useMessages();
     const navigate = useNavigate();
-    const [quitRefusal, setQuitRefusal] = useState<string | null>(null);
+    const [quitRefusal, setQuitRefusal] = useState<Message | null>(null);
     const state = lastKnownState(source);
-    const notice =
-        quitRefusal ?? (source.status === "unreachable" ? `Can't reach SampleRipper: ${source.message}` : null);
+    const unreachable: Message | null =
+        source.status === "unreachable"
+            ? { id: M.setup.view.unreachable, values: { message: textOf(source.failure) } }
+            : null;
+    const notice = quitRefusal ?? unreachable;
 
     async function handleQuit(): Promise<void> {
         setQuitRefusal(null);
@@ -67,7 +71,7 @@ export function SetupView(): ReactElement {
             await quitApplication();
             void navigate(CLOSED_PATH, { replace: true });
         } catch (error: unknown) {
-            setQuitRefusal(describeRefusal(error));
+            setQuitRefusal(failureOf(error));
         }
     }
 

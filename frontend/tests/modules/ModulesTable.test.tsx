@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Module } from "../../src/api/modules";
+import { M } from "../../src/messages/messageIds";
 import { ModulesTable } from "../../src/modules/ModulesTable";
 import { useListingOrderStore } from "../../src/workspace/listingOrderStore";
 import { ROW_LINK_ATTRIBUTE } from "../../src/workspace/rowLinks";
@@ -56,7 +57,7 @@ describe("ModulesTable", () => {
         renderTable();
         expect(useListingOrderStore.getState().orderByKind.module).toEqual(["a", "b", "c"]);
 
-        fireEvent.click(screen.getByText("Title"));
+        fireEvent.click(screen.getByText(M.modules.fields.title));
 
         expect(useListingOrderStore.getState().orderByKind.module).toEqual(["b", "c", "a"]);
     });
@@ -64,17 +65,17 @@ describe("ModulesTable", () => {
     it("sorts by a column when its header is clicked, toggling direction on a second click", () => {
         renderTable();
 
-        fireEvent.click(screen.getByText("Title"));
+        fireEvent.click(screen.getByText(M.modules.fields.title));
         expect(titleOrder()).toEqual(["Alpha", "Mid", "Zeta"]);
 
-        fireEvent.click(screen.getByText("Title"));
+        fireEvent.click(screen.getByText(M.modules.fields.title));
         expect(titleOrder()).toEqual(["Zeta", "Mid", "Alpha"]);
     });
 
     it("narrows rows to those matching the free-text filter", () => {
         renderTable();
 
-        fireEvent.change(screen.getByPlaceholderText("Filter modules…"), { target: { value: "alpha" } });
+        fireEvent.change(screen.getByPlaceholderText(M.modules.filterPlaceholder), { target: { value: "alpha" } });
 
         expect(titleOrder()).toEqual(["Alpha"]);
     });
@@ -137,7 +138,7 @@ describe("ModulesTable", () => {
     it("narrows rows to the selected tracker", () => {
         renderTable();
 
-        fireEvent.change(screen.getByLabelText("Tracker"), { target: { value: "it" } });
+        fireEvent.change(screen.getByLabelText(M.modules.fields.tracker), { target: { value: "it" } });
 
         expect(titleOrder()).toEqual(["Alpha"]);
     });

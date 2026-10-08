@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 
 import { useLayoutMode } from "../../layout/useLayoutMode";
+import { useMessages } from "../../messages/useMessages";
 import { ModuleDetailView } from "../../modules/ModuleDetailView";
 import { useModule } from "../../modules/useModule";
 import { ErrorNotice } from "../../shared/ErrorNotice";
@@ -28,9 +29,10 @@ function FocusedModuleDetail({ moduleHash }: FocusedModuleDetailProps): ReactEle
 export function ModuleDetailPanel(): ReactElement {
     const focusedModuleHash = useSelectionStore((state) => state.focusedModuleHash);
     const { input } = useLayoutMode();
+    const { text } = useMessages();
 
     if (focusedModuleHash === null) {
-        return <p className="no-selection">{hintFor("noModule", input)}</p>;
+        return <p className="no-selection">{text(hintFor("noModule", input))}</p>;
     }
 
     return <FocusedModuleDetail moduleHash={focusedModuleHash} />;

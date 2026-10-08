@@ -1,6 +1,8 @@
 import type { ReactElement } from "react";
 import { Link } from "react-router-dom";
 
+import { M } from "../../messages/messageIds";
+import { useMessages } from "../../messages/useMessages";
 import { useMorphStore } from "../../morph/morphStore";
 import { classNames } from "../../shared/classNames";
 import { Icon } from "../../shared/icons/Icon";
@@ -35,9 +37,10 @@ export function TabBar({ tabs, activeTabId }: TabBarProps): ReactElement {
     const second = useMorphStore((state) => state.second);
     const enabled = useMorphStore((state) => state.enabled);
     const pairState = pairStateOf(first, second);
+    const { text } = useMessages();
 
     return (
-        <nav className="tab-bar" aria-label="Sections">
+        <nav className="tab-bar" aria-label={text(M.shell.tabBar.label)}>
             {tabs.map((tab) => (
                 <Link
                     key={tab.id}
@@ -47,7 +50,7 @@ export function TabBar({ tabs, activeTabId }: TabBarProps): ReactElement {
                     aria-current={tab.id === activeTabId ? "page" : undefined}
                 >
                     <Icon name={tab.icon} label={null} />
-                    <span className="tab-bar-label">{tab.shortTitle}</span>
+                    <span className="tab-bar-label">{text(tab.shortTitle)}</span>
                     {tab.id === CLOUD_TAB_ID && enabled && pairState !== "none" && (
                         <span
                             className={classNames("tab-bar-dot", pairState === "half" && "is-half")}

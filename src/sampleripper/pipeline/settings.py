@@ -11,9 +11,17 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from samplecore.config import PIPELINE_TABLE, ConfigurationError, resolve_config_path
 from samplecore.digests import digest_of_rows
+from samplecore.messages import INVALID_TOML
 from sampledescriptor.pretrained import publishes_pretrained
 from sampleripper.limits.ceiling import MalformedCeiling, MemoryCeiling
 from sampleripper.pipeline.devices import AUTOMATIC_DEVICE
+from sampleripper.pipeline.messages import (
+    CEILING_REFUSED,
+    CONFIG_UNREADABLE,
+    SETTING_REFUSED,
+    STEP_SETTING_REFUSED,
+    TABLE_NOT_A_TABLE,
+)
 
 DEFAULT_MEMORY_CAP: Final[str] = "none"
 OPERATIONAL_STEP_SETTINGS: Final[set[str]] = {"memory_cap", "batch_size"}
@@ -112,7 +120,9 @@ class PipelineSettings(BaseModel):
         except ValidationError as error:
             first = error.errors()[0]
             location = ".".join(str(part) for part in first["loc"])
-            raise ConfigurationError(f"[{PIPELINE_TABLE}.{step}] {location}: {first['msg']}") from error
+            raise ConfigurationError(
+                STEP_SETTING_REFUSED.format(table=PIPELINE_TABLE, step=step, location=location, problem=first["msg"])
+            ) from error
 
 
 def read_pipeline_settings(path: Path | None = None) -> PipelineSettings:
@@ -127,13 +137,13 @@ def read_pipeline_settings(path: Path | None = None) -> PipelineSettings:
         with config_path.open("rb") as file:
             document = tomllib.load(file)
     except OSError as error:
-        raise ConfigurationError(f"{config_path} cannot be read ({error.strerror})") from error
+        raise ConfigurationError(CONFIG_UNREADABLE.format(path=config_path, reason=error.strerror)) from error
     except tomllib.TOMLDecodeError as error:
-        raise ConfigurationError(f"{config_path} is not valid TOML: {error}") from error
+        raise ConfigurationError(INVALID_TOML.format(path=config_path, error=error)) from error
 
     table = document.get(PIPELINE_TABLE, {})
     if not isinstance(table, dict):
-        raise ConfigurationError(f"[{PIPELINE_TABLE}] in {config_path} holds a value where a table belongs")
+        raise ConfigurationError(TABLE_NOT_A_TABLE.format(table=PIPELINE_TABLE, path=config_path))
     scalars = {name: value for name, value in table.items() if not isinstance(value, dict)}
     steps = {name: value for name, value in table.items() if isinstance(value, dict)}
     try:
@@ -142,9 +152,11 @@ def read_pipeline_settings(path: Path | None = None) -> PipelineSettings:
     except ValidationError as error:
         first = error.errors()[0]
         location = ".".join(str(part) for part in first["loc"]) or PIPELINE_TABLE
-        raise ConfigurationError(f"[{PIPELINE_TABLE}] in {config_path}: {location}: {first['msg']}") from error
+        raise ConfigurationError(
+            SETTING_REFUSED.format(table=PIPELINE_TABLE, path=config_path, location=location, problem=first["msg"])
+        ) from error
     except MalformedCeiling as error:
-        raise ConfigurationError(f"[{PIPELINE_TABLE}] in {config_path}: {error}") from error
+        raise ConfigurationError(CEILING_REFUSED.format(table=PIPELINE_TABLE, path=config_path, error=error)) from error
     return settings
 
 

@@ -288,8 +288,7 @@ export interface components {
             readonly ended_at: string | null;
             /** Steps */
             readonly steps: readonly components["schemas"]["StepView"][];
-            /** Problem */
-            readonly problem: string | null;
+            readonly problem: components["schemas"]["Problem"] | null;
             /** Log Tail */
             readonly log_tail: readonly string[];
         };
@@ -333,6 +332,12 @@ export interface components {
          */
         readonly LibraryStatus: "unconfigured" | "starting" | "ready" | "failed";
         /**
+         * MessageCode
+         * @description What went wrong, named for the web app to word in the person's language.
+         * @enum {string}
+         */
+        readonly MessageCode: "not_admitted" | "not_found" | "unreadable_audio" | "morph_unavailable" | "morph_timed_out" | "morph_refused" | "curation_withheld" | "too_many_requests" | "too_many_morphs" | "morphs_busy" | "library_not_open" | "library_in_use" | "library_open_failed" | "public_library_refused" | "save_folders_first" | "build_in_progress" | "build_already_running" | "build_step_stopped" | "build_refused" | "folder_not_a_folder" | "folder_unreadable" | "folder_not_absolute" | "folders_overlap" | "exclusion_empty" | "settings_invalid" | "configuration_refused";
+        /**
          * Place
          * @description A folder the folder browser offers as a starting point: a person's own folders, and every drive.
          */
@@ -341,6 +346,22 @@ export interface components {
             readonly name: string;
             /** Path */
             readonly path: string;
+        };
+        /**
+         * Problem
+         * @description One thing that went wrong, as the web app words it: a code, the values its sentence names, and the technical reason.
+         *
+         *     The ``reason`` holds the plain technical sentence for a reader who can use it; the web app shows
+         *     it beside its own wording of the code.
+         */
+        readonly Problem: {
+            readonly code: components["schemas"]["MessageCode"];
+            /** Params */
+            readonly params: {
+                readonly [key: string]: string | number;
+            };
+            /** Reason */
+            readonly reason: string | null;
         };
         /**
          * ProgressReport
@@ -387,8 +408,7 @@ export interface components {
             readonly suggested_library_root: string;
             /** Manages Database */
             readonly manages_database: boolean | null;
-            /** Problem */
-            readonly problem: string | null;
+            readonly problem: components["schemas"]["Problem"] | null;
             readonly build: components["schemas"]["JobView"] | null;
             readonly home_network: components["schemas"]["HomeNetworkReach"];
         };

@@ -2,6 +2,8 @@ import type { KeyboardEvent, ReactElement } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { getLabelVocabulary } from "../api/curation";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { useFetch } from "../shared/useFetch";
 import { VOCABULARY_CACHE_KEY } from "./useAnnotationWriter";
 
@@ -27,6 +29,7 @@ interface LabelFieldProps {
  * settles by habit rather than by a schema nobody has designed yet.
  */
 export function LabelField({ label, onCommit, onLeave, takesFocus }: LabelFieldProps): ReactElement {
+    const messages = useMessages();
     const vocabularyListId = useId();
     const vocabulary = useFetch(getLabelVocabulary, [], { cacheKey: VOCABULARY_CACHE_KEY });
     const [text, setText] = useState(label ?? "");
@@ -66,9 +69,9 @@ export function LabelField({ label, onCommit, onLeave, takesFocus }: LabelFieldP
                 className="annotation-editor-input field"
                 type="text"
                 list={vocabularyListId}
-                placeholder="Label (e.g. BASS)"
+                placeholder={messages.text(M.samples.label.fieldPlaceholder)}
                 value={text}
-                aria-label="Hand label"
+                aria-label={messages.text(M.samples.label.handLabel)}
                 onChange={(event) => {
                     setText(event.target.value);
                 }}

@@ -6,10 +6,12 @@ import type * as CloudApi from "../../../src/api/cloud";
 import type * as CurationApi from "../../../src/api/curation";
 import type * as ModulesApi from "../../../src/api/modules";
 import type * as SamplesApi from "../../../src/api/samples";
+import { M } from "../../../src/messages/messageIds";
 import { useAudioPreview } from "../../../src/samples/useAudioPreview";
 import { useCurationAccess } from "../../../src/samples/useCurationAccess";
 import { Tray, useEntityInHand } from "../../../src/shell/phone/Tray";
 import { useSelectionStore } from "../../../src/workspace/selectionStore";
+import { keyed } from "../../support/keyedMessages";
 
 const { getSamplePreview, getSample, getSampleRelations, getSimilarSamples, getModule, getCategoryTags } = vi.hoisted(
     () => ({
@@ -117,7 +119,7 @@ function renderTray(): ReturnType<typeof render> {
 /** The tray once the sample's detail has landed, which is when its heart appears. */
 async function trayWithDetail(): Promise<void> {
     renderTray();
-    await screen.findByRole("button", { name: "Favorite" });
+    await screen.findByRole("button", { name: M.samples.favorite.yes });
 }
 
 describe("useEntityInHand", () => {
@@ -149,8 +151,11 @@ describe("Tray", () => {
         renderTray();
 
         expect(await screen.findByText("kick")).toBeInTheDocument();
-        expect(screen.getByRole("region", { name: "Sample in hand" })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Open sample" })).toHaveAttribute("href", `/samples/${SAMPLE_HASH}`);
+        expect(screen.getByRole("region", { name: M.shell.tray.selectedSample })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: M.samples.openSample })).toHaveAttribute(
+            "href",
+            `/samples/${SAMPLE_HASH}`,
+        );
         expect(await screen.findByText("×3")).toBeInTheDocument();
     });
 
@@ -183,14 +188,14 @@ describe("Tray", () => {
             result.current.stop();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "Play sample" }));
+        fireEvent.click(screen.getByRole("button", { name: M.samples.player.play }));
         expect(result.current.playingKey).toBe(SAMPLE_HASH);
         expect(result.current.source?.playbackRateHz).toBe(8363);
 
-        fireEvent.click(screen.getByRole("button", { name: "Pause sample" }));
+        fireEvent.click(screen.getByRole("button", { name: M.samples.player.pause }));
         expect(result.current.paused).toBe(true);
 
-        fireEvent.click(screen.getByRole("button", { name: "Play sample" }));
+        fireEvent.click(screen.getByRole("button", { name: M.samples.player.play }));
         expect(result.current.paused).toBe(false);
         expect(result.current.playingKey).toBe(SAMPLE_HASH);
     });
@@ -199,7 +204,7 @@ describe("Tray", () => {
         useSelectionStore.getState().highlightEntity({ kind: "sample", hash: SAMPLE_HASH });
         await trayWithDetail();
 
-        fireEvent.click(screen.getByRole("button", { name: "Favorite" }));
+        fireEvent.click(screen.getByRole("button", { name: M.samples.favorite.yes }));
 
         await waitFor(() => {
             expect(changeSampleAnnotation).toHaveBeenCalledWith(SAMPLE_HASH, "equivalence_class", { favorite: true });
@@ -210,13 +215,13 @@ describe("Tray", () => {
         useSelectionStore.getState().highlightEntity({ kind: "sample", hash: SAMPLE_HASH });
         await trayWithDetail();
 
-        fireEvent.click(screen.getByRole("button", { name: "Rate 4" }));
+        fireEvent.click(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 4 }) }));
 
         await waitFor(() => {
             expect(changeSampleAnnotation).toHaveBeenCalledWith(SAMPLE_HASH, "equivalence_class", { rating: 4 });
         });
-        expect(screen.queryByRole("button", { name: "Label…" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /Morph/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: M.samples.label.openSheet })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: M.morph.strip })).not.toBeInTheDocument();
     });
 
     it("shows no stars or heart where no one's decisions are shown", async () => {
@@ -225,8 +230,10 @@ describe("Tray", () => {
         renderTray();
 
         await screen.findByText("×3");
-        expect(screen.queryByRole("button", { name: "Favorite" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Rate 4" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: M.samples.favorite.yes })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: keyed(M.samples.rating.rate, { value: 4 }) }),
+        ).not.toBeInTheDocument();
     });
 
     it("names the module in hand and offers the way to open it", async () => {
@@ -234,8 +241,8 @@ describe("Tray", () => {
         renderTray();
 
         expect(await screen.findByText("A Song")).toBeInTheDocument();
-        expect(screen.getByRole("region", { name: "Module in hand" })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Open module" })).toHaveAttribute("href", `/modules/${MODULE_HASH}`);
+        expect(screen.getByRole("region", { name: M.shell.tray.selectedModule })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: M.modules.open })).toHaveAttribute("href", `/modules/${MODULE_HASH}`);
     });
 
     it("opens the module from a double tap on its name", async () => {

@@ -1,6 +1,8 @@
 import type { ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { M, type MessageId } from "../../messages/messageIds";
+import { useMessages } from "../../messages/useMessages";
 import { type MorphEnd, OTHER_END, useMorphStore } from "../../morph/morphStore";
 import { samplePreview, useAudioPreview } from "../../samples/useAudioPreview";
 import { shortHash } from "../../shared/format";
@@ -8,7 +10,10 @@ import { ActionSheet, type SheetAction } from "../../shared/overlay/ActionSheet"
 import type { EntityRef } from "../selectionStore";
 import { entityRoute } from "../useEntityRowInteractions";
 
-const USE_AS_LABELS: Readonly<Record<MorphEnd, string>> = { first: "Use as A", second: "Use as B" };
+const USE_AS_LABELS: Readonly<Record<MorphEnd, MessageId>> = {
+    first: M.workspace.pointMenu.useAsFirst,
+    second: M.workspace.pointMenu.useAsSecond,
+};
 
 interface CloudPointMenuProps {
     readonly entity: EntityRef;
@@ -32,6 +37,7 @@ export function CloudPointMenu({
     onSelectAtOtherEnd,
     onClose,
 }: CloudPointMenuProps): ReactElement {
+    const { text } = useMessages();
     const navigate = useNavigate();
     const { play } = useAudioPreview();
     const otherEnd = useMorphStore((state) => OTHER_END[state.selectedEnd]);
@@ -41,7 +47,7 @@ export function CloudPointMenu({
             ? [
                   {
                       id: "play",
-                      label: "Play",
+                      label: text(M.samples.rowActions.play),
                       disabled: false,
                       run: () => {
                           play(samplePreview(entity.hash, playbackRateHz));
@@ -49,7 +55,7 @@ export function CloudPointMenu({
                   },
                   {
                       id: "use-at-other-end",
-                      label: USE_AS_LABELS[otherEnd],
+                      label: text(USE_AS_LABELS[otherEnd]),
                       disabled: false,
                       run: () => {
                           onSelectAtOtherEnd(entity);
@@ -61,7 +67,7 @@ export function CloudPointMenu({
         ...sampleActions,
         {
             id: "open",
-            label: "Open",
+            label: text(M.samples.rowActions.open),
             disabled: false,
             run: () => {
                 void navigate(entityRoute(entity));
@@ -69,7 +75,7 @@ export function CloudPointMenu({
         },
         {
             id: "locate",
-            label: "Center on this point",
+            label: text(M.workspace.pointMenu.locate),
             disabled: false,
             run: () => {
                 onLocate(entity.hash);
@@ -79,7 +85,12 @@ export function CloudPointMenu({
 
     return (
         <ActionSheet
-            title={`${entity.kind === "sample" ? "Sample" : "Module"} ${shortHash(entity.hash)}`}
+            title={text(
+                entity.kind === "sample" ? M.workspace.pointMenu.sampleTitle : M.workspace.pointMenu.moduleTitle,
+                {
+                    hash: shortHash(entity.hash),
+                },
+            )}
             actions={actions}
             onClose={onClose}
         >

@@ -1,3 +1,4 @@
+import type { Messages } from "../messages/useMessages";
 import { shortHash } from "../shared/format";
 import { UNNAMED_SAMPLE_LABEL } from "../shared/labels";
 import { useSamplePreview } from "./useSamplePreview";
@@ -9,9 +10,9 @@ export function useSampleName(hash: string): string | null {
 }
 
 /** The sample as a screen reader hears it: its name, the unnamed label, or the short hash until the catalog answers. */
-export function spokenNameOf(hash: string, name: string | null): string {
+export function spokenNameOf(hash: string, name: string | null, text: Messages["text"]): string {
     if (name === null) {
         return shortHash(hash);
     }
-    return name === "" ? UNNAMED_SAMPLE_LABEL : name;
+    return name === "" ? text(UNNAMED_SAMPLE_LABEL) : name;
 }

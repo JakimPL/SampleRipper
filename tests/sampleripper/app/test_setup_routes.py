@@ -14,9 +14,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from samplecore.config import DEFAULT_SERVER_CONFIG, PIPELINE_TABLE, load_config
+from samplecore.problems import MessageCode
 from sampleripper.app.asgi import create_application
 from sampleripper.app.installation import Installation, this_installation
-from sampleripper.app.launcher import LIBRARY_IN_USE, PUBLIC_LIBRARY_REFUSED, Launcher, LibraryStatus
+from sampleripper.app.launcher import Launcher, LibraryStatus
 from sampleripper.app.listener import CLOSED_TO_THE_NETWORK, HomeNetworkReach, starting_policy
 from sampleripper.pipeline.settings import DescriptorSource, read_pipeline_settings
 from sampleserver.policy import ServingPolicy
@@ -164,7 +165,7 @@ def test_a_library_another_application_holds_open_stays_with_it(config_path: Pat
             state = _wait_until_settled(second)
 
             assert state["status"] == LibraryStatus.FAILED
-            assert state["problem"] == LIBRARY_IN_USE
+            assert state["problem"]["code"] == MessageCode.LIBRARY_IN_USE
         assert first.get("/api/stats").status_code == 200
 
 
@@ -181,7 +182,7 @@ def test_a_library_whose_curator_may_do_more_than_record_labels_stays_closed(
         state = _wait_until_settled(client)
 
         assert state["status"] == LibraryStatus.FAILED
-        assert "doesn't fit a curator" in str(state["problem"])
+        assert "doesn't fit a curator" in state["problem"]["reason"]
         assert client.get("/api/stats").status_code == 503
 
 
@@ -197,7 +198,7 @@ def test_a_library_served_to_anyone_stays_closed_in_the_application(tmp_path: Pa
         state = _wait_until_settled(client)
 
         assert state["status"] == LibraryStatus.FAILED
-        assert state["problem"] == PUBLIC_LIBRARY_REFUSED
+        assert state["problem"]["code"] == MessageCode.PUBLIC_LIBRARY_REFUSED
         assert client.get("/api/stats").status_code == 503
 
 
@@ -330,9 +331,11 @@ def test_folders_the_config_refuses_are_answered_with_the_reason(configured: Tes
     response = configured.put("/api/setup/sources", json=sources)
 
     assert response.status_code == 422
-    assert response.json()["detail"] == (
-        f"{tmp_path / 'packs'} and {tmp_path / 'packs' / 'drums'} overlap. Choose each folder only once."
-    )
+    assert response.json()["detail"]["code"] == MessageCode.FOLDERS_OVERLAP
+    assert response.json()["detail"]["params"] == {
+        "directory": str(tmp_path / "packs"),
+        "other": str(tmp_path / "packs" / "drums"),
+    }
 
 
 def test_the_folder_browser_lists_a_folder_and_refuses_a_missing_one(unconfigured: TestClient, tmp_path: Path) -> None:

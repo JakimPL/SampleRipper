@@ -6,6 +6,7 @@ from typing import Final
 from urllib.parse import urlsplit
 
 from samplecore.config import Exposure, ServerConfig, VisitorLimits
+from samplecore.problems import MessageCode, Problem
 from sampleserver.addresses import is_home_address, is_loopback, parsed_address
 
 LOCAL_HOST_NAMES: Final[frozenset[str]] = frozenset({"localhost", "127.0.0.1", "::1"})
@@ -115,9 +116,9 @@ class ServingPolicy:
             case Exposure.LOCAL:
                 return None
 
-    def refusal(self, internal: str, *, plain: str) -> str:
-        """What a refusal says: its ``internal`` detail where the policy names internals, the ``plain`` words otherwise."""
-        return internal if self.names_internals else plain
+    def refusal(self, internal: str, *, code: MessageCode) -> Problem:
+        """What a refusal carries: ``code``, with the ``internal`` reason where the policy names internals."""
+        return Problem.of(code, reason=internal if self.names_internals else None)
 
     @property
     def bind_host(self) -> str:

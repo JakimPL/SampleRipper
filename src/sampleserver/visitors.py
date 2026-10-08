@@ -6,17 +6,19 @@ from collections import OrderedDict
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from http import HTTPStatus
 from ipaddress import IPv4Address, IPv6Address, IPv6Network
 from typing import Final
 
-from fastapi import HTTPException, status
+from fastapi import status
 from starlette.requests import HTTPConnection
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from samplecore.config import VisitorLimits
+from samplecore.problems import MessageCode
 from sampleserver.addresses import parsed_address
-from sampleserver.messages import MORPHS_BUSY, TOO_MANY_MORPHS, TOO_MANY_REQUESTS
+from sampleserver.problems import plain_problem, refusal
 
 # How many visitors' budgets are held at once; the one idle longest is forgotten first, which leaves
 # a visitor so long idle a full budget, as waiting would have anyway.
@@ -132,7 +134,7 @@ class VisitorRequestLimits:
             wait = self._budget.take(visitor_of(connection, address_header=self._limits.address_header), cost)
             if wait is not None:
                 response = JSONResponse(
-                    {"detail": TOO_MANY_REQUESTS},
+                    {"detail": plain_problem(MessageCode.TOO_MANY_REQUESTS).model_dump(mode="json")},
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     headers={RETRY_AFTER_HEADER: str(math.ceil(wait))},
                 )
@@ -217,9 +219,9 @@ class MorphGate:
             if wait is not None
         ]
         if waits:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=TOO_MANY_MORPHS,
+            raise refusal(
+                HTTPStatus.TOO_MANY_REQUESTS,
+                plain_problem(MessageCode.TOO_MANY_MORPHS),
                 headers={RETRY_AFTER_HEADER: str(math.ceil(max(waits)))},
             )
         if not names_a_render:
@@ -243,7 +245,7 @@ class MorphGate:
             HTTPException: 503 while every place is taken.
         """
         if self._in_flight >= self._concurrent:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=MORPHS_BUSY)
+            raise refusal(HTTPStatus.SERVICE_UNAVAILABLE, plain_problem(MessageCode.MORPHS_BUSY))
         self._in_flight += 1
         try:
             yield

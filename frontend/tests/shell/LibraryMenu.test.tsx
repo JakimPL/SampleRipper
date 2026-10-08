@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type * as SetupApi from "../../src/api/setup";
 import type { SetupState } from "../../src/api/setup";
+import { M } from "../../src/messages/messageIds";
 import { LibraryMenu } from "../../src/shell/LibraryMenu";
 
 const { getSetupState, quitApplication } = vi.hoisted(() => ({ getSetupState: vi.fn(), quitApplication: vi.fn() }));
@@ -48,8 +49,8 @@ describe("LibraryMenu", () => {
         getSetupState.mockResolvedValue(READY);
         renderWorkspace();
 
-        fireEvent.click(await screen.findByText("Library"));
-        fireEvent.click(screen.getByRole("button", { name: "Setup" }));
+        fireEvent.click(await screen.findByText(M.shell.menus.library));
+        fireEvent.click(screen.getByRole("button", { name: M.shell.menus.setup }));
 
         expect(await screen.findByText("The setup page")).toBeInTheDocument();
     });
@@ -59,8 +60,8 @@ describe("LibraryMenu", () => {
         quitApplication.mockResolvedValue(undefined);
         renderWorkspace();
 
-        fireEvent.click(await screen.findByText("Library"));
-        fireEvent.click(screen.getByRole("button", { name: "Quit SampleRipper" }));
+        fireEvent.click(await screen.findByText(M.shell.menus.library));
+        fireEvent.click(screen.getByRole("button", { name: M.shell.menus.quit }));
 
         expect(await screen.findByText("The closed page")).toBeInTheDocument();
     });
@@ -72,6 +73,6 @@ describe("LibraryMenu", () => {
         await waitFor(() => {
             expect(getSetupState).toHaveBeenCalled();
         });
-        expect(screen.queryByText("Library")).not.toBeInTheDocument();
+        expect(screen.queryByText(M.shell.menus.library)).not.toBeInTheDocument();
     });
 });

@@ -212,7 +212,7 @@ describe("a preview the browser cannot play", () => {
         });
 
         expect(result.current.playingKey).toBeNull();
-        expect(result.current.failure).toEqual({ key: "broken", message: "no supported source" });
+        expect(result.current.failure).toEqual({ key: "broken", problem: null });
         vi.unstubAllGlobals();
     });
 });
@@ -250,12 +250,14 @@ describe("holding and taking up a preview", () => {
     });
 });
 
+const TOO_MANY_MORPHS = { code: "too_many_morphs", params: {}, reason: null } as const;
+
 describe("playAnswered", () => {
-    it("reports a render the server declines in the server's own words, playing nothing", async () => {
+    it("reports the problem a server names for a render it declines, playing nothing", async () => {
         vi.stubGlobal(
             "fetch",
             vi.fn().mockResolvedValue(
-                new Response(JSON.stringify({ detail: "Too many morphs in a short time. Try again in a minute." }), {
+                new Response(JSON.stringify({ detail: TOO_MANY_MORPHS }), {
                     status: 429,
                     headers: { "Content-Type": "application/json" },
                 }),
@@ -273,7 +275,7 @@ describe("playAnswered", () => {
         expect(result.current.playingKey).toBeNull();
         expect(result.current.failure).toEqual({
             key: source.key,
-            message: "Too many morphs in a short time. Try again in a minute.",
+            problem: TOO_MANY_MORPHS,
         });
         vi.unstubAllGlobals();
     });

@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 
 import { floatRenderingSupport } from "../../cloud/floatRendering";
 import { useLayoutMode } from "../../layout/useLayoutMode";
+import { M } from "../../messages/messageIds";
+import { useMessages } from "../../messages/useMessages";
 import { SETUP_PATH } from "../../setup/SetupGate";
 import { useSetupProbe } from "../../setup/useSetupProbe";
 import { DisclosureMenu } from "../../shared/overlay/DisclosureMenu";
@@ -20,6 +22,7 @@ import { overflowPanels } from "./phoneView";
  */
 export function ScreenMenu(): ReactElement {
     const { input } = useLayoutMode();
+    const { text } = useMessages();
     const setup = useSetupProbe();
     const [guideOpen, setGuideOpen] = useState(false);
     const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
@@ -27,19 +30,19 @@ export function ScreenMenu(): ReactElement {
 
     return (
         <>
-            <DisclosureMenu label="More" className="screen-menu" variant="quiet">
+            <DisclosureMenu label={text(M.shell.menus.more)} className="screen-menu" variant="quiet">
                 <ul className="screen-menu-list">
                     {overflowPanels().map((panel) => (
                         <li key={panel.id}>
                             <Link to={panel.path} className="screen-menu-link">
-                                {panel.title}
+                                {text(panel.title)}
                             </Link>
                         </li>
                     ))}
                     {setup !== null && (
                         <li>
                             <Link to={SETUP_PATH} className="screen-menu-link">
-                                Library setup
+                                {text(M.shell.menus.librarySetup)}
                             </Link>
                         </li>
                     )}
@@ -51,7 +54,7 @@ export function ScreenMenu(): ReactElement {
                                 setGuideOpen(true);
                             }}
                         >
-                            {GUIDE_TITLES[input]}
+                            {text(GUIDE_TITLES[input])}
                         </button>
                     </li>
                     <li>
@@ -62,7 +65,7 @@ export function ScreenMenu(): ReactElement {
                                 setDiagnosticsOpen(true);
                             }}
                         >
-                            {DIAGNOSTICS_TITLE}
+                            {text(DIAGNOSTICS_TITLE)}
                         </button>
                     </li>
                     <li>
@@ -73,7 +76,7 @@ export function ScreenMenu(): ReactElement {
                                 setAboutOpen(true);
                             }}
                         >
-                            {ABOUT_TITLE}
+                            {text(ABOUT_TITLE)}
                         </button>
                     </li>
                 </ul>

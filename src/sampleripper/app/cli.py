@@ -27,6 +27,18 @@ from sampleripper.app.instance.system import HttpContact, SystemClock, SystemPro
 from sampleripper.app.instance.takeover import Claimed, Intent, Patience, Refused, Running, Takeover
 from sampleripper.app.launcher import Launcher
 from sampleripper.app.listener import LOOPBACK_HOST, home_network_reach, port_choices, starting_policy
+from sampleripper.app.messages import (
+    ALREADY_RUNNING,
+    BROWSER_HELP,
+    CLOSED,
+    DESCRIPTION,
+    FRONTEND_HELP,
+    NO_FRONTEND,
+    PORT_HELP,
+    PORT_TAKEN,
+    QUIT_HELP,
+    RUNNING,
+)
 from sampleripper.children import sampleripper_command
 from sampleserver.frontend import built_frontend
 
@@ -74,12 +86,12 @@ def main(argv: list[str], *, prog: str) -> None:
             _logger.error("%s", reason)
             sys.exit(ExitStatus.REFUSED)
         case Running(address=address):
-            _logger.info("SampleRipper is already running at %s. Opening it.", address)
+            _logger.info("%s", ALREADY_RUNNING.format(address=address))
             _open_browser(address, enabled=arguments.open_browser)
         case Claimed(lock=lock):
             with lock:
                 if arguments.quit:
-                    _logger.info("SampleRipper is closed.")
+                    _logger.info(CLOSED)
                     return
                 _serve(
                     place,
@@ -108,7 +120,7 @@ def _serve(
         try:
             listener = listen_on_first_free(policy.bind_host, port_choices(requested_port, read_record(place.record)))
         except PortUnavailableError as error:
-            _logger.error("%s Leave --port out to let SampleRipper choose a port.", error)
+            _logger.error("%s", PORT_TAKEN.format(error=error))
             sys.exit(ExitStatus.REFUSED)
         port: int = listener.getsockname()[1]
         write_record(place.record, InstanceRecord(host=LOOPBACK_HOST, port=port, process=current_process()))
@@ -121,7 +133,7 @@ def _serve(
             home_network=home_network_reach(policy, port=port),
         )
         if frontend is None:
-            _logger.warning("No built frontend found. Run `just frontend-build` first.")
+            _logger.warning(NO_FRONTEND)
 
         def schedule_browser() -> None:
             asyncio.get_running_loop().call_later(BROWSER_DELAY_SECONDS, _open_browser, address, open_browser)
@@ -131,7 +143,7 @@ def _serve(
         )
         server = uvicorn.Server(uvicorn.Config(application, proxy_headers=False))
         application.state.request_quit = lambda: setattr(server, "should_exit", True)
-        _logger.info("SampleRipper is running at %s. Press Ctrl+C or click Quit to stop it.", address)
+        _logger.info("%s", RUNNING.format(address=address))
         server.run(sockets=[listener])
 
 
@@ -141,30 +153,30 @@ def _open_browser(address: str, enabled: bool) -> None:
 
 
 def _parse_arguments(argv: list[str], *, prog: str) -> argparse.Namespace:
-    parser = command_parser(prog=prog, description="Run SampleRipper with its setup pages, opened in a browser.")
+    parser = command_parser(prog=prog, description=DESCRIPTION)
     parser.add_argument(
         "--port",
         type=port_number,
         default=None,
-        help="The port to listen on. Left out, SampleRipper keeps the port it listened on last, or finds a free one.",
+        help=PORT_HELP,
     )
     parser.add_argument(
         "--frontend",
         type=_frontend_directory,
         default=None,
-        help="A built frontend to serve instead of the bundled one.",
+        help=FRONTEND_HELP,
     )
     parser.add_argument(
         "--browser",
         dest="open_browser",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Open the application in the default browser on start.",
+        help=BROWSER_HELP,
     )
     parser.add_argument(
         "--quit",
         action="store_true",
-        help="Quit the SampleRipper running under this config, and wait until it has ended.",
+        help=QUIT_HELP,
     )
     return parser.parse_args(argv)
 

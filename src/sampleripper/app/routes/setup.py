@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel
 
 from samplecore.config import ConfigurationError, InvalidSettingsError
@@ -13,8 +14,9 @@ from samplecore.models.base import FROZEN
 from sampleripper.app.folders import FolderListing, FolderUnreadableError, Place, list_folder, places
 from sampleripper.app.installation import INSTALLATION_ROUTE, QUIT_ROUTE, Installation, this_installation
 from sampleripper.app.jobs import BuildTarget, JobAlreadyRunningError
-from sampleripper.app.launcher import BuildInProgressError, Launcher, LibraryClosedError, SetupState
+from sampleripper.app.launcher import BuildInProgressError, Launcher, LibraryClosedError, SetupState, problem_of
 from sampleserver.local_person import require_local_person
+from sampleserver.problems import refusal
 
 router = APIRouter(dependencies=[Depends(require_local_person)], tags=["setup"])
 
@@ -48,11 +50,11 @@ async def choose_sources(sources: LibrarySources, launcher: LauncherDependency) 
     try:
         launcher.choose_sources(sources)
     except BuildInProgressError as error:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
+        raise refusal(HTTPStatus.CONFLICT, error.problem) from error
     except InvalidSettingsError as error:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, " ".join(error.problems)) from error
+        raise refusal(HTTPStatus.UNPROCESSABLE_ENTITY, error.issues[0]) from error
     except ConfigurationError as error:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(error)) from error
+        raise refusal(HTTPStatus.UNPROCESSABLE_ENTITY, problem_of(error)) from error
     return launcher.state()
 
 
@@ -66,9 +68,9 @@ def choose_options(options: LibraryOptions, launcher: LauncherDependency) -> Set
     try:
         launcher.choose_options(options)
     except LibraryClosedError as error:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
+        raise refusal(HTTPStatus.CONFLICT, error.problem) from error
     except ConfigurationError as error:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(error)) from error
+        raise refusal(HTTPStatus.UNPROCESSABLE_ENTITY, problem_of(error)) from error
     return launcher.state()
 
 
@@ -88,7 +90,7 @@ def start_build(build_request: BuildRequest, launcher: LauncherDependency) -> Se
     try:
         launcher.build(build_request.target)
     except (LibraryClosedError, JobAlreadyRunningError) as error:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
+        raise refusal(HTTPStatus.CONFLICT, error.problem) from error
     return launcher.state()
 
 
@@ -113,7 +115,7 @@ def read_folder(path: Annotated[str, Query(min_length=1)]) -> FolderListing:
     try:
         return list_folder(Path(path))
     except FolderUnreadableError as error:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, str(error)) from error
+        raise refusal(HTTPStatus.NOT_FOUND, error.problem) from error
 
 
 @router.post(QUIT_ROUTE, status_code=status.HTTP_202_ACCEPTED)

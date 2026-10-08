@@ -2,10 +2,12 @@ import { act, fireEvent, render, renderHook, type RenderResult, screen } from "@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PHONE_MEDIA_QUERY } from "../../src/layout/layoutMode";
+import { M } from "../../src/messages/messageIds";
 import { NOMINAL_WAV_RATE_HZ } from "../../src/samples/nominalRate";
 import { samplePreview, useAudioPreview } from "../../src/samples/useAudioPreview";
 import type { RateOption } from "../../src/samples/WaveformPlayer";
 import { WaveformPlayer } from "../../src/samples/WaveformPlayer";
+import { keyed } from "../support/keyedMessages";
 import { stubMatchMedia } from "../support/matchMedia";
 
 const { instances, createMock } = vi.hoisted(() => {
@@ -92,7 +94,7 @@ describe("WaveformPlayer", () => {
             latestInstance().emit("error", new Error("404"));
         });
 
-        expect(screen.getByText(/Audio unavailable/)).toBeInTheDocument();
+        expect(screen.getByText(M.samples.player.unavailable)).toBeInTheDocument();
         expect(screen.getByRole("button")).toBeDisabled();
     });
 
@@ -113,7 +115,7 @@ describe("WaveformPlayer", () => {
         act(() => {
             latestInstance().emit("ready", 1.0);
         });
-        expect(screen.getByRole("button", { name: "Play sample" })).toHaveAttribute("aria-pressed", "false");
+        expect(screen.getByRole("button", { name: M.samples.player.play })).toHaveAttribute("aria-pressed", "false");
 
         fireEvent.click(screen.getByRole("button"));
         expect(latestInstance().play).toHaveBeenCalled();
@@ -121,7 +123,7 @@ describe("WaveformPlayer", () => {
         act(() => {
             latestInstance().emit("play");
         });
-        expect(screen.getByRole("button", { name: "Pause sample" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: M.samples.player.pause })).toHaveAttribute("aria-pressed", "true");
 
         fireEvent.click(screen.getByRole("button"));
         expect(latestInstance().pause).toHaveBeenCalled();
@@ -150,16 +152,20 @@ describe("WaveformPlayer", () => {
             ],
         });
 
-        expect(screen.getByRole("option", { name: "8363 Hz · played 1 time" })).toBeInTheDocument();
         expect(
-            screen.getByRole("option", { name: `${String(NOMINAL_WAV_RATE_HZ)} Hz · played 2 times` }),
+            screen.getByRole("option", { name: keyed(M.samples.player.rateOption, { count: 1, rateHz: 8363 }) }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole("option", {
+                name: keyed(M.samples.player.rateOption, { count: 2, rateHz: NOMINAL_WAV_RATE_HZ }),
+            }),
         ).toBeInTheDocument();
     });
 
     it("offers no choice for a sample the library plays at one rate throughout", () => {
         renderPlayer();
 
-        expect(screen.queryByLabelText("Rate")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(M.samples.player.rateLabel)).not.toBeInTheDocument();
     });
 
     it("applies a newly selected rate and reports it to the caller", () => {
@@ -172,7 +178,9 @@ describe("WaveformPlayer", () => {
             onRateChange,
         });
 
-        fireEvent.change(screen.getByLabelText("Rate"), { target: { value: String(NOMINAL_WAV_RATE_HZ) } });
+        fireEvent.change(screen.getByLabelText(M.samples.player.rateLabel), {
+            target: { value: String(NOMINAL_WAV_RATE_HZ) },
+        });
 
         expect(onRateChange).toHaveBeenCalledWith(NOMINAL_WAV_RATE_HZ);
         expect(latestInstance().setPlaybackRate).toHaveBeenCalledWith(1, false);
@@ -192,7 +200,7 @@ describe("WaveformPlayer", () => {
     it("offers the sample as a file, named as the library calls it", () => {
         renderPlayer({ fileName: "crash cymbal.wav" });
 
-        const save = screen.getByRole("link", { name: "Save this sample" });
+        const save = screen.getByRole("link", { name: M.samples.player.save });
         expect(save).toHaveAttribute("href", "/api/samples/abc/audio");
         expect(save).toHaveAttribute("download", "crash cymbal.wav");
     });
@@ -256,9 +264,9 @@ describe("WaveformPlayer on a phone", () => {
         });
 
         expect(container.querySelector(".wave-panel")).toHaveClass("wave-panel-compact");
-        expect(screen.queryByLabelText("Rate")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(M.samples.player.rateLabel)).not.toBeInTheDocument();
         expect(container.querySelector(".wave-panel > :last-child")).toBe(
-            screen.getByRole("link", { name: "Save this sample" }),
+            screen.getByRole("link", { name: M.samples.player.save }),
         );
         act(() => {
             latestInstance().emit("ready", 1.0);
@@ -292,7 +300,7 @@ describe("WaveformPlayer on a phone", () => {
         act(() => {
             latestInstance().emit("play");
         });
-        expect(screen.getByRole("button", { name: "Pause sample" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: M.samples.player.pause })).toHaveAttribute("aria-pressed", "true");
     });
 
     it("says under the row, outside the frame, when the audio cannot be loaded", () => {
@@ -302,7 +310,7 @@ describe("WaveformPlayer on a phone", () => {
             latestInstance().emit("error", new Error("404"));
         });
 
-        expect(screen.getByRole("status")).toHaveTextContent(/Audio unavailable/);
+        expect(screen.getByRole("status")).toHaveTextContent(M.samples.player.unavailable);
         expect(container.querySelector(".wave-panel-frame")?.textContent).toBe("");
         expect(screen.getByRole("button")).toBeDisabled();
     });

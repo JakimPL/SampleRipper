@@ -8,6 +8,7 @@ import {
     NO_DECISIONS,
 } from "../api/curation";
 import type { SampleDetail, SampleSummary } from "../api/samples";
+import type { Message } from "../messages/messageIds";
 
 /** One change sent and not yet answered, in the order it was sent. */
 export interface PendingChange {
@@ -21,13 +22,13 @@ interface AnnotationState {
     /** The changes still on their way to the server, per sample they reach. */
     readonly pendingBySampleHash: Readonly<Record<string, readonly PendingChange[]>>;
     /** Why the last change to a sample failed, until the next change to it is sent. */
-    readonly errorBySampleHash: Readonly<Record<string, string>>;
+    readonly errorBySampleHash: Readonly<Record<string, Message>>;
 }
 
 interface AnnotationActions {
     readonly beginChange: (sequence: number, sampleHashes: readonly string[], changes: AnnotationChanges) => void;
     readonly settleChange: (sequence: number, sampleHashes: readonly string[], written: AnnotationsWritten) => void;
-    readonly failChange: (sequence: number, sampleHashes: readonly string[], message: string) => void;
+    readonly failChange: (sequence: number, sampleHashes: readonly string[], message: Message) => void;
 }
 
 export const INITIAL_ANNOTATION_STATE: AnnotationState = {
@@ -141,6 +142,6 @@ export function useIsSavingSample(sampleHash: string): boolean {
 }
 
 /** Why the last change to this sample failed, or `null` when it did not. */
-export function useAnnotationError(sampleHash: string): string | null {
+export function useAnnotationError(sampleHash: string): Message | null {
     return useAnnotationStore((state) => state.errorBySampleHash[sampleHash] ?? null);
 }

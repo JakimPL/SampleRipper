@@ -1,8 +1,11 @@
 import { type ReactElement, useEffect, useState } from "react";
 
 import { type FolderListing, getFolder, getPlaces, type Place } from "../api/setup";
+import type { Message } from "../messages/messageIds";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
-import { describeError } from "../shared/fetchState";
+import { failureOf } from "../shared/failure";
 import { BottomSheet } from "../shared/overlay/BottomSheet";
 import { FolderPath } from "./FolderPath";
 import { SetupMessage, type SetupMessageText } from "./SetupMessage";
@@ -20,26 +23,29 @@ const FOLDER_GLYPH = "📁";
 
 type ListingState =
     | { readonly status: "loading" }
-    | { readonly status: "error"; readonly message: string }
+    | { readonly status: "error"; readonly message: Message }
     | { readonly status: "ready"; readonly listing: FolderListing };
 
 function describeListing(listing: ListingState): SetupMessageText {
     switch (listing.status) {
         case "loading":
-            return { text: "Loading…", tone: "normal" };
+            return { content: { id: M.shared.loading }, tone: "normal" };
         case "error":
-            return { text: listing.message, tone: "error" };
+            return { content: listing.message, tone: "error" };
         case "ready":
-            return { text: describeContents(listing.listing), tone: "normal" };
+            return { content: describeContents(listing.listing), tone: "normal" };
     }
 }
 
-function describeContents(listing: FolderListing): string {
-    const parts = [
-        listing.module_files > 0 ? `${String(listing.module_files)} modules` : null,
-        listing.audio_files > 0 ? `${String(listing.audio_files)} audio files` : null,
-    ].filter((part): part is string => part !== null);
-    return parts.length > 0 ? `Found ${parts.join(" and ")} here.` : "No modules or audio files here.";
+function describeContents(listing: FolderListing): Message {
+    const values = { modules: listing.module_files, audio: listing.audio_files };
+    if (listing.module_files > 0 && listing.audio_files > 0) {
+        return { id: M.setup.picker.foundBoth, values };
+    }
+    if (listing.module_files > 0) {
+        return { id: M.setup.picker.foundModules, values };
+    }
+    return listing.audio_files > 0 ? { id: M.setup.picker.foundAudio, values } : { id: M.setup.picker.foundNothing };
 }
 
 /**
@@ -49,6 +55,7 @@ function describeContents(listing: FolderListing): string {
  * height and the buttons one place while folders load.
  */
 export function FolderPicker({ title, initialPath, onChoose, onClose }: FolderPickerProps): ReactElement {
+    const { text } = useMessages();
     const [places, setPlaces] = useState<readonly Place[]>([]);
     const [path, setPath] = useState<string | null>(initialPath);
     const [listing, setListing] = useState<ListingState>({ status: "loading" });
@@ -65,7 +72,7 @@ export function FolderPicker({ title, initialPath, onChoose, onClose }: FolderPi
             })
             .catch((error: unknown) => {
                 if (active) {
-                    setListing({ status: "error", message: describeError(error) });
+                    setListing({ status: "error", message: failureOf(error) });
                 }
             });
         return (): void => {
@@ -87,7 +94,7 @@ export function FolderPicker({ title, initialPath, onChoose, onClose }: FolderPi
             })
             .catch((error: unknown) => {
                 if (active) {
-                    setListing({ status: "error", message: describeError(error) });
+                    setListing({ status: "error", message: failureOf(error) });
                 }
             });
         return (): void => {
@@ -100,7 +107,7 @@ export function FolderPicker({ title, initialPath, onChoose, onClose }: FolderPi
 
     return (
         <BottomSheet title={title} onClose={onClose}>
-            <nav className="folder-places" aria-label="Places">
+            <nav className="folder-places" aria-label={text(M.setup.picker.places)}>
                 {places.map((place) => (
                     <Button
                         key={place.path}
@@ -118,7 +125,7 @@ export function FolderPicker({ title, initialPath, onChoose, onClose }: FolderPi
                 <Button
                     variant="secondary"
                     icon
-                    aria-label="Up"
+                    aria-label={text(M.setup.picker.up)}
                     disabled={parent === null}
                     onClick={() => {
                         if (parent !== null) {
@@ -148,11 +155,13 @@ export function FolderPicker({ title, initialPath, onChoose, onClose }: FolderPi
                         </Button>
                     </li>
                 ))}
-                {ready?.folders.length === 0 && <li className="listbox-row listbox-empty">No subfolders.</li>}
+                {ready?.folders.length === 0 && (
+                    <li className="listbox-row listbox-empty">{text(M.setup.picker.noSubfolders)}</li>
+                )}
             </ul>
             <div className="sheet-buttons">
                 <Button variant="secondary" onClick={onClose}>
-                    Cancel
+                    {text(M.shared.cancel)}
                 </Button>
                 <Button
                     variant="primary"
@@ -163,7 +172,7 @@ export function FolderPicker({ title, initialPath, onChoose, onClose }: FolderPi
                         }
                     }}
                 >
-                    Choose this folder
+                    {text(M.setup.picker.choose)}
                 </Button>
             </div>
         </BottomSheet>

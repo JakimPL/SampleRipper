@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { M } from "../../src/messages/messageIds";
 import { ErrorBoundary } from "../../src/shared/ErrorBoundary";
 
 const FAILURE = "the badge read a label that was not there";
@@ -59,7 +60,7 @@ describe("ErrorBoundary", () => {
         );
         failing = false;
 
-        await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+        await userEvent.click(screen.getByRole("button", { name: M.shared.tryAgain }));
 
         expect(screen.getByText("panel")).toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();

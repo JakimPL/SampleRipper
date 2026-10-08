@@ -2,6 +2,8 @@ import { type ReactElement, useState } from "react";
 
 import { floatRenderingSupport } from "../cloud/floatRendering";
 import { useLayoutMode } from "../layout/useLayoutMode";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
 import { DisclosureMenu } from "../shared/overlay/DisclosureMenu";
 import { ABOUT_TITLE, AboutSheet } from "./AboutSheet";
@@ -14,10 +16,11 @@ export function HelpMenu(): ReactElement {
     const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
     const [aboutOpen, setAboutOpen] = useState(false);
     const { input } = useLayoutMode();
+    const { text } = useMessages();
 
     return (
         <>
-            <DisclosureMenu label="Help" className="help-menu" variant="quiet">
+            <DisclosureMenu label={text(M.shell.menus.help)} className="help-menu" variant="quiet">
                 <Button
                     variant="quiet"
                     wide
@@ -26,7 +29,7 @@ export function HelpMenu(): ReactElement {
                         setGuideOpen(true);
                     }}
                 >
-                    {GUIDE_TITLES[input]}
+                    {text(GUIDE_TITLES[input])}
                 </Button>
                 <Button
                     variant="quiet"
@@ -36,7 +39,7 @@ export function HelpMenu(): ReactElement {
                         setDiagnosticsOpen(true);
                     }}
                 >
-                    {DIAGNOSTICS_TITLE}
+                    {text(DIAGNOSTICS_TITLE)}
                 </Button>
                 <Button
                     variant="quiet"
@@ -46,7 +49,7 @@ export function HelpMenu(): ReactElement {
                         setAboutOpen(true);
                     }}
                 >
-                    {ABOUT_TITLE}
+                    {text(ABOUT_TITLE)}
                 </Button>
             </DisclosureMenu>
             {guideOpen && (

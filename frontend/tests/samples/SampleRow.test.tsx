@@ -7,12 +7,14 @@ import type * as CloudApi from "../../src/api/cloud";
 import type * as CurationApi from "../../src/api/curation";
 import type { SampleSummary } from "../../src/api/samples";
 import type { InputMode } from "../../src/layout/layoutMode";
+import { M } from "../../src/messages/messageIds";
 import { type SampleColumnId, sampleColumnSpec } from "../../src/samples/sampleColumns";
 import { SampleRow } from "../../src/samples/SampleRow";
 import { useAudioPreview } from "../../src/samples/useAudioPreview";
 import { useCurationAccess } from "../../src/samples/useCurationAccess";
 import { LONG_PRESS_HOLD_MS } from "../../src/shared/gestures/gestureThresholds";
 import { useSelectionStore } from "../../src/workspace/selectionStore";
+import { keyed } from "../support/keyedMessages";
 
 const { changeSampleAnnotation, getLabelVocabulary, getCategoryTags } = vi.hoisted(() => ({
     changeSampleAnnotation: vi.fn(),
@@ -115,8 +117,8 @@ describe("SampleRow", () => {
         resolvesTo({ ...NOTHING, label: "WARM PAD" });
         renderRow();
 
-        await userEvent.click(screen.getByRole("button", { name: "Edit category" }));
-        await userEvent.type(screen.getByLabelText("Hand label"), "warm pad{Enter}");
+        await userEvent.click(screen.getByRole("button", { name: M.samples.label.editCategory }));
+        await userEvent.type(screen.getByLabelText(M.samples.label.handLabel), "warm pad{Enter}");
 
         await waitFor(() => {
             expect(changeSampleAnnotation).toHaveBeenCalledWith("abc123", "sample", { label: "warm pad" });
@@ -127,8 +129,8 @@ describe("SampleRow", () => {
         resolvesTo(null);
         renderRow({ sample: buildSample({ category: "SYNTH: PAD", hand_label: "warm pad" }) });
 
-        await userEvent.click(screen.getByRole("button", { name: "Edit category" }));
-        await userEvent.clear(screen.getByLabelText("Hand label"));
+        await userEvent.click(screen.getByRole("button", { name: M.samples.label.editCategory }));
+        await userEvent.clear(screen.getByLabelText(M.samples.label.handLabel));
         await userEvent.keyboard("{Enter}");
 
         await waitFor(() => {
@@ -141,7 +143,7 @@ describe("SampleRow", () => {
         resolvesTo({ label: "WARM PAD", rating: 4, favorite: false });
         renderRow({ sample: buildSample({ hand_label: "WARM PAD" }) });
 
-        await userEvent.click(screen.getByRole("button", { name: "Rate 4" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 4 }) }));
 
         await waitFor(() => {
             expect(changeSampleAnnotation).toHaveBeenCalledWith("abc123", "sample", { rating: 4 });
@@ -152,7 +154,7 @@ describe("SampleRow", () => {
         resolvesTo({ ...NOTHING, favorite: true });
         renderRow();
 
-        await userEvent.click(screen.getByRole("button", { name: "Favorite" }));
+        await userEvent.click(screen.getByRole("button", { name: M.samples.favorite.yes }));
 
         await waitFor(() => {
             expect(changeSampleAnnotation).toHaveBeenCalledWith("abc123", "sample", { favorite: true });
@@ -163,7 +165,7 @@ describe("SampleRow", () => {
         resolvesTo({ ...NOTHING, rating: 2 });
         renderRow({ sample: buildSample({ equivalence_member_count: 3 }), groupByEquivalence: true });
 
-        await userEvent.click(screen.getByRole("button", { name: "Rate 2" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 2 }) }));
 
         await waitFor(() => {
             expect(changeSampleAnnotation).toHaveBeenCalledWith("abc123", "equivalence_class", { rating: 2 });
@@ -174,10 +176,16 @@ describe("SampleRow", () => {
         changeSampleAnnotation.mockRejectedValue(new Error("request failed with status 500"));
         renderRow();
 
-        await userEvent.click(screen.getByRole("button", { name: "Rate 3" }));
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 3 }) }));
 
-        expect(await screen.findByRole("alert")).toHaveAttribute("title", "request failed with status 500");
-        expect(screen.getByRole("button", { name: "Rate 3" })).toHaveAttribute("aria-pressed", "false");
+        expect(await screen.findByRole("alert")).toHaveAttribute(
+            "title",
+            keyed(M.errors.unexpected, { reason: "request failed with status 500" }),
+        );
+        expect(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 3 }) })).toHaveAttribute(
+            "aria-pressed",
+            "false",
+        );
     });
 
     it("sends a label and a star given in quick succession one after the other, each naming its own decision", async () => {
@@ -195,9 +203,9 @@ describe("SampleRow", () => {
             });
         renderRow();
 
-        await userEvent.click(screen.getByRole("button", { name: "Edit category" }));
-        await userEvent.type(screen.getByLabelText("Hand label"), "bass{Enter}");
-        await userEvent.click(screen.getByRole("button", { name: "Rate 5" }));
+        await userEvent.click(screen.getByRole("button", { name: M.samples.label.editCategory }));
+        await userEvent.type(screen.getByLabelText(M.samples.label.handLabel), "bass{Enter}");
+        await userEvent.click(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 5 }) }));
 
         expect(changeSampleAnnotation).toHaveBeenCalledTimes(1);
         answerLabel({
@@ -216,15 +224,17 @@ describe("SampleRow", () => {
         renderRow({ sample: buildSample({ category: "SYNTH: PAD" }), visibleColumns: withoutCategory });
 
         expect(screen.getByRole("link", { name: /kick/ })).toHaveTextContent("SYNTH: PAD");
-        expect(screen.queryByRole("button", { name: "Edit category" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: M.samples.label.editCategory })).not.toBeInTheDocument();
         expect(screen.queryByText("abc123")).not.toBeInTheDocument();
     });
 
     it("keeps the heart alone in the verdict column under touch", () => {
         renderRow({ input: "touch" });
 
-        expect(screen.getByRole("button", { name: "Favorite" })).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Rate 3" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: M.samples.favorite.yes })).toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: keyed(M.samples.rating.rate, { value: 3 }) }),
+        ).not.toBeInTheDocument();
     });
 
     it("plays the sample on the space bar, rates it on a digit and marks it on F while its link is focused", async () => {
@@ -250,7 +260,7 @@ describe("SampleRow", () => {
     it("offers the row's chevron as the way to open it", () => {
         renderRow();
 
-        expect(screen.getByRole("link", { name: "Open sample" })).toHaveAttribute("href", "/samples/abc123");
+        expect(screen.getByRole("link", { name: M.samples.openSample })).toHaveAttribute("href", "/samples/abc123");
     });
 
     describe("under touch", () => {
@@ -277,9 +287,9 @@ describe("SampleRow", () => {
         it("opens the label sheet from the category badge", () => {
             renderRow({ input: "touch" });
 
-            fireEvent.click(screen.getByRole("button", { name: "Edit category" }));
+            fireEvent.click(screen.getByRole("button", { name: M.samples.label.editCategory }));
 
-            expect(screen.getByRole("dialog", { name: "Label" })).toBeInTheDocument();
+            expect(screen.getByRole("dialog", { name: M.samples.label.sheetTitle })).toBeInTheDocument();
         });
 
         it("takes the sample in hand and plays it on a tap", () => {
@@ -302,7 +312,7 @@ describe("SampleRow", () => {
                 result.current.stop();
             });
 
-            fireEvent.click(screen.getByRole("button", { name: "Favorite" }), { detail: 1 });
+            fireEvent.click(screen.getByRole("button", { name: M.samples.favorite.yes }), { detail: 1 });
 
             expect(result.current.playingKey).toBeNull();
         });
@@ -311,20 +321,26 @@ describe("SampleRow", () => {
     it("fills the heart under the pointer, showing what the click would leave behind", async () => {
         renderRow();
 
-        await userEvent.hover(screen.getByRole("button", { name: "Favorite" }));
+        await userEvent.hover(screen.getByRole("button", { name: M.samples.favorite.yes }));
 
-        expect(screen.getByRole("button", { name: "Favorite" })).toHaveClass("is-filled");
-        expect(screen.getByRole("button", { name: "Favorite" })).toHaveAttribute("aria-pressed", "false");
+        expect(screen.getByRole("button", { name: M.samples.favorite.yes })).toHaveClass("is-filled");
+        expect(screen.getByRole("button", { name: M.samples.favorite.yes })).toHaveAttribute("aria-pressed", "false");
     });
 
     it("fills every star up to the one being pointed at", async () => {
         renderRow();
 
-        await userEvent.hover(screen.getByRole("button", { name: "Rate 4" }));
+        await userEvent.hover(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 4 }) }));
 
-        expect(screen.getByRole("button", { name: "Rate 1" })).toHaveClass("is-filled");
-        expect(screen.getByRole("button", { name: "Rate 4" })).toHaveClass("is-filled");
-        expect(screen.getByRole("button", { name: "Rate 5" })).not.toHaveClass("is-filled");
+        expect(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 1 }) })).toHaveClass(
+            "is-filled",
+        );
+        expect(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 4 }) })).toHaveClass(
+            "is-filled",
+        );
+        expect(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 5 }) })).not.toHaveClass(
+            "is-filled",
+        );
     });
 });
 
@@ -333,11 +349,15 @@ describe("SampleRow where labels may only be seen", () => {
         vi.mocked(useCurationAccess).mockReturnValue({ curationShown: true, labelEditing: false });
         renderRow({ sample: buildSample({ hand_label: "KICK", rating: 3, favorite: true }) });
 
-        expect(screen.getByRole("img", { name: "Rated 3 of 5" })).toBeInTheDocument();
-        expect(screen.getByRole("img", { name: "Favorite" })).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Rate 1" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Favorite" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Edit category" })).not.toBeInTheDocument();
+        expect(
+            screen.getByRole("img", { name: keyed(M.samples.rating.rated, { maximum: 5, rating: 3 }) }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole("img", { name: M.samples.favorite.yes })).toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: keyed(M.samples.rating.rate, { value: 1 }) }),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: M.samples.favorite.yes })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: M.samples.label.editCategory })).not.toBeInTheDocument();
 
         const name = screen.getByRole("link", { name: /kick/ });
         fireEvent.keyDown(name, { key: "4" });

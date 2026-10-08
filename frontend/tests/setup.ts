@@ -22,6 +22,12 @@ afterEach(() => {
     cleanup();
 });
 
+// Messages render as their ids under test, so a test names the message that appeared, not its wording.
+vi.mock("../src/messages/useMessages", async () => {
+    const { KEYED_MESSAGES } = await import("./support/keyedMessages");
+    return { useMessages: () => KEYED_MESSAGES };
+});
+
 // Most tests stand where the SampleRipper app runs, where labels are shown and may be changed; a
 // test of a read-only page or of a site says otherwise for itself, and goes back to this after.
 vi.mock("../src/samples/useCurationAccess", () => ({

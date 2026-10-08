@@ -1,7 +1,9 @@
-import { createColumnHelper } from "@tanstack/react-table";
+import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 import type { SampleSummary } from "../api/samples";
 import type { InputMode } from "../layout/layoutMode";
+import { M } from "../messages/messageIds";
+import type { Messages } from "../messages/useMessages";
 import type { FittableColumn } from "../shared/columnFit";
 import { UNNAMED_SAMPLE_LABEL } from "../shared/labels";
 
@@ -44,15 +46,17 @@ export function sampleColumnSpec(input: InputMode, curationShown: boolean): read
 
 const columnHelper = createColumnHelper<SampleSummary>();
 
-/** The listing's columns as TanStack sorts and filters them; their widths come from `sampleColumnSpec`. */
-export const SAMPLE_COLUMNS = [
-    columnHelper.display({ id: "waveform", header: "Waveform" }),
-    columnHelper.accessor(
-        (sample) => (sample.display_name.trim() === "" ? UNNAMED_SAMPLE_LABEL : sample.display_name),
-        { id: "name", header: "Name" },
-    ),
-    columnHelper.display({ id: "category", header: "Category" }),
-    columnHelper.display({ id: "verdict", header: "Rating" }),
-    columnHelper.accessor("size_bytes", { header: "Size" }),
-    columnHelper.accessor("occurrence_count", { header: "Occurrences" }),
-];
+/** The listing's columns as TanStack sorts and filters them, named and sorted by the words `text` gives; their widths come from `sampleColumnSpec`. */
+export function createSampleColumns(text: Messages["text"]): ColumnDef<SampleSummary>[] {
+    return [
+        columnHelper.display({ id: "waveform", header: text(M.samples.columns.waveform) }),
+        columnHelper.accessor(
+            (sample) => (sample.display_name.trim() === "" ? text(UNNAMED_SAMPLE_LABEL) : sample.display_name),
+            { id: "name", header: text(M.samples.columns.name) },
+        ),
+        columnHelper.display({ id: "category", header: text(M.samples.columns.category) }),
+        columnHelper.display({ id: "verdict", header: text(M.samples.columns.rating) }),
+        columnHelper.accessor("size_bytes", { header: text(M.samples.columns.size) }),
+        columnHelper.accessor("occurrence_count", { header: text(M.samples.columns.occurrences) }),
+    ];
+}

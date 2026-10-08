@@ -1,6 +1,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 
-import { refusalDetail } from "../api/client";
+import { readProblem } from "../api/client";
+import type { Problem } from "../api/problem";
 import { sampleAudioUrl } from "../api/samples";
 import { soundedRate } from "./nominalRate";
 
@@ -11,10 +12,10 @@ export interface PreviewSource {
     readonly playbackRateHz: number | null;
 }
 
-/** A preview that could not be played: which one, and what the browser said about it. */
+/** A preview that could not be played: which one, and the problem the server named for it, `null` when it named none. */
 export interface PreviewFailure {
     readonly key: string;
-    readonly message: string;
+    readonly problem: Problem | null;
 }
 
 interface PreviewState {
@@ -33,8 +34,6 @@ export interface PreviewProgress {
 }
 
 const AT_THE_START: PreviewProgress = { key: null, currentTimeSeconds: 0, durationSeconds: 0 };
-
-const UNPLAYABLE_MESSAGE = "the audio could not be played";
 
 let audioElement: HTMLAudioElement | null = null;
 let state: PreviewState = { playingKey: null, paused: false, failure: null, source: null };
@@ -92,12 +91,12 @@ function isSuperseded(error: unknown): boolean {
     return error instanceof DOMException && error.name === "AbortError";
 }
 
-function reportFailure(element: HTMLAudioElement, source: PreviewSource, error: unknown): void {
+function reportFailure(element: HTMLAudioElement, source: PreviewSource): void {
     element.pause();
     publish({
         playingKey: null,
         paused: false,
-        failure: { key: source.key, message: error instanceof Error ? error.message : UNPLAYABLE_MESSAGE },
+        failure: { key: source.key, problem: null },
         source,
     });
 }
@@ -120,7 +119,7 @@ function play(source: PreviewSource): void {
         if (sequence !== playSequence || isSuperseded(error)) {
             return;
         }
-        reportFailure(element, source, error);
+        reportFailure(element, source);
     });
 }
 
@@ -135,12 +134,12 @@ async function playAnswered(source: PreviewSource): Promise<boolean> {
     const sequence = playSequence;
     const response = await fetch(source.url);
     if (!response.ok) {
-        const detail = await refusalDetail(response);
+        const problem = await readProblem(response);
         if (sequence === playSequence) {
             publish({
                 playingKey: null,
                 paused: false,
-                failure: { key: source.key, message: detail ?? UNPLAYABLE_MESSAGE },
+                failure: { key: source.key, problem },
                 source,
             });
         }
@@ -180,7 +179,7 @@ function resume(): void {
         if (sequence !== playSequence || isSuperseded(error)) {
             return;
         }
-        reportFailure(element, source, error);
+        reportFailure(element, source);
     });
 }
 

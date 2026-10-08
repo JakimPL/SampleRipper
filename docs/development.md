@@ -62,6 +62,26 @@ Its API types are generated from the API itself. After changing a route or a mod
 returns, run `just frontend-types`: it writes both OpenAPI schemas into `build/schemas/` and
 regenerates `frontend/src/api/schema.ts` and `setupSchema.ts`, which are committed.
 
+### Messages
+
+Every sentence the web app shows lives in the English catalog under `frontend/src/messages/`, one
+file per area in `areas/`, written as ICU messages. Components read them through `useMessages()`
+with typed ids (`text(M.cloud.empty.title)`); plurals, lists and dates belong in the message, so a
+translation can reorder a sentence freely. ESLint rejects literal text in `src/`.
+
+When the server refuses a request, it answers with a code and the values the sentence names
+(`samplecore/problems.py`), and `frontend/src/api/problem.ts` maps each code to a catalog message.
+A new refusal the web app shows needs a `MessageCode`, a catalog message and an entry in that map;
+the type checker flags a missing one.
+
+Under test, messages render as their ids, so a test names the message that should appear
+(`getByText(M.cloud.empty.title)`) and sees values through `keyed(...)` from
+`frontend/tests/support/keyedMessages.ts`. Real English appears only in the few tests of how a
+message handles counts and durations, through `englishText(...)`.
+
+The command line's messages stay in each package's `messages.py` as format strings, and
+`sampleripper/app/messages.py`, `samplecore/messages.py` hold the ones several commands share.
+
 ## Where generated files go
 
 Source folders hold source alone. Everything generated goes to one of three top-level folders:

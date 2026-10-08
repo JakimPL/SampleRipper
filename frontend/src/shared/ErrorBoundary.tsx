@@ -1,15 +1,26 @@
 import { Component, type ReactElement, type ReactNode } from "react";
 
+import { M, type Message } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { Button } from "./controls/Button";
 import { ErrorNotice } from "./ErrorNotice";
-import { describeError } from "./fetchState";
+import { failureOf } from "./failure";
 
 interface ErrorBoundaryProps {
     readonly children: ReactNode;
 }
 
 interface ErrorBoundaryState {
-    readonly message: string | null;
+    readonly message: Message | null;
+}
+
+function TryAgainButton({ onClick }: { readonly onClick: () => void }): ReactElement {
+    const { text } = useMessages();
+    return (
+        <Button variant="secondary" onClick={onClick}>
+            {text(M.shared.tryAgain)}
+        </Button>
+    );
 }
 
 /**
@@ -27,7 +38,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     }
 
     public static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
-        return { message: describeError(error) };
+        return { message: failureOf(error) };
     }
 
     public render(): ReactNode {
@@ -38,14 +49,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         return (
             <div className="error-boundary">
                 <ErrorNotice message={message} />
-                <Button
-                    variant="secondary"
+                <TryAgainButton
                     onClick={() => {
                         this.setState({ message: null });
                     }}
-                >
-                    Try again
-                </Button>
+                />
             </div>
         );
     }

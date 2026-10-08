@@ -4,8 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import type * as CloudApi from "../../../src/api/cloud";
 import type * as SamplesApi from "../../../src/api/samples";
+import { M } from "../../../src/messages/messageIds";
 import { SamplesListPanel } from "../../../src/workspace/panels/SamplesListPanel";
 import { useSelectionStore } from "../../../src/workspace/selectionStore";
+import { keyed } from "../../support/keyedMessages";
 
 const { listSamples, getCategoryTags } = vi.hoisted(() => ({
     listSamples: vi.fn(),
@@ -55,7 +57,7 @@ describe("SamplesListPanel", () => {
 
         renderPanel();
 
-        expect(screen.getByText("Loading…")).toBeInTheDocument();
+        expect(screen.getByText(M.shared.loading)).toBeInTheDocument();
     });
 
     it("renders the fetched samples once loaded", async () => {
@@ -75,7 +77,11 @@ describe("SamplesListPanel", () => {
         renderPanel();
 
         await waitFor(() => {
-            expect(screen.getByText(/1 of 1 loaded · 1 groups/)).toBeInTheDocument();
+            expect(
+                screen.getByText(
+                    keyed(M.samples.table.status, { grouped: true, groups: 1, loaded: 1, loading: false, total: 1 }),
+                ),
+            ).toBeInTheDocument();
         });
         expect(listSamples).toHaveBeenCalledWith(expect.objectContaining({ groupByEquivalence: false }));
     });

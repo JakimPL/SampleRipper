@@ -49,6 +49,50 @@ export default tseslint.config(
         },
     },
     {
+        files: ["src/**"],
+        ignores: ["src/messages/**"],
+        rules: {
+            "react/jsx-no-literals": [
+                "error",
+                {
+                    noStrings: true,
+                    ignoreProps: true,
+                    allowedStrings: [
+                        "›",
+                        "‹",
+                        "×",
+                        "←",
+                        "→",
+                        "+",
+                        "·",
+                        "/",
+                        "—",
+                        "…",
+                        "(",
+                        ")",
+                        "▲",
+                        "▼",
+                        "XM",
+                        "IT",
+                        "MOD",
+                        "S3M",
+                        "SampleRipper",
+                        "AceMan",
+                        "Fred / The Gang",
+                    ],
+                },
+            ],
+            "no-restricted-syntax": [
+                "error",
+                {
+                    selector:
+                        "JSXAttribute[name.name=/^(aria-label|aria-description|aria-roledescription|title|placeholder|alt)$/] > Literal[value=/\\S/]",
+                    message: "User-visible text belongs in the message catalog: use text(M.…).",
+                },
+            ],
+        },
+    },
+    {
         files: ["tests/**"],
         rules: {
             "@typescript-eslint/no-magic-numbers": "off",

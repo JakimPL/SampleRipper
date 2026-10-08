@@ -25,6 +25,7 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.schema import CreateSchema
 
 from samplecore.config import PUBLISH_DATABASE_URL_ENVIRONMENT_VARIABLE, PUBLISH_READER_PASSWORD_ENVIRONMENT_VARIABLE
+from samplecore.messages import WEAK_READER_PASSWORD
 from samplecore.passwords import MINIMUM_SERVICE_PASSWORD_LENGTH
 from samplecore.storage.cluster.statements import create_service_role, role_attributes, set_role_password
 from samplecore.storage.database import CONNECT_TIMEOUT_SECONDS
@@ -34,7 +35,6 @@ from sampleripper.publish.messages import (
     NOT_A_PUBLICATION,
     SERVER_IN_SETTINGS,
     UNKNOWN_DRIVER,
-    WEAK_READER_PASSWORD,
     WEAK_TRANSPORT,
 )
 from sampleserver.addresses import names_loopback

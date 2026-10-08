@@ -4,16 +4,23 @@ import { describe, expect, it, type Mock, onTestFinished, vi } from "vitest";
 import type * as MorphApi from "../../src/api/morph";
 import type * as SamplesApi from "../../src/api/samples";
 import { PHONE_MEDIA_QUERY } from "../../src/layout/layoutMode";
-import { DEFAULT_WEIGHT, END_LETTERS, useMorphStore } from "../../src/morph/morphStore";
+import type { MessageId } from "../../src/messages/messageIds";
+import { M } from "../../src/messages/messageIds";
+import { DEFAULT_WEIGHT, type MorphEnd, useMorphStore } from "../../src/morph/morphStore";
 import { MorphStrip } from "../../src/morph/MorphStrip";
 import type * as AudioPreview from "../../src/samples/useAudioPreview";
 import { shortHash } from "../../src/shared/format";
 import { KEYBOARD_CLICK_DETAIL } from "../../src/shared/gestures/gestureThresholds";
 import { UNNAMED_SAMPLE_LABEL } from "../../src/shared/labels";
 import { useSelectionStore } from "../../src/workspace/selectionStore";
+import { keyed } from "../support/keyedMessages";
 import { stubMatchMedia } from "../support/matchMedia";
 import { choosePair } from "../support/morphPair";
 
+const CLEAR_LABELS: Readonly<Record<MorphEnd, MessageId>> = {
+    first: M.morph.slot.clearFirst,
+    second: M.morph.slot.clearSecond,
+};
 const FIRST = "a".repeat(64);
 const SECOND = "b".repeat(64);
 const FIRST_RATE_HZ = 8363;
@@ -21,7 +28,7 @@ const SECOND_RATE_HZ = 16726;
 const STORED_SECONDS = 0.5;
 const MOVED_WEIGHT = 0.25;
 const POINTER_CLICK_DETAIL = 1;
-const REFUSAL = "the two ends are heard 9.2 times apart in rate, and a morph spans at most 4";
+const REFUSAL = { code: "morph_refused", params: {}, reason: "the two ends are heard 9.2 times apart" } as const;
 const MOVED_RENDER_URL = `/api/morph/audio?first=${FIRST}&second=${SECOND}&weight=${String(MOVED_WEIGHT)}`;
 const NAMES: Readonly<Record<string, string>> = { [FIRST]: "kick_808", [SECOND]: "" };
 
@@ -115,15 +122,15 @@ async function showPairOpened(available: boolean): Promise<ReturnType<typeof ren
 }
 
 function openWaveform(): void {
-    fireEvent.click(screen.getByRole("button", { name: "Waveform" }));
+    fireEvent.click(screen.getByRole("button", { name: M.morph.waveform }));
 }
 
 function slider(): HTMLElement | null {
-    return screen.queryByRole("slider", { name: "Point along the morph" });
+    return screen.queryByRole("slider", { name: M.morph.weight });
 }
 
 function morphPlay(): HTMLElement | null {
-    return screen.queryByRole("button", { name: "Play the morph" });
+    return screen.queryByRole("button", { name: M.morph.playMorph });
 }
 
 /** Lets the ends' details land, which a slot's play reads its rate from. */
@@ -137,7 +144,9 @@ async function settleDetails(): Promise<void> {
 }
 
 function slot(letter: "A" | "B"): HTMLElement {
-    return screen.getByRole("button", { name: new RegExp(`^${letter}: `) });
+    return screen.getByRole("button", {
+        name: new RegExp(`^${M.morph.slot.labeled.replaceAll(".", "\\.")}\\{"letter":"${letter}"`),
+    });
 }
 
 /** A decoder that never gets to decode: the stubbed fetch answers nothing before it is asked. */
@@ -196,7 +205,7 @@ function askedForARender(fetching: Mock<typeof fetch>): boolean {
 }
 
 function letTheSliderGo(weight: number): void {
-    const slider = screen.getByRole("slider", { name: "Point along the morph" });
+    const slider = screen.getByRole("slider", { name: M.morph.weight });
     fireEvent.change(slider, { target: { value: String(weight) } });
     fireEvent.pointerUp(slider);
 }
@@ -252,9 +261,9 @@ describe("MorphStrip while the pair is open", () => {
         expect(slot("A")).toHaveAttribute("aria-pressed", "true");
         expect(slot("B")).toHaveClass("morph-slot-empty");
         expect(slot("B")).toHaveAttribute("aria-pressed", "false");
-        expect(screen.getByRole("button", { name: "Swap the two ends" })).toBeDisabled();
-        expect(screen.getByRole("button", { name: "Waveform" })).toBeDisabled();
-        expect(screen.getByRole("button", { name: "Waveform" })).toHaveAttribute("aria-expanded", "false");
+        expect(screen.getByRole("button", { name: M.morph.swap })).toBeDisabled();
+        expect(screen.getByRole("button", { name: M.morph.waveform })).toBeDisabled();
+        expect(screen.getByRole("button", { name: M.morph.waveform })).toHaveAttribute("aria-expanded", "false");
     });
 
     it("selects a slot on a click, and keeps it selected on the next", () => {
@@ -274,9 +283,13 @@ describe("MorphStrip while the pair is open", () => {
         act(() => {
             useMorphStore.getState().takeSample(FIRST);
         });
-        expect(await screen.findByRole("button", { name: "A: kick_808" })).toHaveAttribute("aria-pressed", "true");
+        expect(
+            await screen.findByRole("button", {
+                name: keyed(M.morph.slot.labeled, { letter: "A", spoken: "kick_808" }),
+            }),
+        ).toHaveAttribute("aria-pressed", "true");
         expect(slot("B")).toHaveAttribute("aria-pressed", "false");
-        expect(screen.getByRole("button", { name: "Waveform" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: M.morph.waveform })).toBeDisabled();
         expect(slider()).not.toBeInTheDocument();
 
         fireEvent.click(slot("B"));
@@ -285,7 +298,7 @@ describe("MorphStrip while the pair is open", () => {
         });
         expect(slot("B")).toHaveAttribute("aria-pressed", "true");
         expect(slider()).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Waveform" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: M.morph.waveform })).toBeEnabled();
     });
 
     it("lets the focus go on a click on a slot, and keeps it on a slot pressed from the keyboard", () => {
@@ -307,8 +320,12 @@ describe("MorphStrip while the pair is open", () => {
 
         showEmpty();
 
-        expect(slot("A")).toHaveAccessibleName(`A: ${shortHash(FIRST)}`);
-        expect(await screen.findByRole("button", { name: "A: kick_808" })).toBeInTheDocument();
+        expect(slot("A")).toHaveAccessibleName(keyed(M.morph.slot.labeled, { letter: "A", spoken: shortHash(FIRST) }));
+        expect(
+            await screen.findByRole("button", {
+                name: keyed(M.morph.slot.labeled, { letter: "A", spoken: "kick_808" }),
+            }),
+        ).toBeInTheDocument();
     });
 });
 
@@ -319,13 +336,13 @@ describe("MorphStrip with a whole pair", () => {
         expect(screen.getByText(UNNAMED_SAMPLE_LABEL)).toBeInTheDocument();
         expect(slider()).toBeInTheDocument();
         expect(morphPlay()).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Waveform" })).toHaveAttribute("aria-expanded", "false");
-        expect(screen.getByRole("button", { name: "Swap the two ends" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: M.morph.waveform })).toHaveAttribute("aria-expanded", "false");
+        expect(screen.getByRole("button", { name: M.morph.swap })).toBeEnabled();
 
         openWaveform();
 
         expect(morphPlay()).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Waveform" })).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByRole("button", { name: M.morph.waveform })).toHaveAttribute("aria-expanded", "true");
     });
 
     it("plays a chosen end at its own rate, takes it in hand and selects its slot on every click", async () => {
@@ -350,7 +367,7 @@ describe("MorphStrip with a whole pair", () => {
             useMorphStore.getState().setWeight(0.25);
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "Swap the two ends" }));
+        fireEvent.click(screen.getByRole("button", { name: M.morph.swap }));
 
         expect(useMorphStore.getState()).toMatchObject({ first: SECOND, second: FIRST, weight: 0.75 });
     });
@@ -361,18 +378,18 @@ describe("MorphStrip with a whole pair", () => {
         openWaveform();
         expect(morphPlay()).not.toBeInTheDocument();
         expect(slider()).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Waveform" })).toHaveAttribute("aria-expanded", "false");
+        expect(screen.getByRole("button", { name: M.morph.waveform })).toHaveAttribute("aria-expanded", "false");
 
         openWaveform();
         expect(morphPlay()).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Waveform" })).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByRole("button", { name: M.morph.waveform })).toHaveAttribute("aria-expanded", "true");
     });
 
     it("states how far apart the two ends of the pair sit, in the workspace", async () => {
         getSampleDistance.mockResolvedValue({ sample_hash: FIRST, other_hash: SECOND, distance: 25.2468 });
         await showPair(true);
 
-        expect(await screen.findByText("distance 25.247")).toBeInTheDocument();
+        expect(await screen.findByText(keyed(M.morph.distance.value, { distance: "25.247" }))).toBeInTheDocument();
         expect(getSampleDistance).toHaveBeenCalledWith(FIRST, SECOND);
     });
 
@@ -383,7 +400,7 @@ describe("MorphStrip with a whole pair", () => {
         const panel = document.querySelector(".morph-strip-wave .wave-panel");
         expect(panel).toHaveClass("wave-panel-compact");
         expect(panel?.querySelector(".wave-panel-frame .wave-time")).toHaveTextContent("0.00 s / 0.00 s");
-        expect(panel?.lastElementChild).toBe(screen.getByRole("link", { name: "Save this render" }));
+        expect(panel?.lastElementChild).toBe(screen.getByRole("link", { name: M.morph.saveRender }));
     });
 
     it("leaves the distance out on a phone", async () => {
@@ -392,16 +409,16 @@ describe("MorphStrip with a whole pair", () => {
         await showPair(true);
 
         expect(slider()).toBeInTheDocument();
-        expect(screen.queryByText(/distance/)).not.toBeInTheDocument();
+        expect(screen.queryByText(new RegExp(M.morph.distance.value.replaceAll(".", "\\.")))).not.toBeInTheDocument();
         expect(getSampleDistance).not.toHaveBeenCalled();
     });
 
     it("says so while no inference process answers, and looks again on request", async () => {
         await showPair(false);
-        expect(screen.getByRole("status")).toHaveTextContent("Morphing is offline");
+        expect(screen.getByRole("status")).toHaveTextContent(M.morph.offline);
 
         serveMorph(true);
-        fireEvent.click(screen.getByRole("button", { name: "Check again" }));
+        fireEvent.click(screen.getByRole("button", { name: M.morph.checkAgain }));
 
         await waitFor(() => {
             expect(screen.queryByRole("status")).not.toBeInTheDocument();
@@ -411,8 +428,8 @@ describe("MorphStrip with a whole pair", () => {
 });
 
 describe("MorphStrip clearing an end", () => {
-    function clearButton(letter: string): HTMLElement | null {
-        return screen.queryByRole("button", { name: `Clear ${letter}` });
+    function clearButton(end: MorphEnd): HTMLElement | null {
+        return screen.queryByRole("button", { name: CLEAR_LABELS[end] });
     }
 
     it("offers a clear button beside each chosen slot alone", () => {
@@ -420,9 +437,9 @@ describe("MorphStrip clearing an end", () => {
 
         showEmpty();
 
-        expect(clearButton(END_LETTERS.first)).toBeInTheDocument();
-        expect(clearButton(END_LETTERS.first)?.closest(".morph-slot")).toBeNull();
-        expect(clearButton(END_LETTERS.second)).not.toBeInTheDocument();
+        expect(clearButton("first")).toBeInTheDocument();
+        expect(clearButton("first")?.closest(".morph-slot")).toBeNull();
+        expect(clearButton("second")).not.toBeInTheDocument();
     });
 
     it("empties an end and selects it, which undo takes back", async () => {
@@ -431,7 +448,7 @@ describe("MorphStrip clearing an end", () => {
             useMorphStore.getState().selectEnd("first");
         });
 
-        fireEvent.click(screen.getByRole("button", { name: `Clear ${END_LETTERS.second}` }));
+        fireEvent.click(screen.getByRole("button", { name: CLEAR_LABELS.second }));
 
         expect(useMorphStore.getState()).toMatchObject({ first: FIRST, second: null, selectedEnd: "second" });
         expect(slot("B")).toHaveClass("morph-slot-empty");
@@ -447,7 +464,7 @@ describe("MorphStrip clearing an end", () => {
 
     it("hands the keyboard's focus to the slot of the end it empties", async () => {
         await showPair(true);
-        const clear = screen.getByRole("button", { name: `Clear ${END_LETTERS.second}` });
+        const clear = screen.getByRole("button", { name: CLEAR_LABELS.second });
         clear.focus();
 
         fireEvent.click(clear, { detail: KEYBOARD_CLICK_DETAIL });
@@ -457,7 +474,7 @@ describe("MorphStrip clearing an end", () => {
 
     it("leaves the focus outside the controls once a click on the × empties the end", async () => {
         await showPair(true);
-        const clear = screen.getByRole("button", { name: `Clear ${END_LETTERS.second}` });
+        const clear = screen.getByRole("button", { name: CLEAR_LABELS.second });
         clear.focus();
 
         fireEvent.click(clear, { detail: POINTER_CLICK_DETAIL });
@@ -469,7 +486,7 @@ describe("MorphStrip clearing an end", () => {
         await showPair(true);
         const body = document.querySelector(".morph-strip-body");
 
-        fireEvent.click(screen.getByRole("button", { name: `Clear ${END_LETTERS.first}` }));
+        fireEvent.click(screen.getByRole("button", { name: CLEAR_LABELS.first }));
 
         const closing = body?.closest(".collapsible");
         expect(closing).toHaveAttribute("aria-hidden", "true");
@@ -500,7 +517,7 @@ describe("MorphStrip opened out", () => {
     it.each(RELEASE_CASES)("$name", async ({ available, moved, plays }: ReleaseCase) => {
         await showPair(available);
 
-        const slider = screen.getByRole("slider", { name: "Point along the morph" });
+        const slider = screen.getByRole("slider", { name: M.morph.weight });
         if (moved) {
             fireEvent.change(slider, { target: { value: String(MOVED_WEIGHT) } });
         }
@@ -529,8 +546,8 @@ describe("MorphStrip opened out", () => {
                 letTheSliderGo(MOVED_WEIGHT);
             }
 
-            expect(screen.getByRole("button", { name: "Play the morph" })).toHaveProperty("disabled", !drawn);
-            expect(screen.queryByRole("link", { name: "Save this render" })).toStrictEqual(
+            expect(screen.getByRole("button", { name: M.morph.playMorph })).toHaveProperty("disabled", !drawn);
+            expect(screen.queryByRole("link", { name: M.morph.saveRender })).toStrictEqual(
                 drawn ? expect.anything() : null,
             );
             expect(waveFrame()?.textContent).toBe("");
@@ -553,7 +570,9 @@ describe("MorphStrip opened out", () => {
         );
         await showPairOpened(true);
 
-        expect((await screen.findByText(REFUSAL)).closest(".transport")).toBeInTheDocument();
+        expect(
+            (await screen.findByText(keyed(M.errors.morphRefused, { reason: REFUSAL.reason }))).closest(".transport"),
+        ).toBeInTheDocument();
         expect(waveFrame()?.textContent).toBe("");
         expect(morphPlay()).toBeDisabled();
     });
@@ -591,19 +610,19 @@ describe("MorphStrip opened out", () => {
             useMorphStore.getState().markRendered();
         });
 
-        expect(screen.getByRole("button", { name: "Play the morph" })).toBeEnabled();
-        expect(screen.getByRole("link", { name: "Save this render" })).toHaveAttribute("href", MOVED_RENDER_URL);
+        expect(screen.getByRole("button", { name: M.morph.playMorph })).toBeEnabled();
+        expect(screen.getByRole("link", { name: M.morph.saveRender })).toHaveAttribute("href", MOVED_RENDER_URL);
     });
 
     it("sounds the point already drawn again, at the weight it was drawn for", async () => {
         await showPairOpened(true);
         letTheSliderGo(MOVED_WEIGHT);
         await waitFor(() => {
-            expect(screen.getByRole("button", { name: "Play the morph" })).toBeEnabled();
+            expect(screen.getByRole("button", { name: M.morph.playMorph })).toBeEnabled();
         });
         playAnswered.mockClear();
 
-        fireEvent.click(screen.getByRole("button", { name: "Play the morph" }));
+        fireEvent.click(screen.getByRole("button", { name: M.morph.playMorph }));
 
         expect(playAnswered).toHaveBeenCalledWith({
             key: MOVED_RENDER_URL,
@@ -615,7 +634,7 @@ describe("MorphStrip opened out", () => {
     it("plays nothing when a key is let go with the weight where it was", async () => {
         await showPair(true);
 
-        fireEvent.keyUp(screen.getByRole("slider", { name: "Point along the morph" }), { key: "Tab" });
+        fireEvent.keyUp(screen.getByRole("slider", { name: M.morph.weight }), { key: "Tab" });
 
         expect(playAnswered).not.toHaveBeenCalled();
     });
@@ -624,20 +643,20 @@ describe("MorphStrip opened out", () => {
 describe("MorphStrip's history", () => {
     it("opens the columns under the strip from the history button, and closes them again", () => {
         showEmpty();
-        const button = screen.getByRole("button", { name: "History" });
+        const button = screen.getByRole("button", { name: M.morph.history });
         expect(button).toBeEnabled();
         expect(button).toHaveAttribute("aria-expanded", "false");
 
         fireEvent.click(button);
 
-        const box = screen.getByRole("region", { name: "History" });
+        const box = screen.getByRole("region", { name: M.morph.history });
         expect(button).toHaveAttribute("aria-expanded", "true");
         expect(button).toHaveAttribute("aria-controls", box.id);
-        expect(within(box).getByRole("button", { name: "Undo" })).toBeDisabled();
+        expect(within(box).getByRole("button", { name: M.morph.held.undo })).toBeDisabled();
 
         fireEvent.click(button);
 
-        expect(screen.queryByRole("region", { name: "History" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: M.morph.history })).not.toBeInTheDocument();
         expect(button).toHaveAttribute("aria-expanded", "false");
     });
 
@@ -645,15 +664,15 @@ describe("MorphStrip's history", () => {
         stubMatchMedia(new Set([PHONE_MEDIA_QUERY]));
         showEmpty();
 
-        fireEvent.click(screen.getByRole("button", { name: "History" }));
+        fireEvent.click(screen.getByRole("button", { name: M.morph.history }));
 
-        const sheet = screen.getByRole("dialog", { name: "History" });
-        expect(within(sheet).getByRole("button", { name: "Redo" })).toBeDisabled();
-        expect(screen.queryByRole("region", { name: "History" })).not.toBeInTheDocument();
+        const sheet = screen.getByRole("dialog", { name: M.morph.history });
+        expect(within(sheet).getByRole("button", { name: M.morph.held.redo })).toBeDisabled();
+        expect(screen.queryByRole("region", { name: M.morph.history })).not.toBeInTheDocument();
 
         fireEvent.keyDown(document, { key: "Escape" });
 
-        expect(screen.queryByRole("dialog", { name: "History" })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "History" })).toHaveAttribute("aria-expanded", "false");
+        expect(screen.queryByRole("dialog", { name: M.morph.history })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: M.morph.history })).toHaveAttribute("aria-expanded", "false");
     });
 });

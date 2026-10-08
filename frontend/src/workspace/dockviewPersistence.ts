@@ -1,5 +1,6 @@
 import type { DockviewApi, SerializedDockview } from "dockview-react";
 
+import type { Messages } from "../messages/useMessages";
 import { addRegisteredPanel } from "./addPanel";
 import { buildDefaultLayout } from "./defaultLayout";
 import { PANEL_REGISTRY } from "./panelRegistry";
@@ -80,11 +81,15 @@ function restoreSavedLayout(api: DockviewApi, layout: SerializedDockview): boole
  * up for a person who arranged the shell before it existed, while a panel they closed themselves
  * stays closed. Reports whether any was opened.
  */
-function addPanelsRegisteredSince(api: DockviewApi, knownPanelIds: ReadonlySet<string>): boolean {
+function addPanelsRegisteredSince(
+    api: DockviewApi,
+    knownPanelIds: ReadonlySet<string>,
+    text: Messages["text"],
+): boolean {
     let added = false;
     for (const definition of Object.values(PANEL_REGISTRY)) {
         if (!knownPanelIds.has(definition.id) && api.getPanel(definition.id) === undefined) {
-            addRegisteredPanel(api, definition);
+            addRegisteredPanel(api, definition, text);
             added = true;
         }
     }
@@ -98,15 +103,15 @@ function addPanelsRegisteredSince(api: DockviewApi, knownPanelIds: ReadonlySet<s
  * adding a panel. A record of another version is what an older build saved, and the current
  * arrangement takes its place.
  */
-export function restoreOrBuildLayout(api: DockviewApi): void {
+export function restoreOrBuildLayout(api: DockviewApi, text: Messages["text"]): void {
     const stored = readStoredLayout();
     if (stored !== null && restoreSavedLayout(api, stored.layout)) {
-        if (addPanelsRegisteredSince(api, new Set(stored.knownPanels))) {
+        if (addPanelsRegisteredSince(api, new Set(stored.knownPanels), text)) {
             saveWorkspace(api);
         }
     } else {
         discardStoredLayout();
-        buildDefaultLayout(api);
+        buildDefaultLayout(api, text);
     }
 
     api.onDidLayoutChange(() => {
@@ -115,7 +120,7 @@ export function restoreOrBuildLayout(api: DockviewApi): void {
 }
 
 /** Discards whatever arrangement got saved, however it got scrambled, and draws the first-run one again. */
-export function resetLayout(api: DockviewApi): void {
+export function resetLayout(api: DockviewApi, text: Messages["text"]): void {
     discardStoredLayout();
-    buildDefaultLayout(api);
+    buildDefaultLayout(api, text);
 }

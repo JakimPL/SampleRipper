@@ -1,5 +1,6 @@
 import { type DockviewApi, Orientation, type SerializedDockview } from "dockview-react";
 
+import type { Messages } from "../messages/useMessages";
 import { PANEL_REGISTRY, type PanelId } from "./panelRegistry";
 
 interface LayoutRow {
@@ -62,14 +63,14 @@ function columnNode(column: LayoutColumn, columnIndex: number): GridNode {
     };
 }
 
-function panelStates(): SerializedDockview["panels"] {
+function panelStates(text: Messages["text"]): SerializedDockview["panels"] {
     return Object.fromEntries(
         Object.values(PANEL_REGISTRY).map((definition) => [
             definition.id,
             {
                 id: definition.id,
                 contentComponent: definition.id,
-                title: definition.title,
+                title: text(definition.title),
                 renderer: definition.renderer,
             },
         ]),
@@ -80,7 +81,7 @@ function panelStates(): SerializedDockview["panels"] {
  * The first-run arrangement as dockview reads it back, drawn from `DEFAULT_COLUMNS` over the
  * nominal box, with the listings' group in front.
  */
-export function defaultSerializedLayout(): SerializedDockview {
+export function defaultSerializedLayout(text: Messages["text"]): SerializedDockview {
     return {
         grid: {
             root: { type: "branch", data: DEFAULT_COLUMNS.map(columnNode), size: NOMINAL_HEIGHT_PX },
@@ -88,12 +89,12 @@ export function defaultSerializedLayout(): SerializedDockview {
             height: NOMINAL_HEIGHT_PX,
             orientation: Orientation.HORIZONTAL,
         },
-        panels: panelStates(),
+        panels: panelStates(text),
         activeGroup: groupId(0, 0),
     };
 }
 
 /** Replaces whatever the shell holds with the first-run arrangement. */
-export function buildDefaultLayout(api: DockviewApi): void {
-    api.fromJSON(defaultSerializedLayout());
+export function buildDefaultLayout(api: DockviewApi, text: Messages["text"]): void {
+    api.fromJSON(defaultSerializedLayout(text));
 }

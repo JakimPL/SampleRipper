@@ -73,6 +73,12 @@
 1. Don't write module docstrings.
 1. The justfile holds the recipes alone. Describe each recipe in the guide that lists it: `development.md`, `source.md` or `building.md`.
 
+## Messages
+
+1. Keep every sentence a person reads in a messages module or the web app's catalog, one constant or id per sentence, so wording changes and translations touch one place.
+1. A message that reaches the web app travels as a `Problem` (a `MessageCode` with its values), and the web app words it.
+1. Write messages in plain American English for the person who reads them, and name what they can do next.
+
 ## Tests
 
 1. Test files should mirror the ownership of the functionality under test.
@@ -81,6 +87,7 @@
 1. Use a test scenario suite class for defining more complex steps defined as a series of functions with assertions.
 1. Prefer fixtures over factories. Define shared fixtures in an appropriate place.
 1. Do not assert default values of configurations, layouts, settings, and similar. Defaults are not contracts, and pinning them overconstrains the tests. Test behavior instead: validation bounds, serialization round-trips, and invariants. The exception is when values must match by contract rather than equal a chosen constant — e.g. a module's own hash after a round trip should be asserted to match, never hardcoded to a literal.
+1. Assert which message appeared, never its spelling: tests name a message by its id or constant, or by the `MessageCode` the server sent.
 1. Do not assert shipped values: a sentence, a URL or a name the code ships, retyped into an expectation, is a second copy of it that fails on every rewording and proves nothing. Assert behavior through roles and structure, the test's own fixture values showing up in the output, or equality with the constant the code itself reads, imported from the module that owns it. Choosing a control by its accessible name is interaction, and stays.
 1. Unit tests may mock system boundaries (file I/O, external services, database connections where appropriate), but must not mock the domain logic that is the subject of the test. Integration tests must exercise real computation pipelines against real (synthetically built) data.
 1. When a test expectation diverges from the production code's actual behavior, determine which is wrong before acting. A failing test is evidence of a potential bug in the production code unless the test itself is demonstrably incorrect (wrong imports, misread API contract, incorrect fixture). Never silently delete or weaken a test to make it pass. If uncertain, flag the divergence explicitly and ask before changing either side.

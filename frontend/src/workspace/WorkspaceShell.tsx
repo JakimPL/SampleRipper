@@ -4,6 +4,7 @@ import { type DockviewApi, DockviewReact, type DockviewReadyEvent, type IDockvie
 import type { FunctionComponent, ReactElement } from "react";
 import { useEffect, useMemo, useState } from "react";
 
+import { useMessages } from "../messages/useMessages";
 import { useMorphStore } from "../morph/morphStore";
 import type { ShellView } from "../navigation/shellView";
 import { withBoundary } from "../shared/ErrorBoundary";
@@ -45,6 +46,7 @@ function buildDockviewComponents(): Record<string, FunctionComponent<IDockviewPa
  * glance away.
  */
 export function WorkspaceShell({ view }: WorkspaceShellProps): ReactElement {
+    const { text } = useMessages();
     const components = useMemo(buildDockviewComponents, []);
     const [api, setApi] = useState<DockviewApi | null>(null);
     const pairComplete = useMorphStore((state) => state.first !== null && state.second !== null);
@@ -55,7 +57,7 @@ export function WorkspaceShell({ view }: WorkspaceShellProps): ReactElement {
         }
         switch (view.kind) {
             case "panel":
-                openAndRevealPanel(api, PANEL_REGISTRY[view.panelId]);
+                openAndRevealPanel(api, PANEL_REGISTRY[view.panelId], text);
                 break;
             case "sample":
                 revealPanel(api, "sample-detail");
@@ -64,16 +66,16 @@ export function WorkspaceShell({ view }: WorkspaceShellProps): ReactElement {
                 revealPanel(api, "module-detail");
                 break;
         }
-    }, [view, api]);
+    }, [view, api, text]);
 
     useEffect(() => {
         if (pairComplete && api !== null) {
-            openAndRevealPanel(api, PANEL_REGISTRY.cloud);
+            openAndRevealPanel(api, PANEL_REGISTRY.cloud, text);
         }
-    }, [pairComplete, api]);
+    }, [pairComplete, api, text]);
 
     function handleReady(event: DockviewReadyEvent): void {
-        restoreOrBuildLayout(event.api);
+        restoreOrBuildLayout(event.api, text);
         setApi(event.api);
     }
 

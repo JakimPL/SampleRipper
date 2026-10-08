@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type * as CloudApi from "../../../src/api/cloud";
 import type * as ModulesApi from "../../../src/api/modules";
 import type * as SamplesApi from "../../../src/api/samples";
+import { M } from "../../../src/messages/messageIds";
 import { CloudHoverTooltip } from "../../../src/workspace/panels/CloudHoverTooltip";
 
 const { getSamplePreview, getModule, getCategoryTags } = vi.hoisted(() => ({
@@ -69,7 +70,7 @@ describe("CloudHoverTooltip", () => {
 
         render(<CloudHoverTooltip entity={{ kind: "sample", hash: SAMPLE_HASH }} x={10} y={20} />);
 
-        expect(await screen.findByText("[unnamed]")).toBeInTheDocument();
+        expect(await screen.findByText(M.shared.unnamedSample)).toBeInTheDocument();
     });
 
     it("shows the module's title, short hash, and tracker once loaded", async () => {
@@ -119,6 +120,6 @@ describe("CloudHoverTooltip", () => {
 
         render(<CloudHoverTooltip entity={{ kind: "module", hash: MODULE_HASH }} x={10} y={20} />);
 
-        expect(await screen.findByText("[untitled]")).toBeInTheDocument();
+        expect(await screen.findByText(M.shared.untitledModule)).toBeInTheDocument();
     });
 });

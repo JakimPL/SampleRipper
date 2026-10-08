@@ -1,6 +1,9 @@
 import type { MouseEvent, ReactElement, ReactNode, RefObject } from "react";
 import { useEffect, useRef } from "react";
 
+import type { MessageId } from "../messages/messageIds";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { SampleName } from "../samples/SampleName";
 import { samplePreview, useAudioPreview } from "../samples/useAudioPreview";
 import { spokenNameOf, useSampleName } from "../samples/useSampleName";
@@ -11,8 +14,10 @@ import { useSelectionStore } from "../workspace/selectionStore";
 import { END_LETTERS, type MorphEnd, useMorphStore } from "./morphStore";
 import { useEndpoint } from "./useEndpoint";
 
-const EMPTY_READING = "empty";
-const CLEAR_LABELS: Readonly<Record<MorphEnd, string>> = { first: "Clear A", second: "Clear B" };
+const CLEAR_LABELS: Readonly<Record<MorphEnd, MessageId>> = {
+    first: M.morph.slot.clearFirst,
+    second: M.morph.slot.clearSecond,
+};
 
 interface MorphSlotProps {
     readonly end: MorphEnd;
@@ -48,6 +53,7 @@ interface SlotButtonProps {
  * A click lets the focus go, so Tab goes on switching the ends; a key press keeps it on the slot.
  */
 function SlotButton({ end, spoken, empty, onClick, buttonRef, children }: SlotButtonProps): ReactElement {
+    const { text } = useMessages();
     const selected = useMorphStore((state) => state.selectedEnd === end);
     const letter = END_LETTERS[end];
 
@@ -63,7 +69,7 @@ function SlotButton({ end, spoken, empty, onClick, buttonRef, children }: SlotBu
             ref={buttonRef}
             type="button"
             className={classNames("morph-slot", empty && "morph-slot-empty", selected && "is-selected")}
-            aria-label={`${letter}: ${spoken}`}
+            aria-label={text(M.morph.slot.labeled, { letter, spoken })}
             aria-pressed={selected}
             onClick={handleClick}
         >
@@ -78,6 +84,7 @@ function SlotButton({ end, spoken, empty, onClick, buttonRef, children }: SlotBu
  * the end, and the × beside it empties the end.
  */
 function ChosenEnd({ end, hash, slotRef, onKeyboardClear }: ChosenEndProps): ReactElement {
+    const { text } = useMessages();
     const name = useSampleName(hash);
     const reading = useEndpoint(hash);
     const selectEnd = useMorphStore((state) => state.selectEnd);
@@ -95,7 +102,7 @@ function ChosenEnd({ end, hash, slotRef, onKeyboardClear }: ChosenEndProps): Rea
         <div className="morph-slot-group">
             <SlotButton
                 end={end}
-                spoken={spokenNameOf(hash, name)}
+                spoken={spokenNameOf(hash, name, text)}
                 empty={false}
                 onClick={handleClick}
                 buttonRef={slotRef}
@@ -105,7 +112,7 @@ function ChosenEnd({ end, hash, slotRef, onKeyboardClear }: ChosenEndProps): Rea
             <button
                 type="button"
                 className="morph-slot-clear"
-                aria-label={CLEAR_LABELS[end]}
+                aria-label={text(CLEAR_LABELS[end])}
                 onClick={(event) => {
                     if (event.detail === KEYBOARD_CLICK_DETAIL) {
                         onKeyboardClear();
@@ -120,20 +127,21 @@ function ChosenEnd({ end, hash, slotRef, onKeyboardClear }: ChosenEndProps): Rea
 }
 
 function EmptyEnd({ end, slotRef }: EmptyEndProps): ReactElement {
+    const { text } = useMessages();
     const selectEnd = useMorphStore((state) => state.selectEnd);
 
     return (
         <div className="morph-slot-group">
             <SlotButton
                 end={end}
-                spoken={EMPTY_READING}
+                spoken={text(M.morph.slot.empty)}
                 empty
                 onClick={() => {
                     selectEnd(end);
                 }}
                 buttonRef={slotRef}
             >
-                {EMPTY_READING}
+                {text(M.morph.slot.empty)}
             </SlotButton>
         </div>
     );

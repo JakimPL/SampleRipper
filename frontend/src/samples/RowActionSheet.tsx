@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 
 import type { AnnotationChanges, AnnotationDecisions } from "../api/curation";
 import type { SampleSummary } from "../api/samples";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { UNNAMED_SAMPLE_LABEL } from "../shared/labels";
 import { ActionSheet, type SheetAction } from "../shared/overlay/ActionSheet";
 import { entityRoute } from "../workspace/useEntityRowInteractions";
@@ -26,10 +28,11 @@ interface RowActionSheetProps {
  * row answers to under a pointer.
  */
 export function RowActionSheet({ sample, decisions, onChange, onClose }: RowActionSheetProps): ReactElement {
+    const { text } = useMessages();
     const [editingLabel, setEditingLabel] = useState(false);
     const navigate = useNavigate();
     const { play } = useAudioPreview();
-    const title = sample.display_name.trim() === "" ? UNNAMED_SAMPLE_LABEL : sample.display_name;
+    const title = sample.display_name.trim() === "" ? text(UNNAMED_SAMPLE_LABEL) : sample.display_name;
 
     if (editingLabel && onChange !== null) {
         return (
@@ -46,7 +49,7 @@ export function RowActionSheet({ sample, decisions, onChange, onClose }: RowActi
     const actions: readonly SheetAction[] = [
         {
             id: "play",
-            label: "Play",
+            label: text(M.samples.rowActions.play),
             disabled: false,
             run: () => {
                 play(samplePreview(sample.hash, sample.playback_rate_hz));
@@ -54,7 +57,7 @@ export function RowActionSheet({ sample, decisions, onChange, onClose }: RowActi
         },
         {
             id: "open",
-            label: "Open",
+            label: text(M.samples.rowActions.open),
             disabled: false,
             run: () => {
                 void navigate(entityRoute({ kind: "sample", hash: sample.hash }));
@@ -62,7 +65,7 @@ export function RowActionSheet({ sample, decisions, onChange, onClose }: RowActi
         },
         {
             id: "copy-hash",
-            label: "Copy hash",
+            label: text(M.samples.rowActions.copyHash),
             disabled: false,
             run: () => {
                 void navigator.clipboard.writeText(sample.hash).catch(() => undefined);
@@ -95,7 +98,7 @@ export function RowActionSheet({ sample, decisions, onChange, onClose }: RowActi
                                 setEditingLabel(true);
                             }}
                         >
-                            Label…
+                            {text(M.samples.label.openSheet)}
                         </button>
                     </div>
                 </>

@@ -13,6 +13,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { SampleSelection, SampleSummary } from "../api/samples";
 import { useContainerWidth } from "../layout/useContainerWidth";
 import { useLayoutMode } from "../layout/useLayoutMode";
+import { M, type Message } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { fitColumns } from "../shared/columnFit";
 import { Button } from "../shared/controls/Button";
 import { PanelToolbar } from "../shared/panel/PanelToolbar";
@@ -23,7 +25,7 @@ import {
     TABLE_ROW_HEIGHT_BY_INPUT,
 } from "../shared/tableMetrics";
 import { useListingOrderStore } from "../workspace/listingOrderStore";
-import { SAMPLE_COLUMN_IDS, SAMPLE_COLUMNS, sampleColumnSpec } from "./sampleColumns";
+import { createSampleColumns, SAMPLE_COLUMN_IDS, sampleColumnSpec } from "./sampleColumns";
 import { SampleRow } from "./SampleRow";
 import { useCurationAccess } from "./useCurationAccess";
 
@@ -37,7 +39,7 @@ interface SamplesTableProps {
     readonly hasMore: boolean;
     readonly isLoadingMore: boolean;
     readonly onLoadMore: () => void;
-    readonly loadMoreError: string | null;
+    readonly loadMoreError: Message | null;
     readonly groupByEquivalence: boolean;
     readonly onGroupByEquivalenceChange: (groupByEquivalence: boolean) => void;
     readonly selection: SampleSelection;
@@ -64,6 +66,7 @@ export function SamplesTable({
     selection,
     onSelectionChange,
 }: SamplesTableProps): ReactElement {
+    const { text, textOf } = useMessages();
     const [globalFilter, setGlobalFilter] = useState("");
     const [sorting, setSorting] = useState<SortingState>([]);
     const scrollElementRef = useRef<HTMLDivElement | null>(null);
@@ -78,10 +81,11 @@ export function SamplesTable({
     );
 
     const data = useMemo(() => Array.from(samples), [samples]);
+    const columns = useMemo(() => createSampleColumns(text), [text]);
 
     const table = useReactTable({
         data,
-        columns: SAMPLE_COLUMNS,
+        columns,
         state: { sorting, globalFilter, columnVisibility },
         onSortingChange: setSorting,
         onGlobalFilterChange: setGlobalFilter,
@@ -140,7 +144,7 @@ export function SamplesTable({
                     <input
                         type="text"
                         className="field"
-                        placeholder="Filter samples…"
+                        placeholder={text(M.samples.table.filterPlaceholder)}
                         value={globalFilter}
                         onChange={(event) => {
                             setGlobalFilter(event.target.value);
@@ -158,7 +162,7 @@ export function SamplesTable({
                                     onGroupByEquivalenceChange(event.target.checked);
                                 }}
                             />
-                            Group similar
+                            {text(M.samples.table.groupSimilar)}
                         </label>
                         {curationShown && (
                             <>
@@ -169,11 +173,11 @@ export function SamplesTable({
                                         onSelectionChange({ ...selection, favoritesOnly: !selection.favoritesOnly });
                                     }}
                                 >
-                                    Favorites
+                                    {text(M.samples.table.favorites)}
                                 </Button>
                                 <select
                                     className="field"
-                                    aria-label="Order"
+                                    aria-label={text(M.samples.table.order)}
                                     value={selection.sort}
                                     onChange={(event) => {
                                         onSelectionChange({
@@ -182,8 +186,8 @@ export function SamplesTable({
                                         });
                                     }}
                                 >
-                                    <option value="occurrences">Most used</option>
-                                    <option value="rating">Best rated</option>
+                                    <option value="occurrences">{text(M.samples.table.mostUsed)}</option>
+                                    <option value="rating">{text(M.samples.table.bestRated)}</option>
                                 </select>
                             </>
                         )}
@@ -192,16 +196,20 @@ export function SamplesTable({
                 status={
                     <>
                         <span className="cell-muted mono">
-                            {loadedCount} of {total} loaded
-                            {groupByEquivalence ? ` · ${String(groupCount)} groups` : ""}
-                            {isLoadingMore && hasMore ? " · loading…" : ""}
+                            {text(M.samples.table.status, {
+                                loaded: loadedCount,
+                                total,
+                                grouped: groupByEquivalence,
+                                groups: groupCount,
+                                loading: isLoadingMore && hasMore,
+                            })}
                         </span>
                         {isNarrowed && hasMore && (
                             <Button variant="secondary" onClick={onLoadMore} disabled={isLoadingMore}>
-                                Load more
+                                {text(M.samples.table.loadMore)}
                             </Button>
                         )}
-                        {loadMoreError !== null && <span className="error-notice">{loadMoreError}</span>}
+                        {loadMoreError !== null && <span className="error-notice">{textOf(loadMoreError)}</span>}
                     </>
                 }
             />

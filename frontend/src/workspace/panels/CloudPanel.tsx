@@ -18,6 +18,8 @@ import { useModuleCloud } from "../../cloud/useModuleCloud";
 import { useModuleColoring } from "../../cloud/useModuleColoring";
 import { useContainerWidth } from "../../layout/useContainerWidth";
 import { useLayoutMode } from "../../layout/useLayoutMode";
+import { M, type MessageId } from "../../messages/messageIds";
+import { useMessages } from "../../messages/useMessages";
 import { useMorphStore } from "../../morph/morphStore";
 import { MorphStripDock } from "../../morph/MorphStripDock";
 import { useMorphPlayback } from "../../morph/useMorphPlayback";
@@ -40,20 +42,19 @@ type CloudTab = "samples" | "modules";
 
 interface CloudTabChoice {
     readonly tab: CloudTab;
-    readonly label: string;
+    readonly label: MessageId;
     readonly icon: IconName;
 }
 
 const CLOUD_TABS: readonly CloudTabChoice[] = [
-    { tab: "samples", label: "Samples", icon: "samples" },
-    { tab: "modules", label: "Modules", icon: "modules" },
+    { tab: "samples", label: M.workspace.panels.samples, icon: "samples" },
+    { tab: "modules", label: M.workspace.panels.modules, icon: "modules" },
 ];
-const CLOUD_TABS_LABEL = "What the cloud shows";
 
 const NO_TAGS: readonly TopLevelTag[] = [];
-const EMPTY_CAPTIONS: Readonly<Record<ColoringMode, string>> = {
-    category: "No sample carries a category yet. A scoring of the listening model writes them.",
-    label: "No sample carries a label yet. Labels written in a sample's detail panel appear here.",
+const EMPTY_CAPTIONS: Readonly<Record<ColoringMode, MessageId>> = {
+    category: M.workspace.cloud.emptyCategories,
+    label: M.workspace.cloud.emptyLabels,
 };
 
 interface HoveredPoint {
@@ -65,7 +66,6 @@ interface HoveredPoint {
 const LEGEND_SHEET_WIDTH_PX = 480;
 const LEGEND_WITH_COLORING_SHEET_WIDTH_PX = 720;
 const ZOOM_STEP_FACTOR = 1.5;
-const MORPH_SWITCH_LABEL = "Morph";
 const BOTTOM_INSET_PROPERTY = "--cloud-bottom-inset";
 const NO_INSET_PX = 0;
 
@@ -191,6 +191,7 @@ function useSampleColoring(mode: ColoringMode): {
  * uncovered.
  */
 export function CloudPanel(): ReactElement {
+    const { text } = useMessages();
     const [tab, setTab] = useState<CloudTab>("samples");
     const [mode, setMode] = useState<ColoringMode>("category");
     const [hovered, setHovered] = useState<HoveredPoint | null>(null);
@@ -315,7 +316,7 @@ export function CloudPanel(): ReactElement {
     return (
         <div className="panel-stack cloud-panel" ref={panelRef}>
             <div className="panel-filter cloud-toolbar">
-                <div className="cloud-tabs" role="group" aria-label={CLOUD_TABS_LABEL}>
+                <div className="cloud-tabs" role="group" aria-label={text(M.workspace.cloud.tabsLabel)}>
                     {CLOUD_TABS.map((choice) => (
                         <Button
                             key={choice.tab}
@@ -327,7 +328,7 @@ export function CloudPanel(): ReactElement {
                             }}
                         >
                             <Icon name={choice.icon} label={null} />
-                            {choice.label}
+                            {text(choice.label)}
                         </Button>
                     ))}
                 </div>
@@ -342,13 +343,13 @@ export function CloudPanel(): ReactElement {
                                     setLegendOpen(true);
                                 }}
                             >
-                                Legend
+                                {text(M.cloud.legend.title)}
                             </Button>
                         ) : (
                             <>
                                 {curationShown && (
                                     <>
-                                        <span className="panel-filter-caption">Color by</span>
+                                        <span className="panel-filter-caption">{text(M.cloud.legend.colorBy)}</span>
                                         <ColoringModeChoice mode={mode} onModeChange={setMode} />
                                     </>
                                 )}
@@ -402,7 +403,7 @@ export function CloudPanel(): ReactElement {
                                     variant="secondary"
                                     icon
                                     className="cloud-tool"
-                                    aria-label={MORPH_SWITCH_LABEL}
+                                    aria-label={text(M.morph.strip)}
                                     aria-pressed={morphEnabled}
                                     onClick={() => {
                                         setMorphEnabled(!morphEnabled);
@@ -415,7 +416,7 @@ export function CloudPanel(): ReactElement {
                                 variant="secondary"
                                 icon
                                 className="cloud-tool"
-                                aria-label="Center on the selection"
+                                aria-label={text(M.workspace.cloud.centerOnSelection)}
                                 disabled={inHandHere === null}
                                 onClick={() => {
                                     if (inHandHere !== null) {
@@ -429,7 +430,7 @@ export function CloudPanel(): ReactElement {
                                 variant="secondary"
                                 icon
                                 className="cloud-tool"
-                                aria-label="Frame the pair"
+                                aria-label={text(M.workspace.cloud.framePair)}
                                 disabled={link === null}
                                 onClick={() => {
                                     if (link !== null) {
@@ -443,7 +444,7 @@ export function CloudPanel(): ReactElement {
                                 variant="secondary"
                                 icon
                                 className="cloud-tool"
-                                aria-label="Zoom in"
+                                aria-label={text(M.workspace.cloud.zoomIn)}
                                 onClick={() => {
                                     issue({ kind: "zoom", factor: ZOOM_STEP_FACTOR });
                                 }}
@@ -454,7 +455,7 @@ export function CloudPanel(): ReactElement {
                                 variant="secondary"
                                 icon
                                 className="cloud-tool"
-                                aria-label="Zoom out"
+                                aria-label={text(M.workspace.cloud.zoomOut)}
                                 onClick={() => {
                                     issue({ kind: "zoom", factor: 1 / ZOOM_STEP_FACTOR });
                                 }}

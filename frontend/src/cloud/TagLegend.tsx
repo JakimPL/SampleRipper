@@ -1,6 +1,9 @@
 import type { ReactElement } from "react";
 import { useRef, useState } from "react";
 
+import type { MessageId } from "../messages/messageIds";
+import { M } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { useDismissal } from "../shared/overlay/useDismissal";
 import { useLabelColor } from "../theme/useLabelColor";
 import type { TopLevelTag } from "./labelColoring";
@@ -11,10 +14,8 @@ interface TagLegendProps {
     readonly painted: readonly string[];
     readonly onToggle: (name: string) => void;
     /** What the legend says while no sample carries a tag of its kind. */
-    readonly emptyCaption: string;
+    readonly emptyCaption: MessageId;
 }
-
-const COLLAPSE_LABEL = "Painted only";
 
 /**
  * The legend that is also the picker, as the end of the cloud's toolbar row: the top-level tags
@@ -28,6 +29,7 @@ const COLLAPSE_LABEL = "Painted only";
  * own, so a swatch and the points it names stay one color.
  */
 export function TagLegend({ tags, painted, onToggle, emptyCaption }: TagLegendProps): ReactElement {
+    const { text } = useMessages();
     const [expanded, setExpanded] = useState(false);
     const rootRef = useRef<HTMLDivElement | null>(null);
     const colorOf = useLabelColor();
@@ -37,8 +39,8 @@ export function TagLegend({ tags, painted, onToggle, emptyCaption }: TagLegendPr
 
     if (tags.length === 0) {
         return (
-            <p className="tag-legend-caption" title={emptyCaption}>
-                {emptyCaption}
+            <p className="tag-legend-caption" title={text(emptyCaption)}>
+                {text(emptyCaption)}
             </p>
         );
     }
@@ -62,7 +64,7 @@ export function TagLegend({ tags, painted, onToggle, emptyCaption }: TagLegendPr
     }
 
     return (
-        <div ref={rootRef} className="tag-legend" role="group" aria-label="Painted tags">
+        <div ref={rootRef} className="tag-legend" role="group" aria-label={text(M.cloud.legend.tagsShown)}>
             <div className="tag-legend-chips">{!expanded && paintedTags.map(chipOf)}</div>
             {(hiddenCount > 0 || expanded) && (
                 <button
@@ -73,7 +75,9 @@ export function TagLegend({ tags, painted, onToggle, emptyCaption }: TagLegendPr
                         setExpanded((current) => !current);
                     }}
                 >
-                    {expanded ? COLLAPSE_LABEL : `+${String(hiddenCount)} more`}
+                    {expanded
+                        ? text(M.cloud.legend.shownOnly)
+                        : text(M.cloud.legend.hiddenMore, { count: hiddenCount })}
                 </button>
             )}
             {expanded && <div className="tag-legend-overlay">{tags.map(chipOf)}</div>}
