@@ -50,6 +50,12 @@
     --warn-soft: rgb(168 93 20 / 14%);
     --critical: #b5392a;
     --critical-soft: rgb(181 57 42 / 14%);
+
+    /* Each tracker format's stamp color, shared by its badges and its module points. */
+    --tracker-xm: #227a4e;
+    --tracker-it: #a85d14;
+    --tracker-mod: #2f6db0;
+    --tracker-s3m: #b5392a;
     --badge-tint-strength: 14%;
     --shadow: 0 8px 24px rgb(20 23 28 / 14%);
     --range-thumb-size: 14px;
@@ -60,7 +66,6 @@
     --wave-cursor: var(--accent);
     --wave-progress: var(--accent);
     --cloud-bg: var(--surface-0);
-    --cloud-point: var(--text-primary);
     --cloud-point-selected: var(--accent);
     --cloud-ping-color: var(--accent);
     --cloud-link-color: var(--accent);
@@ -245,6 +250,10 @@
         --warn-soft: rgb(217 139 62 / 16%);
         --critical: #e2685a;
         --critical-soft: rgb(226 104 90 / 16%);
+        --tracker-xm: #5fbf8f;
+        --tracker-it: #d98b3e;
+        --tracker-mod: #6ea8e6;
+        --tracker-s3m: #e2685a;
         --badge-tint-strength: 16%;
         --shadow: 0 12px 32px rgb(0 0 0 / 45%);
         --wave-fill: #4a5364;
@@ -286,6 +295,10 @@
     --warn-soft: rgb(217 139 62 / 16%);
     --critical: #e2685a;
     --critical-soft: rgb(226 104 90 / 16%);
+    --tracker-xm: #5fbf8f;
+    --tracker-it: #d98b3e;
+    --tracker-mod: #6ea8e6;
+    --tracker-s3m: #e2685a;
     --badge-tint-strength: 16%;
     --shadow: 0 12px 32px rgb(0 0 0 / 45%);
     --wave-fill: #4a5364;
@@ -325,6 +338,10 @@
     --warn-soft: rgb(255 128 0 / 16%);
     --critical: #f00;
     --critical-soft: rgb(255 0 0 / 16%);
+    --tracker-xm: #008000;
+    --tracker-it: #ff8000;
+    --tracker-mod: #0078d4;
+    --tracker-s3m: #f00;
     --badge-tint-strength: 16%;
     --shadow: 0 2px 6px rgb(0 0 0 / 25%);
     --wave-fill: #f00;
@@ -334,7 +351,6 @@
     --wave-cursor: #c0c0c0;
     --wave-progress: var(--wave-fill);
     --cloud-bg: #000;
-    --cloud-point: #fff;
 
     /* OpenMPT's envelope editor: crisp square nodes, the dragged one yellow, joined by a yellow line. */
     --cloud-point-selected: #ff0;
@@ -1188,23 +1204,23 @@ tr:focus-within .row-open,
 
 /* Mixed opaque against `--surface-1`, so a badge keeps one color on a plain and a selected row. */
 .badge-xm {
-    background: color-mix(in srgb, var(--good) var(--badge-tint-strength), var(--surface-1));
-    color: var(--good);
+    background: color-mix(in srgb, var(--tracker-xm) var(--badge-tint-strength), var(--surface-1));
+    color: var(--tracker-xm);
 }
 
 .badge-it {
-    background: color-mix(in srgb, var(--warn) var(--badge-tint-strength), var(--surface-1));
-    color: var(--warn);
+    background: color-mix(in srgb, var(--tracker-it) var(--badge-tint-strength), var(--surface-1));
+    color: var(--tracker-it);
 }
 
 .badge-mod {
-    background: color-mix(in srgb, var(--accent) var(--badge-tint-strength), var(--surface-1));
-    color: var(--accent);
+    background: color-mix(in srgb, var(--tracker-mod) var(--badge-tint-strength), var(--surface-1));
+    color: var(--tracker-mod);
 }
 
 .badge-s3m {
-    background: color-mix(in srgb, var(--critical) var(--badge-tint-strength), var(--surface-1));
-    color: var(--critical);
+    background: color-mix(in srgb, var(--tracker-s3m) var(--badge-tint-strength), var(--surface-1));
+    color: var(--tracker-s3m);
 }
 
 .badge-unavailable {
@@ -1605,6 +1621,34 @@ table.data td .annotation-editor-input {
     }
 }
 
+/* A section opening from no height and closing back to none, fading as it goes: its one grid row
+   grows from 0fr to 1fr, a size a transition follows, and the closing duration stays within the
+   fallback `Collapsible` waits on. */
+.collapsible {
+    display: grid;
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition:
+        grid-template-rows 200ms ease-out,
+        opacity 200ms ease-out;
+}
+
+.collapsible.is-collapsed {
+    grid-template-rows: 0fr;
+    opacity: 0;
+}
+
+.collapsible-content {
+    min-height: 0;
+    overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .collapsible {
+        transition: none;
+    }
+}
+
 /* Under touch the column holds the heart alone, one tap target wide. */
 :root[data-input="touch"] .cell-verdict .favorite-toggle {
     width: var(--tap-target);
@@ -1675,6 +1719,10 @@ table.data td .annotation-editor-input {
     outline: 2px solid var(--accent);
 }
 
+.thumbnail-button .icon {
+    display: block;
+}
+
 /* The canvas pans, so the overlays reaching past its edge are clipped. */
 .cloud-body {
     position: relative;
@@ -1740,11 +1788,11 @@ table.data td .annotation-editor-input {
     }
 }
 
-/* The tools that move the view, at the corner a thumb reaches. */
+/* The tools that move the view, at the corner a thumb reaches, above the morph strip lying over the bottom edge. */
 .cloud-tools {
     position: absolute;
     right: var(--space-4);
-    bottom: var(--space-4);
+    bottom: calc(var(--space-4) + var(--cloud-bottom-inset, 0px));
     z-index: 2;
     display: flex;
     flex-direction: column;
@@ -1755,11 +1803,11 @@ table.data td .annotation-editor-input {
     box-shadow: var(--shadow);
 }
 
-/* The tapped point's card rests along the bottom edge, clear of the tools. */
+/* The tapped point's card rests along the bottom edge, clear of the tools and above the morph strip. */
 .cloud-tap-card {
     position: absolute;
     right: calc(var(--space-4) * 2 + var(--control-height));
-    bottom: var(--space-4);
+    bottom: calc(var(--space-4) + var(--cloud-bottom-inset, 0px));
     left: var(--space-4);
     z-index: 2;
     display: grid;
@@ -1795,34 +1843,70 @@ table.data td .annotation-editor-input {
     gap: var(--space-2);
 }
 
-.cloud-caption {
-    flex: 0 0 auto;
-    margin: 0;
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--font-size-small);
-    color: var(--text-muted);
-    border-bottom: 1px solid var(--border);
-    background: var(--surface-1);
-}
-
 .panel-filter-separator {
+    flex: 0 0 auto;
     width: 1px;
     height: 16px;
-    margin-left: auto;
     background: var(--border);
 }
 
-/* In a narrow panel the cloud's toolbar keeps to one slim row, every control keeping its size. */
+/* The anchor of the expanded legend's panel, which drops over the cloud's top edge. */
+.cloud-panel {
+    position: relative;
+}
+
+/* The cloud's toolbar is one row at one height, the tabs its tallest controls, so the expanded
+   legend's panel knows where the row ends; whatever outgrows the row scrolls sideways. */
+.cloud-toolbar {
+    --cloud-toolbar-padding: var(--space-3);
+    --cloud-toolbar-height: calc(max(var(--button-height), var(--tap-target)) + 2 * var(--cloud-toolbar-padding) + 1px);
+
+    height: var(--cloud-toolbar-height);
+    padding-block: var(--cloud-toolbar-padding);
+    overflow: auto hidden;
+    scrollbar-width: none;
+}
+
+/* In a narrow panel the cloud's toolbar keeps to a slimmer row. */
 @container panel (width <= 480px) {
     .cloud-toolbar {
-        overflow: auto hidden;
-        scrollbar-width: none;
-        padding-block: var(--space-2);
+        --cloud-toolbar-padding: var(--space-2);
     }
+}
 
-    .cloud-toolbar > * {
-        flex: 0 0 auto;
-    }
+/* Samples and Modules read as one control: joined edge to edge, each tall enough for a finger. */
+.cloud-tabs {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.cloud-tab {
+    height: max(var(--button-height), var(--tap-target));
+}
+
+.cloud-tab .icon {
+    font-size: var(--button-icon-size);
+}
+
+.cloud-tab + .cloud-tab {
+    margin-left: -1px;
+}
+
+.cloud-tab:not(:last-child) {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+}
+
+.cloud-tab:not(:first-child) {
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+}
+
+/* A hovered or pressed tab draws its whole frame over the edge it shares with its neighbor. */
+.cloud-tab:hover,
+.cloud-tab[aria-pressed="true"] {
+    position: relative;
+    z-index: 1;
 }
 
 .panel-filter-caption {
@@ -1831,33 +1915,63 @@ table.data td .annotation-editor-input {
     white-space: nowrap;
 }
 
-/* One row scrolling sideways at rest; expanded, it wraps to three rows and scrolls beyond, so the
-   plot underneath keeps its height either way. */
+/* A legend ends the toolbar's row: its chips take the rest of the row and scroll sideways. */
 .tag-legend {
     --legend-rows: 3;
     --legend-chip-height: var(--control-height-compact);
     --legend-row-gap: var(--space-2);
     --legend-padding: var(--space-3);
 
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
     display: flex;
-    flex-wrap: nowrap;
-    gap: var(--legend-row-gap) var(--space-3);
-    padding: var(--legend-padding) var(--space-4);
-    overflow: auto hidden;
-    scrollbar-width: thin;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface-1);
+    align-items: center;
+    gap: var(--space-3);
 }
 
-.tag-legend-expanded {
+.tag-legend-chips {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    gap: var(--space-3);
+    overflow: auto hidden;
+    scrollbar-width: none;
+}
+
+/* Expanded, every tag drops over the cloud's top edge on the toolbar's own surface, in at most
+   three rows that scroll, so the toolbar stays one row and the cloud keeps its size. */
+.tag-legend-overlay {
+    position: absolute;
+    top: var(--cloud-toolbar-height);
+    right: 0;
+    left: 0;
+    z-index: 3;
+    display: flex;
     flex-wrap: wrap;
+    align-content: flex-start;
+    gap: var(--legend-row-gap) var(--space-3);
     max-height: calc(
         var(--legend-rows) * var(--legend-chip-height) + (var(--legend-rows) - 1) * var(--legend-row-gap) + 2 *
             var(--legend-padding)
     );
+    padding: var(--legend-padding) var(--space-4);
     overflow: hidden auto;
     scrollbar-gutter: stable;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-1);
+    box-shadow: var(--shadow);
+}
+
+/* What a legend says while nothing of its kind is there to paint, cut short where the row ends. */
+.tag-legend-caption {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    font-size: var(--font-size-small);
+    color: var(--text-muted);
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .tag-legend-entry,
@@ -1969,10 +2083,10 @@ table.data td .annotation-editor-input {
 }
 
 /* The popup stands 14px from its point (`TOOLTIP_GAP_PX` in `tooltipPlacement.ts`), above and to the
-   right unless the cloud's edge is in the way. */
+   right unless the cloud's edge is in the way, and over the morph strip lying along the bottom edge. */
 .cloud-hover-tooltip {
     position: absolute;
-    z-index: 1;
+    z-index: 3;
     transform: translate(14px, calc(-100% - 14px));
     pointer-events: none;
     display: flex;
@@ -2137,12 +2251,23 @@ table.data td .annotation-editor-input {
     height: 100%;
 }
 
-/* On a phone the player is one row: the play button and the file at either side of the frame, the readout in its corner. */
+/* On a phone the player is one row: the play button and the file at either side of the frame, the
+   readout in its corner, and the reason audio is missing in a line under the row. */
 .wave-panel-compact {
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr);
     align-items: center;
-    gap: var(--space-4);
+    column-gap: var(--space-4);
     padding: 0 var(--space-4);
+}
+
+.wave-panel-failure {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding-bottom: var(--space-2);
+    font-size: var(--font-size-caption);
+    text-align: center;
 }
 
 /* Where there is no file to save, the file's room stays, so the frame keeps its center. */
@@ -2170,14 +2295,19 @@ table.data td .annotation-editor-input {
     font-size: var(--font-size-body);
 }
 
-/* The frame the contours, the notice and the playhead are positioned against; the host inside it
-   carries the box the waveform is measured and scrolled in. */
+/* The frame the contours and the playhead are positioned against; the host inside it carries the
+   box the waveform is measured and scrolled in. */
 .wave-canvas-wrap {
     flex: 1 1 auto;
     position: relative;
     min-height: 60px;
     display: flex;
     background: var(--wave-bg);
+}
+
+/* A phone's failure line takes the height the empty frame gives up. */
+.wave-panel-compact:has(> .wave-panel-failure) .wave-canvas-wrap {
+    min-height: 0;
 }
 
 /* The host is stretched rather than centered, since the waveform's own height is read from this
@@ -2207,31 +2337,6 @@ table.data td .annotation-editor-input {
     pointer-events: none;
 }
 
-.wave-notice {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0;
-    padding: 0 var(--space-6);
-    text-align: center;
-    font-size: var(--font-size-small);
-    color: var(--text-faint);
-    pointer-events: none;
-}
-
-.wave-notice-failed {
-    color: var(--critical);
-}
-
-/* The words on a sliver of the frame's own ground, so they read over whatever contour lies behind them. */
-.wave-notice-text {
-    padding: var(--space-1) var(--space-3);
-    border-radius: var(--radius-1);
-    background: var(--wave-bg);
-}
-
 .wave-playhead {
     position: absolute;
     top: 0;
@@ -2255,6 +2360,95 @@ table.data td .annotation-editor-input {
     opacity: 1;
 }
 
+/* A busy frame: a faint zero line with a highlight sweeping along it, and the drawing dimmed beneath
+   until the waveform arrives, when the two crossfade. The highlight rests past the left edge, so
+   under reduced motion the line stands alone. */
+.wave-pending {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        opacity 200ms ease-out,
+        visibility 0s linear 200ms;
+}
+
+.wave-canvas-wrap[aria-busy="true"] .wave-pending {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 200ms ease-out;
+}
+
+.wave-pending::before,
+.wave-pending::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+}
+
+.wave-pending::before {
+    height: 1px;
+    transform: translateY(-50%);
+    background: color-mix(in srgb, var(--wave-fill) 60%, transparent);
+}
+
+.wave-pending::after {
+    height: 12px;
+    transform: translate(-100%, -50%);
+    background: radial-gradient(
+        20% 50% at 50% 50%,
+        color-mix(in srgb, var(--wave-progress) 55%, transparent),
+        transparent
+    );
+}
+
+.wave-canvas-wrap[aria-busy="true"] .wave-pending::after {
+    animation: wave-pending-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes wave-pending-sweep {
+    from {
+        transform: translate(-100%, -50%);
+    }
+
+    to {
+        transform: translate(100%, -50%);
+    }
+}
+
+.wave-host,
+.wave-traces {
+    transition: opacity 200ms ease-out;
+}
+
+.wave-canvas-wrap[aria-busy="true"] .wave-host,
+.wave-canvas-wrap[aria-busy="true"] .wave-traces {
+    opacity: 0.35;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wave-pending,
+    .wave-host,
+    .wave-traces {
+        transition: none;
+    }
+
+    .wave-canvas-wrap[aria-busy="true"] .wave-pending::after {
+        animation: none;
+    }
+}
+
+/* The OpenMPT theme keeps a tracker's hard cuts: the waveform takes the pending line's place at once. */
+:root[data-theme="openmpt"] .wave-canvas-wrap .wave-pending,
+:root[data-theme="openmpt"] .wave-canvas-wrap .wave-host,
+:root[data-theme="openmpt"] .wave-canvas-wrap .wave-traces {
+    transition: none;
+}
+
 .transport {
     flex: 0 0 auto;
     display: flex;
@@ -2275,11 +2469,18 @@ table.data td .annotation-editor-input {
     background: var(--accent);
     color: var(--accent-ink);
     border: none;
+    padding: 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
+}
+
+/* The icon is a box of its own at a share of the button, so the button's text metrics leave it centered. */
+.play-btn .icon {
+    display: block;
+    font-size: calc(var(--play-button-size) * 0.45);
 }
 
 .play-btn:hover {
@@ -2315,6 +2516,11 @@ table.data td .annotation-editor-input {
     background: var(--wave-bg);
     font-size: var(--font-size-caption);
     pointer-events: none;
+}
+
+/* The corner readout waits with the frame, which holds no words while the waveform is on its way. */
+.wave-panel-frame:has(> .wave-canvas-wrap[aria-busy="true"]) .wave-time {
+    visibility: hidden;
 }
 
 .transport select {
@@ -2603,7 +2809,8 @@ table.data td .annotation-editor-input {
 
 :root[data-theme="openmpt"] .dv-react-part,
 :root[data-theme="openmpt"] .panel-status,
-:root[data-theme="openmpt"] .panel-filter {
+:root[data-theme="openmpt"] .panel-filter,
+:root[data-theme="openmpt"] .tag-legend-overlay {
     background: var(--surface-2);
 }
 
@@ -2640,25 +2847,53 @@ table.data td .annotation-editor-input {
     color: var(--accent-ink);
 }
 
-/* The strip along the bottom of the cloud: a row of slots, and beneath it the slider and the waveform once opened. */
+/* The strip lies over the cloud's bottom edge, so the cloud keeps its size whatever the strip shows;
+   the shadow sits on the sliding box, whose content clips everything past its edge. */
+.morph-strip-dock {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+}
+
+.morph-strip-dock > .collapsible {
+    box-shadow: var(--shadow);
+}
+
+/* The row of slots along the bottom, and above it a drawer whose sections slide open: each keeps
+   its vertical spacing as a margin inside its own sliding box, so the spacing slides with it. */
 .morph-strip {
-    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-1) var(--space-4) var(--space-3);
     border-top: 1px solid var(--border);
     background: var(--surface-1);
+}
+
+.morph-strip-section {
+    margin: var(--space-2) 0;
+}
+
+/* A drawer section reaches into the strip's side padding and pads its sliding box back by as much,
+   so a focus ring at the section's edge stays whole inside the box that clips it. */
+.morph-strip > .collapsible {
+    margin-inline: calc(-1 * var(--space-2));
+}
+
+.morph-strip > .collapsible > .collapsible-content {
+    padding-inline: var(--space-2);
 }
 
 .morph-strip-row {
     display: flex;
     align-items: center;
     gap: var(--space-3);
+    padding-top: var(--space-2);
 }
 
 .morph-slot {
-    flex: 1 1 0;
+    flex: 1 1 auto;
     display: flex;
     align-items: center;
     gap: var(--space-3);
@@ -2705,15 +2940,48 @@ table.data td .annotation-editor-input {
     white-space: nowrap;
 }
 
+/* A slot and the × that empties it: the × rests over the slot's right end, a whole tap target wide. */
+.morph-slot-group {
+    position: relative;
+    flex: 1 1 0;
+    display: flex;
+    min-width: 0;
+}
+
+.morph-slot-group:has(.morph-slot-clear) .morph-slot {
+    padding-right: var(--tap-target);
+}
+
+.morph-slot-clear {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--tap-target);
+    height: var(--tap-target);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--font-size-body);
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.morph-slot-clear:hover {
+    color: var(--text-primary);
+}
+
 .morph-strip-body {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
 }
 
-/* A waveform takes the height a sample's player has over its detail, so opening it costs the cloud the same every time. */
+/* A waveform takes the height a sample's player has over its detail. */
 .morph-strip-wave {
-    flex: 0 0 auto;
     height: var(--sample-transport-height);
 }
 
@@ -2794,14 +3062,12 @@ table.data td .annotation-editor-input {
     display: flex;
     align-items: center;
     gap: var(--space-4);
-    margin: 0;
     border-radius: var(--radius-3);
     border: 1px solid var(--border);
 }
 
-/* The history under the strip: undo, redo and forgetting over a column per end, in the box a waveform takes. */
+/* The history in the strip's drawer: undo, redo and forgetting over a column per end, in the box a waveform takes. */
 .morph-strip-history {
-    flex: 0 0 auto;
     height: var(--sample-transport-height);
 }
 
@@ -2926,7 +3192,7 @@ table.data td .annotation-editor-input {
     display: none;
 }
 
-/* In a sheet a column hugs its rows up to half the screen, then scrolls inside, as the box does under the strip. */
+/* In a sheet a column hugs its rows up to half the screen, then scrolls inside, as the box does in the strip's drawer. */
 .sheet .morph-history-column {
     max-height: 50vh;
 }
@@ -3149,9 +3415,9 @@ table.data td .annotation-editor-input {
 }
 
 /* A short viewport keeps the morph strip to its row and gives the cloud the tray's room: the strip
-   names the tapped sample, and a held point offers the rest. */
+   names the tapped sample, and a held point offers the rest. The tools stand in a row above the
+   strip, the Morph switch among them. */
 @media (height < 560px) {
-    .morph-strip-toggle,
     .morph-strip-body,
     .morph-strip-wave,
     .morph-strip-history,

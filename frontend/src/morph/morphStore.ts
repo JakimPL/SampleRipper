@@ -46,6 +46,8 @@ export interface MorphPair {
 interface MorphState extends MorphSnapshot, MorphHistory {
     /** The end that takes every sample picked next. */
     readonly selectedEnd: MorphEnd;
+    /** Whether the morph is on: picking fills its ends, and the strip and the link show it. */
+    readonly enabled: boolean;
 }
 
 interface MorphActions {
@@ -56,11 +58,17 @@ interface MorphActions {
     /** Records the current weight as the point whose render is on screen. */
     readonly markRendered: () => void;
     readonly selectEnd: (end: MorphEnd) => void;
+    /** Turns the morph on or off, the pair staying as it stands. */
+    readonly setEnabled: (enabled: boolean) => void;
     /**
-     * Gives a picked sample to the selected end, and hands the selection to the other end while
-     * that one is empty; a sample the pair already holds leaves everything as it is.
+     * Gives a picked sample to the selected end, the selection staying on it; a sample the pair
+     * already holds, or a morph turned off, leaves everything as it is.
      */
     readonly takeSample: (hash: string) => void;
+    /** Turns the morph on and makes `hash` the sample at the end opposite the selected one, the selection staying. */
+    readonly takeSampleAtOtherEnd: (hash: string) => void;
+    /** Empties `end`, as a step undo can take back, and selects it so the next pick fills it. */
+    readonly discard: (end: MorphEnd) => void;
     /** Returns the ends, the drawn point and the slider to how they stood before the last change. */
     readonly undo: () => void;
     /** Brings the change last undone back. */
@@ -75,10 +83,11 @@ export const INITIAL_MORPH_STATE: MorphState = {
     weight: DEFAULT_WEIGHT,
     renderedWeight: null,
     selectedEnd: "first",
+    enabled: true,
     ...EMPTY_HISTORY,
 };
 
-const OTHER_END: Readonly<Record<MorphEnd, MorphEnd>> = { first: "second", second: "first" };
+export const OTHER_END: Readonly<Record<MorphEnd, MorphEnd>> = { first: "second", second: "first" };
 
 /**
  * The ends as chosen, at `weight`: a pair that stays keeps the render drawn for it, a pair just
@@ -97,8 +106,8 @@ function otherEndOf(state: MorphPair, end: MorphEnd): string | null {
     return state[OTHER_END[end]];
 }
 
-/** The pair with `hash` at `end` and the other end as it stands. */
-function withSampleAt(state: MorphSnapshot, end: MorphEnd, hash: string): MorphSnapshot {
+/** The pair with `hash` at `end`, or `end` emptied for `null`, and the other end as it stands. */
+function withSampleAt(state: MorphSnapshot, end: MorphEnd, hash: string | null): MorphSnapshot {
     return end === "first"
         ? pairOf(state, hash, state.second, state.weight)
         : pairOf(state, state.first, hash, state.weight);
@@ -111,21 +120,26 @@ function swappedOf(state: MorphSnapshot): MorphSnapshot {
 
 /**
  * The pair a morph runs between, how far along it the listener stands, which point of the path is
- * drawn on screen, and which end is selected to take the next sample. The strip under the cloud
+ * drawn on screen, and which end is selected to take the next sample. The strip over the cloud
  * and the marker on the cloud share it, so the two are one control. The pair is its own state,
  * filled by the samples a person picks, so it stays where it was put while the shell's highlight
  * and focus move on.
  *
  * One end is always selected, the first one at the start of a visit, and it takes every sample
- * picked in a list or on the cloud through `takeSample`. Picking fills an empty pair in order:
- * once the selected end takes a sample while the other end is empty, the selection moves there,
- * so the first two picks make a pair; after that the selection stays where a slot's tap put it.
+ * picked in a list or on the cloud through `takeSample`. The selection stays where a person put
+ * it, through a slot, a key or the clearing of an end, so every pick lands on the end they chose.
  * Taking a sample the pair already holds keeps the pair and the selection as they stand, so a
  * double click's second click, or a tap to hear an end again, holds the pair in place. `setEnd`
  * names one end outright, which is how a row of the history gives its sample back, trading places
- * when the sample sits at the other end. `swap` mirrors the weight along with the ends, so the
- * audible point stays where it was, and keeps the selected letter. A render belongs to the pair it
- * was drawn for, so any change of the ends drops it.
+ * when the sample sits at the other end; `takeSampleAtOtherEnd` names the end opposite the
+ * selected one the same way, which is how a right click on the cloud fills it. `discard` empties
+ * one end and selects it, so the next pick fills it again. `swap` mirrors the weight along with
+ * the ends, so the audible point stays where it was, and keeps the selected letter. A render
+ * belongs to the pair it was drawn for, so any change of the ends drops it.
+ *
+ * The morph can be turned off for a while: the pair waits as it stands, picking takes nothing,
+ * and the strip and the link leave the screen until it is turned on again. Naming the end
+ * opposite the selected one turns it back on, since that asks for the morph outright.
  *
  * Every change to the ends passes through one `commit`, which keeps two records. The columns
  * (`held`) hold the samples each end has held, newest arrival first and each once, kept across
@@ -178,16 +192,25 @@ export const useMorphStore = create<MorphState & MorphActions>((set, get) => {
         selectEnd: (end) => {
             set({ selectedEnd: end });
         },
+        setEnabled: (enabled) => {
+            set({ enabled });
+        },
         takeSample: (hash) => {
             const state = get();
-            if (state.first === hash || state.second === hash) {
+            if (!state.enabled || state.first === hash || state.second === hash) {
                 return;
             }
-            const end = state.selectedEnd;
-            commit(withSampleAt(state, end, hash));
-            if (otherEndOf(state, end) === null) {
-                set({ selectedEnd: OTHER_END[end] });
+            commit(withSampleAt(state, state.selectedEnd, hash));
+        },
+        takeSampleAtOtherEnd: (hash) => {
+            if (!get().enabled) {
+                set({ enabled: true });
             }
+            get().setEnd(OTHER_END[get().selectedEnd], hash);
+        },
+        discard: (end) => {
+            commit(withSampleAt(get(), end, null));
+            set({ selectedEnd: end });
         },
         undo: () => {
             restore(undone(get(), snapshotOf(get())));

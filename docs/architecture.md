@@ -1120,6 +1120,14 @@ layout standing. While a layout is fitted, its directed distances are checkpoint
 takes up after its last checkpoint. The pipeline's `module-cloud` step runs after `cloud`, since
 the vectors it reads are the ones `cloud` promotes.
 
+`GET /cloud/modules` carries each module's tracker format on its point, read with the coordinates in
+one query (`PostgresModuleCloudCoordinateRepository.list_all_with_trackers`), since a module's format
+is fixed by its bytes. The Cloud panel's Modules tab paints every module in its stamp's color
+(`--tracker-xm`, `--tracker-it`, `--tracker-mod` and `--tracker-s3m`, which the `.badge-*` stamps read
+too) through the slots the sample cloud paints by (`trackerColoring.ts`), and its legend lists the
+formats the cloud holds with their module counts, each a switch for whether its modules are painted
+or join the substrate.
+
 ## Labels on a sample
 
 A sample is named by two kinds of label. The hand label is what a person wrote
@@ -1147,11 +1155,14 @@ id of the scoring on show, since a scoring's categories never change once writte
 a color that is a function of its rank alone (`labelPalette.ts`: hues a golden angle apart, at the
 lightness and chroma each theme declares), so a tag keeps its color as the vocabulary grows and a new
 one takes the next hue; the legend is the picker, painting the most used top-level tags until a
-person chooses their own, listing the painted ones with the rest behind a toggle inside a strip of at
-most three rows, and a sample carrying several painted tags takes the first it was given
-(`labelColoring.ts`). The Cloud panel opens in the category mode, painted from the categories, with
-the labels one click away; a panel narrower than 480 pixels, a phone's among them, keeps its
-toolbar to the tabs and a Legend button, whose sheet holds that choice above the painted tags.
+person chooses their own, and a sample carrying several painted tags takes the first it was given
+(`labelColoring.ts`). The legend ends the toolbar's one row, after the tabs and the choice of
+coloring: the painted tags fill the rest of the row and scroll sideways, and the toggle drops every
+tag into a panel of at most three rows over the cloud's top edge, so the cloud keeps its size. The
+Cloud panel opens in the category mode, painted from the categories, with the labels one click away;
+a panel 480 pixels wide or narrower, a phone's among them, keeps its toolbar to the tabs and a Legend
+button, whose sheet holds that choice above the painted tags; where that choice is offered, a panel
+up to 720 pixels wide does the same, so the tags keep room for a few chips beside it.
 Every point outside the painted tags joins the substrate, on its recessive tone, and while a
 mode's sources load every point waits there.
 
@@ -1200,7 +1211,10 @@ composition the phone's sample page shows at half that height, where the player 
 play button and the file to save at either side of the waveform with the time in its corner, while
 the workspace's player keeps the rate choice and the file beneath the waveform; both forms are
 `frontend/src/samples/WavePanel.tsx`, which the morph strip's waveform takes as well, at the same
-height. Either way the frame holds still while a sample or a morph sounds. The detail opens
+height. Either way the frame holds still while a sample or a morph sounds, and it holds drawings
+alone: why audio is missing stands in the time's place on the transport, or in a line under the
+phone's row, and the corner's time waits while the waveform is on its way. The waveform fades in
+over its pending line, at once under reduced motion and in the OpenMPT theme. The detail opens
 on an Info tab, the sample's label, categories and properties,
 with its spectral neighbors, occurrences, relations and co-occurrences each a tab beside it; the
 panel holds the tab, so it outlives a change of sample.
@@ -1257,7 +1271,9 @@ handed in) and cancels the touch start, so the browser raises no compatibility m
 library to misread; the click a tap may still raise is stopped before the canvas sees it. A tap
 finds its point through `hitTest.ts`, a pass over the points' positions through the same
 `ViewTransform` the overlays use, within a finger's reach; `CloudView` then selects and activates
-it synchronously, inside the gesture, which is what lets playback start on a phone. One finger
+it synchronously, inside the gesture, which is what lets playback start on a phone. A second tap in
+the same place soon after, counted by `frontend/src/shared/gestures/doubleTap.ts`, opens the point
+the first one took, the way a double click does. One finger
 pans and two pinch through `cameraControl.ts`, which drives `scatterplot.get("camera")` directly:
 a pan is a translation in the camera's normalized space, half the surface's height being one
 unit, and a pinch a scale about the fingers' midpoint; every move ends in `redraw()`, and the
@@ -1269,8 +1285,14 @@ event synchronously inside the animation frame rendering a moved view, and `Clou
 and every resize of the container, in one pass (`syncView`): it derives a `ViewTransform` from the
 camera matrix (`viewTransform.ts`), repaints the underlay and the node layer through it, and commits
 the overlays' positions from `getScreenPosition` through `flushSync`, so the frame paints dots,
-nodes, grid and markers from one view. With `W` and `H` the container's size in CSS pixels and
-`view` the column-major camera matrix, the scatterplot places a data point `(x, y)` at
+nodes, grid and markers from one view. A resize repaints the dots in its own frame too.
+regl-scatterplot sizes its canvas from a ResizeObserver of its own, and assigning a canvas its size
+clears it, while the library draws only on the next animation frame. `CloudView` therefore hands
+the scatterplot a renderer from `frontend/src/cloud/onDemandRenderer.ts`, which keeps the frame
+callback the library registers, and observes the container with an observer created after the
+library's, so its callback runs second: it draws that frame at once and then syncs the layers,
+and the paint after the resize shows every point. With `W` and `H` the container's size in CSS
+pixels and `view` the column-major camera matrix, the scatterplot places a data point `(x, y)` at
 
 ```
 screenX = W/2 + (H/2) * (view[0] * x + view[4] * y + view[12])
@@ -1278,6 +1300,12 @@ screenY = H/2 - (H/2) * (view[1] * x + view[5] * y + view[13])
 ```
 
 Half the height is one clip unit on both axes, which keeps the data square in a panel of any aspect.
+
+The morph strip lies over the bottom edge of the samples cloud, and `CloudView` takes the height it
+covers as `bottomInsetPx`. Centering on a point and framing the pair aim at the part of the view
+above it: `areaAboveInset` in `frontend/src/cloud/viewArea.ts` turns the target into the whole view
+that `zoomToArea` fits, tall enough for the target to fit the uncovered part and centered half the
+inset below the target, so the target lands in the middle of what stays in sight.
 
 The scatterplot draws each palette slot at a size and opacity of its own, the substrate's slot
 first, finer and fainter, so the named points stand on a ground whose density still shows. The
@@ -1322,7 +1350,9 @@ themes fill from their surfaces and the OpenMPT theme fills with Windows 10 lite
 buttons with a blue ring on the default one and gray text when disabled, sunken white fields, square
 black-on-white checks, a green bar, etched group captions and a flat menu bar. A page wanting larger
 controls, as the setup page does, sets `--button-height` and `--field-height` on itself, since
-`--control-height` is resolved on `:root`.
+`--control-height` is resolved on `:root`. The controls' icons are shapes drawn on one grid in
+`frontend/src/shared/icons`, outlined or filled, the play triangle centered on its own centroid,
+so every browser renders them alike.
 
 ## Morphs in the application
 
@@ -1331,19 +1361,41 @@ apart from the shell's focus and highlight: the samples a person picks fill it, 
 was put while a person goes on browsing. One end is always selected (`selectedEnd` in the store), A
 at the start of a visit, and it takes every sample picked through `takeSample`, called from the two
 places a tap takes a sample in hand, the plain click of
-`frontend/src/workspace/useEntityRowInteractions.ts` and `CloudPanel.handleSelect`. While the other
-end is empty the selection moves there once the selected end takes a sample, so the first two picks
-make a pair; a sample the pair already holds leaves the pair and the selection as they stand, so
-the second click of a double click, or a tap to hear an end again, holds the pair in place. The
-strip along the bottom of the Cloud panel (`frontend/src/morph/MorphStrip.tsx`) shows the pair as
-two slots, A and B; tapping a slot selects its end, and a chosen end plays and is taken in hand. A
+`frontend/src/workspace/useEntityRowInteractions.ts` and `CloudPanel.handleSelect`. The selection
+stays where a person put it, so every pick lands on the end they chose; a sample the pair already
+holds leaves the pair and the selection as they stand, so the second click of a double click, or a
+tap to hear an end again, holds the pair in place. A right
+click on a sample in the cloud, or **Use as B** in a held point's menu (named by the other end's
+letter), gives the sample to the end opposite the selected one through `takeSampleAtOtherEnd`,
+which names that end the way `setEnd` does and keeps the selection, then plays the sample. The strip
+(`frontend/src/morph/MorphStrip.tsx`) shows the pair as two slots, A and B; tapping a slot selects
+its end, and a chosen end plays and is taken in hand. The × beside a chosen slot empties that end
+through `discard`, one more step on the undo line, and selects it, so the next pick fills it. A
 whole pair draws a line between the two ends' markers on the cloud with a knob on it that is the
 weight (`frontend/src/cloud/MorphLink.tsx`), moving with the points through pan and zoom like every
-overlay on the cloud. Once both ends are chosen a slider mirroring the knob's weight stands under
+overlay on the cloud. Once both ends are chosen a slider mirroring the knob's weight opens above
 the row, with the distance between the ends on a desktop, and the waveform button opens the render
-drawn over both ends' traces beneath it. Every point is heard through
-`frontend/src/morph/useMorphPlayback.ts`, which plays the render through the one preview element
-every sample plays through (`useAudioPreview`, whose sources carry a URL and a key, so a morph is
+drawn over both ends' traces between the slider and the row.
+
+The strip lies over the bottom edge of the samples cloud (`frontend/src/morph/MorphStripDock.tsx`),
+so the cloud keeps its size whatever the strip shows. The A and B row stays at the bottom, and a
+drawer above it stacks, from the top, the notice that morphing is offline, the history, the slider
+and the waveform. Each section opens and closes through `frontend/src/shared/motion/Collapsible.tsx`,
+a grid row growing from `0fr` to `1fr` as it fades in, kept mounted while it closes until its
+transition ends, and changing at once under reduced motion; a closing section goes on showing the
+pair it last showed (`useLastPresent`). The dock reports the height it covers on every resize, and
+the Cloud panel puts it on `.cloud-body` as `--cloud-bottom-inset`, which lifts the tools and the
+tap card above the strip, and hands it to `CloudView` as `bottomInsetPx`.
+
+The **Morph** switch at the top of the cloud's tools turns the morph off and on (`enabled` in the
+store, kept for the visit and outside the undo line). While it is off the strip slides away, the
+link leaves the cloud, **Frame the pair** rests, the phone's Cloud tab drops its dot, and Ctrl+Z,
+Ctrl+Y, A, B and Tab stay the browser's; `takeSample` takes nothing, so a tap only takes a point in hand and plays
+it, and the pair waits as it stands until the switch, a right click or **Use as B** turns the morph
+on again.
+
+Every point is heard through `frontend/src/morph/useMorphPlayback.ts`, which plays the render
+through the one preview element every sample plays through (`useAudioPreview`, whose sources carry a URL and a key, so a morph is
 keyed by its own render's address) and records the weight in `morphStore`, so the waveform draws
 whichever control let go last; a pair just completed is drawn at the slider's point by the store's
 `pairOf` before any point of it is heard, so the ends are heard first. Every change to the ends
@@ -1353,9 +1405,13 @@ across visits under one localStorage key by `morphHistoryPersistence.ts`) and a 
 behind the present (`past` and `future`, the ends with the weight and the drawn point) that `undo`
 and `redo` walk, so a row keeps its place and the pair marks its rows by holding their samples.
 `frontend/src/morph/useMorphUndoKeys.ts`, mounted in `AppShell`, hands Ctrl+Z and Ctrl+Y to the
-store from anywhere but a text field, whose own undo the browser keeps; the history button on the
-strip opens `MorphHistory.tsx` under it on the workspace, or as a sheet on a phone, and a click on
-a row names its end through `setEnd`. The opened strip states how far apart the two ends sit
+store from anywhere but a text field, whose own undo the browser keeps, and
+`frontend/src/morph/useMorphEndKeys.ts` beside it selects an end on A or B, outside a text field or
+a drop-down list, and the other end on Tab. Tab switches only while the focus rests outside the
+controls once a pointer has been used, so it keeps walking the controls for a person on the keyboard
+alone; a click on a slot lets the focus go for that reason, while a key press keeps it there. The history button on the
+strip opens `MorphHistory.tsx` in its drawer on the workspace, or as a sheet on a phone, and a click
+on a row names its end through `setEnd`. The opened strip states how far apart the two ends sit
 (`frontend/src/morph/MorphDistance.tsx`, over `GET /samples/{hash}/distance/{other}`), so the length
 of the path is read where the path is traveled. Both ends are carried into one frame before they blend: the API resolves the
 rate each is heard at by the one rule every reader of the catalog applies and hands both to the

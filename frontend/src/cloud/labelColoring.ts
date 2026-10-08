@@ -1,10 +1,9 @@
 import type { CloudLabel } from "../api/cloud";
 import type { TagSummary } from "../api/curation";
+import type { PointColoring, SlotPaint } from "./pointColoring";
 
 /** How many of the most-used tags are painted before a person chooses their own. */
 export const DEFAULT_PAINTED_TAG_COUNT = 8;
-/** The palette slot every point takes that no painted tag reaches: the ground the painted ones sit on. */
-export const SUBSTRATE_SLOT = 0;
 
 /** A top-level tag as the legend lists it: its name, how many samples carry it, and its lasting rank. */
 export interface TopLevelTag {
@@ -12,17 +11,6 @@ export interface TopLevelTag {
     readonly sampleCount: number;
     readonly rank: number;
 }
-
-/** How the cloud's sample points are colored: the painted tags, each in the color of its lasting rank. */
-export interface PointColoring {
-    /** The palette slot of every sample that a painted tag reaches. */
-    readonly slotByHash: ReadonlyMap<string, number>;
-    /** The lasting rank of each painted tag, in slot order; slot `i + 1` paints in `ranks[i]`'s color. */
-    readonly ranks: readonly number[];
-}
-
-/** The coloring while a mode's tags are on their way: every sample point on the ground, awaiting its color. */
-export const SUBSTRATE_ONLY_COLORING: PointColoring = { slotByHash: new Map(), ranks: [] };
 
 /** The top levels alone, most used first, ties by name. */
 export function topLevelTags(tags: readonly TagSummary[]): readonly TopLevelTag[] {
@@ -42,8 +30,8 @@ export function defaultPaintedTags(tags: readonly TopLevelTag[]): readonly strin
 }
 
 /**
- * The palette slot each labeled sample paints in: `SUBSTRATE_SLOT` where none of its tags is painted,
- * otherwise one past the position of its first painted tag in `painted`.
+ * The palette slot each labeled sample paints in: one past the position of its first painted tag in
+ * `painted`, the substrate's slot holding every sample none of whose tags is painted.
  *
  * A point shows one color, and a sample carries several tags, so one has to decide: the first tag
  * the person wrote that is among the painted ones, since the order they wrote in is the one reading
@@ -63,7 +51,7 @@ export function labelSlots(labels: readonly CloudLabel[], painted: readonly stri
     return slotByHash;
 }
 
-/** The coloring the painted tags describe, ready for the view to draw. */
+/** The coloring the painted tags describe, each in the color of its lasting rank, ready for the view to draw. */
 export function labelColoring(
     labels: readonly CloudLabel[],
     tags: readonly TopLevelTag[],
@@ -79,6 +67,6 @@ export function labelColoring(
             labels,
             known.map((tag) => tag.name),
         ),
-        ranks: known.map((tag) => tag.rank),
+        paints: known.map((tag): SlotPaint => ({ kind: "label", rank: tag.rank })),
     };
 }

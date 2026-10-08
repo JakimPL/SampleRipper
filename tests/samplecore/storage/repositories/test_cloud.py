@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import Connection, func, select
 
-from samplecore.models.cloud import CloudPromotion, ModuleCloudCoordinate, SampleCloudCoordinate
+from samplecore.models.cloud import CloudPromotion, ModuleCloudCoordinate, PlacedModule, SampleCloudCoordinate
 from samplecore.models.module import Module
 from samplecore.models.sample import Sample
 from samplecore.storage.database import cloud_promotion
@@ -94,6 +94,27 @@ def test_module_list_all_returns_one_coordinate_per_module(
     repository.upsert(second)
 
     assert set(repository.list_all()) == {first, second}
+
+
+def test_placed_modules_carry_the_tracker_format_of_their_module(
+    connection: Connection, stored_module: Module, stored_module_b: Module
+) -> None:
+    repository = PostgresModuleCloudCoordinateRepository(connection)
+    first = _module_coordinate(stored_module.hash)
+    second = _module_coordinate(stored_module_b.hash)
+    repository.upsert(first)
+    repository.upsert(second)
+
+    placed = repository.list_all_with_trackers()
+
+    assert set(placed) == {
+        PlacedModule(coordinate=first, tracker=stored_module.tracker),
+        PlacedModule(coordinate=second, tracker=stored_module_b.tracker),
+    }
+
+
+def test_module_list_all_with_trackers_on_an_empty_table_returns_nothing(connection: Connection) -> None:
+    assert PostgresModuleCloudCoordinateRepository(connection).list_all_with_trackers() == ()
 
 
 def test_replace_all_replaces_whatever_was_persisted_before(

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import type { TrackerFormat } from "../api/modules";
 import type { LayoutMode } from "../layout/layoutMode";
 import { type LabelPaletteParameters, readLabelPaletteParameters } from "../theme/labelPalette";
 import { readThemeColor } from "../theme/readThemeColor";
@@ -41,13 +42,13 @@ export interface PointStyle {
 
 export interface CloudColors {
     readonly background: string;
-    /** The one color of the module cloud, whose points carry no tags. */
-    readonly point: string;
     readonly selected: string;
     readonly hover: string;
     /** The recessive tone of the points that name nothing. */
     readonly uncategorized: string;
     readonly labels: LabelPaletteParameters;
+    /** Each tracker format's stamp color, which a module's point wears as its badge does. */
+    readonly trackers: Readonly<Record<TrackerFormat, string>>;
 }
 
 /** How the theme draws the markers over single points: the hovered, the selected, and a morph's two ends. */
@@ -114,7 +115,6 @@ const SELECTED_EXTRA_SIZE: Token<number> = { property: "--cloud-point-size-selec
 const OUTLINE_WIDTH: Token<number> = { property: "--cloud-point-outline-width", fallback: 0 };
 const SCALE_MODE: Token<PointScaleMode> = { property: "--cloud-point-scale-mode", fallback: "asinh" };
 const BACKGROUND_COLOR: Token<string> = { property: "--cloud-bg", fallback: "#f4f5f7" };
-const POINT_COLOR: Token<string> = { property: "--cloud-point", fallback: "#1b1f26" };
 const SELECTED_COLOR: Token<string> = { property: "--cloud-point-selected", fallback: "#a8690f" };
 const HOVER_COLOR: Token<string> = { property: "--cloud-hover-color", fallback: "#1b1f26" };
 const UNCATEGORIZED_COLOR: Token<string> = { property: "--cloud-point-uncategorized", fallback: "#d5d4ce" };
@@ -134,6 +134,12 @@ const GRID_BEAT_COLOR: Token<string> = { property: "--cloud-grid-beat", fallback
 const GRID_MEASURE_COLOR: Token<string> = { property: "--cloud-grid-measure", fallback: "rgb(27 31 38 / 10%)" };
 const GRID_CENTER_COLOR: Token<string> = { property: "--cloud-grid-center", fallback: "transparent" };
 const GLOW_OPACITY: Token<number> = { property: "--cloud-glow-opacity", fallback: 0 };
+const TRACKER_COLOR_FALLBACKS: Readonly<Record<TrackerFormat, string>> = {
+    xm: "#227a4e",
+    it: "#a85d14",
+    mod: "#2f6db0",
+    s3m: "#b5392a",
+};
 const MINIMUM_GRID_SPACING_PX = 4;
 /** How much smaller the points draw on a phone, whose cloud holds the same points in a third of the area. */
 export const PHONE_POINT_SCALE = 0.6;
@@ -143,6 +149,17 @@ const MINIMUM_SELECTED_EXTRA_SIZE_PX = 1;
 
 function readColor(token: Token<string>): string {
     return readThemeColor(token.property, token.fallback);
+}
+
+/** The custom property holding a tracker format's stamp color, which its badges and its module points share. */
+export function trackerColorProperty(format: TrackerFormat): string {
+    return `--tracker-${format}`;
+}
+
+function readTrackerColors(): Readonly<Record<TrackerFormat, string>> {
+    const read = (format: TrackerFormat): string =>
+        readThemeColor(trackerColorProperty(format), TRACKER_COLOR_FALLBACKS[format]);
+    return { xm: read("xm"), it: read("it"), mod: read("mod"), s3m: read("s3m") };
 }
 
 function readNumber(token: Token<number>): number {
@@ -178,11 +195,11 @@ function readPointStyle(): PointStyle {
 function readCloudColors(): CloudColors {
     return {
         background: readColor(BACKGROUND_COLOR),
-        point: readColor(POINT_COLOR),
         selected: readColor(SELECTED_COLOR),
         hover: readColor(HOVER_COLOR),
         uncategorized: readColor(UNCATEGORIZED_COLOR),
         labels: readLabelPaletteParameters(),
+        trackers: readTrackerColors(),
     };
 }
 

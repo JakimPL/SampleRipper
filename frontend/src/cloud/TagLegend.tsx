@@ -1,69 +1,70 @@
 import type { ReactElement } from "react";
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 
-import { classNames } from "../shared/classNames";
-import { labelColor, readLabelPaletteParameters } from "../theme/labelPalette";
-import { useThemeSignal } from "../theme/useThemeSignal";
+import { useDismissal } from "../shared/overlay/useDismissal";
+import { useLabelColor } from "../theme/useLabelColor";
 import type { TopLevelTag } from "./labelColoring";
+import { LegendChip } from "./LegendChip";
 
 interface TagLegendProps {
     readonly tags: readonly TopLevelTag[];
     readonly painted: readonly string[];
     readonly onToggle: (name: string) => void;
-    /** What the strip says while no sample carries a tag of this legend's kind. */
+    /** What the legend says while no sample carries a tag of its kind. */
     readonly emptyCaption: string;
 }
 
 const COLLAPSE_LABEL = "Painted only";
 
 /**
- * The legend that is also the picker: the top-level tags painted on the cloud, most used first,
- * each in the color its rank gives it, with the rest of the vocabulary one toggle away. At rest
- * the strip is one row that scrolls sideways, painted tags first, so the plot beneath keeps its
- * height however many tags a person has written; expanded, it lists every tag in the same order
- * and wraps into rows, so a chip keeps its place whether or not its neighbors are shown. Colors are read back from the theme's parameters on
- * every theme change, the same way the cloud re-reads its own, so a swatch and the points it
- * names stay one color.
+ * The legend that is also the picker, as the end of the cloud's toolbar row: the top-level tags
+ * painted on the cloud, most used first, each in the color its rank gives it, with the rest of the
+ * vocabulary one toggle away. At rest the painted chips fill the rest of the row and scroll
+ * sideways, so the toolbar stays one row however many tags a person has written. Expanded, every
+ * tag drops into a panel over the cloud's top edge, in the same order and wrapping into at most
+ * three rows that scroll, so a chip keeps its place whether or not its neighbors are shown and the
+ * cloud keeps its size; the toggle, Escape or a press outside the legend takes the panel away.
+ * Colors are read back from the theme on every theme change, the same way the cloud re-reads its
+ * own, so a swatch and the points it names stay one color.
  */
 export function TagLegend({ tags, painted, onToggle, emptyCaption }: TagLegendProps): ReactElement {
     const [expanded, setExpanded] = useState(false);
-    const themeSignal = useThemeSignal();
-    const colorByName = useMemo(() => {
-        const parameters = readLabelPaletteParameters();
-        return new Map(tags.map((tag) => [tag.name, labelColor(tag.rank, parameters)]));
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- the theme signal is what changes the parameters read
-    }, [tags, themeSignal.preference, themeSignal.systemVersion]);
+    const rootRef = useRef<HTMLDivElement | null>(null);
+    const colorOf = useLabelColor();
+    useDismissal(rootRef, expanded, () => {
+        setExpanded(false);
+    });
 
     if (tags.length === 0) {
-        return <p className="cloud-caption">{emptyCaption}</p>;
+        return (
+            <p className="tag-legend-caption" title={emptyCaption}>
+                {emptyCaption}
+            </p>
+        );
     }
 
     const paintedTags = tags.filter((tag) => painted.includes(tag.name));
     const hiddenCount = tags.length - paintedTags.length;
-    const shown = expanded ? tags : paintedTags;
+
+    function chipOf(tag: TopLevelTag): ReactElement {
+        return (
+            <LegendChip
+                key={tag.name}
+                name={tag.name}
+                count={tag.sampleCount}
+                color={colorOf(tag.rank)}
+                painted={painted.includes(tag.name)}
+                onToggle={() => {
+                    onToggle(tag.name);
+                }}
+            />
+        );
+    }
 
     return (
-        <div
-            className={classNames("tag-legend", expanded && "tag-legend-expanded")}
-            role="group"
-            aria-label="Painted tags"
-        >
-            {shown.map((tag) => (
-                <button
-                    key={tag.name}
-                    type="button"
-                    className="tag-legend-entry"
-                    aria-pressed={painted.includes(tag.name)}
-                    onClick={() => {
-                        onToggle(tag.name);
-                    }}
-                >
-                    <span className="tag-legend-swatch" style={{ background: colorByName.get(tag.name) }} aria-hidden />
-                    <span className="tag-legend-name">{tag.name}</span>
-                    <span className="tag-legend-count">{tag.sampleCount}</span>
-                </button>
-            ))}
-            {hiddenCount > 0 && (
+        <div ref={rootRef} className="tag-legend" role="group" aria-label="Painted tags">
+            <div className="tag-legend-chips">{!expanded && paintedTags.map(chipOf)}</div>
+            {(hiddenCount > 0 || expanded) && (
                 <button
                     type="button"
                     className="tag-legend-toggle"
@@ -75,6 +76,7 @@ export function TagLegend({ tags, painted, onToggle, emptyCaption }: TagLegendPr
                     {expanded ? COLLAPSE_LABEL : `+${String(hiddenCount)} more`}
                 </button>
             )}
+            {expanded && <div className="tag-legend-overlay">{tags.map(chipOf)}</div>}
         </div>
     );
 }

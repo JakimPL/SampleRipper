@@ -46,3 +46,4 @@ Thumbs.db
 .uvicorn.log
 .samplenotes.log
 
+.worktrees/

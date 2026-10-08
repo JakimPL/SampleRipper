@@ -2,8 +2,21 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { WavePanel } from "../../src/samples/WavePanel";
+import { Icon } from "../../src/shared/icons/Icon";
 
 const READOUT = "0.00 s / 0.93 s";
+
+const PLAY_BUTTON = (
+    <button type="button" aria-label="Play">
+        <Icon name="play" label={null} />
+    </button>
+);
+
+const DOWNLOAD = (
+    <a href="/a.wav" download="a.wav" aria-label="Save">
+        <Icon name="download" label={null} />
+    </a>
+);
 
 function tagsOf(panel: Element | null): readonly string[] {
     return panel === null ? [] : [...panel.children].map((child) => child.tagName);
@@ -14,16 +27,12 @@ describe("WavePanel", () => {
         const { container } = render(
             <WavePanel
                 compact
-                playButton={<button type="button">▶</button>}
+                playButton={PLAY_BUTTON}
                 view={<p>the frame</p>}
                 readout={READOUT}
                 failure={null}
                 controls={<span>a rate to choose</span>}
-                download={
-                    <a href="/a.wav" download="a.wav">
-                        ⤓
-                    </a>
-                }
+                download={DOWNLOAD}
             />,
         );
 
@@ -34,11 +43,11 @@ describe("WavePanel", () => {
         expect(screen.queryByText("a rate to choose")).not.toBeInTheDocument();
     });
 
-    it("keeps the row symmetric with a slot where there is no file, and the corner clear where the audio is missing", () => {
+    it("keeps the row symmetric with a slot where there is no file, and says under it why the audio is missing", () => {
         const { container } = render(
             <WavePanel
                 compact
-                playButton={<button type="button">▶</button>}
+                playButton={PLAY_BUTTON}
                 view={<p>the frame</p>}
                 readout={READOUT}
                 failure="the audio is gone"
@@ -47,26 +56,23 @@ describe("WavePanel", () => {
             />,
         );
 
-        expect(tagsOf(container.querySelector(".wave-panel"))).toEqual(["BUTTON", "DIV", "SPAN"]);
+        expect(tagsOf(container.querySelector(".wave-panel"))).toEqual(["BUTTON", "DIV", "SPAN", "P"]);
         expect(container.querySelector(".wave-panel-slot")).toBeInTheDocument();
         expect(container.querySelector(".wave-time")).not.toBeInTheDocument();
-        expect(screen.queryByText("the audio is gone")).not.toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("the audio is gone");
+        expect(container.querySelector(".wave-panel-frame")).toHaveTextContent(/^the frame$/);
     });
 
     it("stands the frame over a transport row elsewhere, the controls and the file in the row", () => {
         const { container } = render(
             <WavePanel
                 compact={false}
-                playButton={<button type="button">▶</button>}
+                playButton={PLAY_BUTTON}
                 view={<p>the frame</p>}
                 readout={READOUT}
                 failure={null}
                 controls={<span>a rate to choose</span>}
-                download={
-                    <a href="/a.wav" download="a.wav">
-                        ⤓
-                    </a>
-                }
+                download={DOWNLOAD}
             />,
         );
 
@@ -82,7 +88,7 @@ describe("WavePanel", () => {
         const { container } = render(
             <WavePanel
                 compact={false}
-                playButton={<button type="button">▶</button>}
+                playButton={PLAY_BUTTON}
                 view={<p>the frame</p>}
                 readout={READOUT}
                 failure="the audio is gone"

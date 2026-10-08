@@ -835,11 +835,15 @@ export interface components {
         };
         /**
          * ModuleCloudPoint
-         * @description One module's place in the embedding: the coordinate alone, for the same reason a sample's point is.
+         * @description One module's place in the embedding, with the tracker format a viewer paints its point in.
+         *
+         *     The point carries the coordinate's own fields, for the same reason a sample's point does. The
+         *     format rides along because the module's own bytes fix it, so it holds for as long as the point does.
          */
         readonly ModuleCloudPoint: {
             /** Module Hash */
             readonly module_hash: string;
+            readonly tracker: components["schemas"]["TrackerFormat"];
             /** X */
             readonly x: number;
             /** Y */

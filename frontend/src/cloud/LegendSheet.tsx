@@ -1,12 +1,11 @@
 import type { ReactElement } from "react";
-import { useMemo } from "react";
 
 import { useCurationAccess } from "../samples/useCurationAccess";
 import { BottomSheet } from "../shared/overlay/BottomSheet";
-import { labelColor, readLabelPaletteParameters } from "../theme/labelPalette";
-import { useThemeSignal } from "../theme/useThemeSignal";
+import { useLabelColor } from "../theme/useLabelColor";
 import { type ColoringMode, ColoringModeChoice } from "./ColoringModeChoice";
 import type { TopLevelTag } from "./labelColoring";
+import { LegendChip } from "./LegendChip";
 
 interface LegendSheetProps {
     readonly mode: ColoringMode;
@@ -33,13 +32,8 @@ export function LegendSheet({
     emptyCaption,
     onClose,
 }: LegendSheetProps): ReactElement {
-    const themeSignal = useThemeSignal();
     const { curationShown } = useCurationAccess();
-    const colorByName = useMemo(() => {
-        const parameters = readLabelPaletteParameters();
-        return new Map(tags.map((tag) => [tag.name, labelColor(tag.rank, parameters)]));
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- the theme signal is what changes the parameters read
-    }, [tags, themeSignal.preference, themeSignal.systemVersion]);
+    const colorOf = useLabelColor();
 
     return (
         <BottomSheet title="Legend" onClose={onClose}>
@@ -54,23 +48,16 @@ export function LegendSheet({
             ) : (
                 <div className="legend-sheet-chips" role="group" aria-label="Painted tags">
                     {tags.map((tag) => (
-                        <button
+                        <LegendChip
                             key={tag.name}
-                            type="button"
-                            className="tag-legend-entry"
-                            aria-pressed={painted.includes(tag.name)}
-                            onClick={() => {
+                            name={tag.name}
+                            count={tag.sampleCount}
+                            color={colorOf(tag.rank)}
+                            painted={painted.includes(tag.name)}
+                            onToggle={() => {
                                 onToggle(tag.name);
                             }}
-                        >
-                            <span
-                                className="tag-legend-swatch"
-                                style={{ background: colorByName.get(tag.name) }}
-                                aria-hidden
-                            />
-                            <span className="tag-legend-name">{tag.name}</span>
-                            <span className="tag-legend-count">{tag.sampleCount}</span>
-                        </button>
+                        />
                     ))}
                 </div>
             )}

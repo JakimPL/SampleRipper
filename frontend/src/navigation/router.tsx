@@ -11,7 +11,7 @@ import type { RouteView } from "./shellView";
 
 const SAMPLE_ROUTE_VIEW: RouteView = { kind: "sample" };
 const MODULE_ROUTE_VIEW: RouteView = { kind: "module" };
-/** The address the Morph panel once had, which the strip under the cloud answers now. */
+/** The address the Morph panel once had, which the strip over the cloud answers now. */
 const RETIRED_MORPH_ROUTE: RouteObject = { path: "/morph", element: <Navigate to="/cloud" replace /> };
 
 /** One address per panel that has one, each rendering the same shell so a change of address keeps it mounted. */

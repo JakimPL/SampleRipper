@@ -123,6 +123,18 @@ describe("useMorphUndoKeys", () => {
         expect(useMorphStore.getState()).toMatchObject({ first: A, second: B });
     });
 
+    it("leaves the chord to the browser while the morph is off", () => {
+        changeOnce();
+        useMorphStore.getState().setEnabled(false);
+        render(<UndoKeys />);
+
+        const undoing = chord("z", { ctrlKey: true });
+        fireEvent(window, undoing);
+
+        expect(useMorphStore.getState()).toMatchObject({ first: A, second: C });
+        expect(undoing.defaultPrevented).toBe(false);
+    });
+
     it("stops listening as it leaves", () => {
         changeOnce();
         const { unmount } = render(<UndoKeys />);

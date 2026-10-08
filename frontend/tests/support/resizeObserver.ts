@@ -2,7 +2,10 @@ import { onTestFinished, vi } from "vitest";
 
 const observersByElement = new Map<Element, Set<ControllableResizeObserver>>();
 
-/** A stand-in for the browser's observer whose observations are delivered by `resizeTo`. */
+/**
+ * A stand-in for the browser's observer whose observations are delivered by `resizeTo`, each
+ * entry reporting the one size as its content box and its border box alike.
+ */
 export class ControllableResizeObserver implements ResizeObserver {
     private readonly callback: ResizeObserverCallback;
 
@@ -40,7 +43,14 @@ export class ControllableResizeObserver implements ResizeObserver {
             bottom: height,
             left: 0,
         } as DOMRectReadOnly;
-        const entry = { target, contentRect } as ResizeObserverEntry;
+        const boxSize: ResizeObserverSize = { inlineSize: width, blockSize: height };
+        const entry = {
+            target,
+            contentRect,
+            borderBoxSize: [boxSize],
+            contentBoxSize: [boxSize],
+            devicePixelContentBoxSize: [boxSize],
+        } as ResizeObserverEntry;
         this.callback([entry], this);
     }
 }

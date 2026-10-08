@@ -51,9 +51,10 @@ just installer    # dist/: the installer for this system
   an NVIDIA card.
 - `just executable` compiles a [PyApp](https://ofek.dev/pyapp/) launcher around a copy of the wheel
   carrying each set of versions: `SampleRipper` everywhere, and `SampleRipper-nvidia` on Windows
-  and Linux, where PyTorch publishes CUDA builds. The NVIDIA wheel's version carries the label
-  `+cu128`, which gives its installation a folder of its own. On its first start, a launcher
-  downloads Python and installs the app with uv, which takes several minutes; later starts take
+  and Linux, where PyTorch publishes CUDA builds. Each wheel's version carries a label with a
+  digest of what the wheel holds, after `cu128` for the NVIDIA one, such as
+  `0.1.1+cu128.3fa9c01b2d4e`. On its first start, a launcher downloads Python and installs the app
+  with uv into a folder named after that version, which takes several minutes; later starts take
   seconds.
 - `just installer` wraps the launchers for its system:
   - The Windows installer carries both launchers and installs the NVIDIA one where `nvidia-smi`
@@ -75,10 +76,13 @@ just installer    # dist/: the installer for this system
 ## Trying a build
 
 Run `bin/SampleRipper`, or `bin/SampleRipper-nvidia` on a machine with an NVIDIA card: it
-installs itself, starts, and opens your browser, as an installed copy does. A launcher installs its
-packages once per version, and a new build of the same version starts on the packages the first one
-installed. `self remove`, such as `bin/SampleRipper self remove`, deletes that launcher's
-installation, so the next start installs afresh. The installations live in PyApp's data folder:
+installs itself, starts, and opens your browser, as an installed copy does. Every build that
+changes the code, the web app or the pinned versions installs afresh on its first start, with the
+project's version unchanged, and a build of the same contents starts on the packages already
+installed. Before `just executable` replaces a launcher in `bin/` with one of new contents, it quits
+the app the old launcher installed and deletes that installation. `self remove`, such as
+`bin/SampleRipper self remove`, deletes a launcher's installation by hand, so the next start
+installs afresh. The installations live in PyApp's data folder:
 `~/.local/share/pyapp` on Linux, `~/Library/Application Support/pyapp` on macOS and
 `%LOCALAPPDATA%\pyapp\data` on Windows.
 

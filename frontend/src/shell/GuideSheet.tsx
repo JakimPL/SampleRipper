@@ -50,22 +50,33 @@ const TOUCH_GUIDE: readonly GuideSection[] = [
         title: "The cloud",
         entries: [
             { gesture: "Tap a point", meaning: "takes it in hand and plays it" },
+            { gesture: "Double-tap a point", meaning: "opens it" },
             { gesture: "Tap empty space", meaning: "lets go of the point in hand" },
             { gesture: "Drag", meaning: "moves the cloud" },
             { gesture: "Pinch", meaning: "zooms about the fingers" },
             { gesture: "Hold a point", meaning: "opens its actions" },
             {
-                gesture: "A or B under the cloud",
+                gesture: "Use as A or B, after holding a point",
+                meaning: "puts it in the other end and plays it, keeping the selected end",
+            },
+            {
+                gesture: "A or B along the bottom of the cloud",
                 meaning: "plays that end and selects it: every sample you tap next becomes that end",
             },
-            { gesture: "⇄", meaning: "swaps the ends and mirrors the weight" },
+            { gesture: "The × on A or B", meaning: "empties that end; the next sample you tap fills it" },
+            {
+                gesture: "The Morph button",
+                meaning:
+                    "turns the morph off and on; while it is off, a tap only plays the point, and the pair waits for this button or Use as A or B to turn it back on",
+            },
+            { gesture: "The swap button", meaning: "swaps the ends and mirrors the weight" },
             { gesture: "The waveform button", meaning: "opens the morph's waveform under the slider" },
             {
                 gesture: "The history button",
                 meaning: "opens the samples each end has held, newest first; a tap on one makes it that end again",
             },
-            { gesture: "↶ ↷ in the history", meaning: "undo and redo the ends" },
-            { gesture: "⌖", meaning: "centers the cloud on the point in hand" },
+            { gesture: "The undo and redo buttons in the history", meaning: "undo and redo the ends" },
+            { gesture: "The center button", meaning: "centers the cloud on the point in hand" },
         ],
     },
 ];
@@ -93,14 +104,30 @@ const POINTER_GUIDE: readonly GuideSection[] = [
             { gesture: "Double-click a point", meaning: "opens it" },
             { gesture: "Drag, scroll", meaning: "move and zoom the cloud" },
             {
-                gesture: "A or B under the cloud",
+                gesture: "Right-click a point",
+                meaning: "puts it in the other end and plays it, keeping the selected end",
+            },
+            {
+                gesture: "A or B along the bottom of the cloud",
                 meaning: "plays that end and selects it: every sample you click next becomes that end",
             },
-            { gesture: "⇄", meaning: "swaps the ends and mirrors the weight" },
+            { gesture: "The × on A or B", meaning: "empties that end; the next sample you click fills it" },
+            {
+                gesture: "The Morph button",
+                meaning:
+                    "turns the morph off and on; while it is off, a click only plays the point, and the pair waits for this button or a right click to turn it back on",
+            },
+            { gesture: "The swap button", meaning: "swaps the ends and mirrors the weight" },
             { gesture: "The waveform button", meaning: "opens the morph's waveform under the slider" },
             {
                 gesture: "The history button",
                 meaning: "opens the samples each end has held, newest first; a click on one makes it that end again",
+            },
+            { gesture: "A, B", meaning: "select that end, from anywhere in the app" },
+            {
+                gesture: "Tab",
+                meaning:
+                    "selects the other end after a click outside the buttons; on a button, it moves to the next one",
             },
             {
                 gesture: "Ctrl+Z, Ctrl+Y",

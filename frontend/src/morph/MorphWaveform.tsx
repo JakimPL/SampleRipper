@@ -6,16 +6,11 @@ import { sampleAudioUrl } from "../api/samples";
 import { useLayoutMode } from "../layout/useLayoutMode";
 import { type AudioReading, useAudioPeaks } from "../samples/audioPeaks";
 import { useAudioPreview, usePreviewProgress } from "../samples/useAudioPreview";
-import {
-    type ContourStyle,
-    NO_TRACES,
-    type WaveformNotice,
-    type WaveformTrace,
-    WaveformView,
-} from "../samples/WaveformView";
+import { type ContourStyle, NO_TRACES, type WaveformTrace, WaveformView } from "../samples/WaveformView";
 import { WavePanel } from "../samples/WavePanel";
 import { DownloadLink } from "../shared/DownloadLink";
 import { formatDuration, shortHash } from "../shared/format";
+import { Icon } from "../shared/icons/Icon";
 import { useThemeSignal } from "../theme/useThemeSignal";
 import { readMorphColors } from "./morphColors";
 import { morphPreview } from "./morphPreview";
@@ -26,7 +21,6 @@ const TRACE_BUCKET_COUNT = 2048;
 const AT_THE_FIRST_END = 0;
 const WHOLE_FRAME = 1;
 const WAV_EXTENSION = ".wav";
-const OFFLINE_HINT = "The path is drawn once an inference process answers for it.";
 
 interface MorphWaveformProps {
     readonly first: string;
@@ -59,15 +53,16 @@ function traceOf(
  * geometric path between the two ends' own lengths, so it always falls between them, and each end
  * keeps the length it is heard at in the pair's frame. Every contour therefore stands where it
  * really falls in time, all three decoded in the browser at the same detail, so a render reads
- * against its ends as one drawing rather than against a coarser sketch of them.
+ * against its ends as one drawing rather than against a coarser sketch of them. The frame shows
+ * the drawing as pending until all three are read, and again while a newly let-go point decodes.
  *
  * A pair just completed is drawn at the slider's point before it is heard, so the ends themselves
  * are heard first. The render sounds through the one preview element every sample plays through,
  * which is what the cloud's own marker plays as well, so a weight let go in either place is heard
  * once. The waveform follows that sound rather than making it, and the play button sounds the
- * point drawn. Where a point is refused or cannot be read, the frame says so in the server's own
- * words, in the place the contour would have stood, and while no inference process answers the
- * frame says what it waits on and asks for nothing.
+ * point drawn. Where a point is refused or cannot be read, the transport says so in the server's
+ * own words, and while no inference process answers the frame keeps to the ends and asks for
+ * nothing, the strip above saying that morphing is offline.
  */
 export function MorphWaveform({
     first,
@@ -94,6 +89,7 @@ export function MorphWaveform({
     const firstAudio = useAudioPeaks(sampleAudioUrl(first), TRACE_BUCKET_COUNT);
     const secondAudio = useAudioPeaks(sampleAudioUrl(second), TRACE_BUCKET_COUNT);
     const render = useAudioPeaks(renderUrl, TRACE_BUCKET_COUNT);
+    const pending = firstAudio.pending || secondAudio.pending || render.pending;
 
     const traces = useMemo((): readonly WaveformTrace[] => {
         if (axisSeconds === null) {
@@ -110,7 +106,6 @@ export function MorphWaveform({
     const playheadFraction =
         sounding && axisSeconds !== null ? Math.min(WHOLE_FRAME, progress.currentTimeSeconds / axisSeconds) : null;
     const playFailure = failure?.key === renderUrl ? failure.message : null;
-    const notice = noticeOf(render.refusal ?? playFailure, available);
     const canPlay = renderedWeight !== null && available && render.refusal === null;
 
     function replay(): void {
@@ -132,20 +127,20 @@ export function MorphWaveform({
                     onClick={replay}
                     disabled={!canPlay}
                 >
-                    ▶
+                    <Icon name="play" label={null} />
                 </button>
             }
             view={
                 <WaveformView
                     containerRef={null}
                     isPlaying={sounding}
+                    pending={pending}
                     traces={traces}
                     playheadFraction={playheadFraction}
-                    notice={notice}
                 />
             }
             readout={readout}
-            failure={null}
+            failure={render.refusal ?? playFailure}
             controls={null}
             download={
                 renderUrl !== null && renderedWeight !== null && render.refusal === null ? (
@@ -163,12 +158,4 @@ export function MorphWaveform({
 /** What a saved render is named: the pair it runs between and the point along it. */
 function renderFileName(first: string, second: string, weight: number): string {
     return `morph-${shortHash(first)}-${shortHash(second)}-${String(weight)}${WAV_EXTENSION}`;
-}
-
-/** What stands where the render would: why it was refused, or what is waited on before there is one. */
-function noticeOf(failed: string | null, available: boolean): WaveformNotice | null {
-    if (failed !== null) {
-        return { text: failed, failed: true };
-    }
-    return available ? null : { text: OFFLINE_HINT, failed: false };
 }

@@ -17,20 +17,19 @@ const ALPHA_CHANNEL = 3;
 const TRANSPARENT = [0, 0, 0, 0] as const;
 
 /**
- * The nodes of `points` in drawing order: under a sample batch the substrate's points first,
- * as the scatterplot draws them, so the named points' markers sit on top; a batch of one flat
- * color keeps its own order in slot zero.
+ * The nodes of `points` in drawing order: the substrate's points first, as the scatterplot draws
+ * them, so the named points' markers sit on top.
  */
-export function nodeGeometryOf(points: readonly CloudEntityPoint[], slotting: PointSlots | null): NodeGeometry {
-    const order = slotting === null ? null : drawOrder(slotting);
+export function nodeGeometryOf(points: readonly CloudEntityPoint[], slotting: PointSlots): NodeGeometry {
+    const order = drawOrder(slotting);
     const positions = new Float32Array(points.length * COORDINATES_PER_POINT);
     const slots = new Float32Array(points.length);
     for (let rank = 0; rank < points.length; rank += 1) {
-        const index = order?.[rank] ?? rank;
+        const index = order[rank] ?? rank;
         const point = points[index];
         positions[rank * COORDINATES_PER_POINT] = point?.x ?? 0;
         positions[rank * COORDINATES_PER_POINT + 1] = point?.y ?? 0;
-        slots[rank] = slotting?.slots[index] ?? 0;
+        slots[rank] = slotting.slots[index] ?? slotting.substrateSlot;
     }
     return { positions, slots, count: points.length };
 }

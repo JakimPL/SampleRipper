@@ -7,6 +7,7 @@ import { spokenNameOf, useSampleName } from "../samples/useSampleName";
 import { useSamplePreview } from "../samples/useSamplePreview";
 import { Button } from "../shared/controls/Button";
 import { shortHash } from "../shared/format";
+import { Icon } from "../shared/icons/Icon";
 import { useSelectionStore } from "../workspace/selectionStore";
 import { isHeld, MORPH_ENDS } from "./morphHistory";
 import { END_LETTERS, type MorphEnd, useMorphStore } from "./morphStore";
@@ -107,10 +108,10 @@ export function MorphHistory(): ReactElement {
         <div className="morph-history">
             <div className="morph-history-tools">
                 <Button variant="secondary" icon aria-label={UNDO_LABEL} disabled={!canUndo} onClick={undo}>
-                    ↶
+                    <Icon name="undo" label={null} />
                 </Button>
                 <Button variant="secondary" icon aria-label={REDO_LABEL} disabled={!canRedo} onClick={redo}>
-                    ↷
+                    <Icon name="redo" label={null} />
                 </Button>
                 <Button variant="quiet" disabled={empty} onClick={forgetHeld}>
                     {FORGET_LABEL}

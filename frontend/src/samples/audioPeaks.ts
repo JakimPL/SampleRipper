@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { refusalDetail } from "../api/client";
 import type { WaveformPeak } from "../api/samples";
@@ -13,6 +13,19 @@ export interface AudioReading {
 }
 
 const UNREAD: AudioReading = { peaks: null, seconds: null, refusal: null };
+
+/** A reading as a view holds it, and whether the audio last asked for is still on its way. */
+export interface AudioPeaksReading extends AudioReading {
+    readonly pending: boolean;
+}
+
+/** The reading held, and the address it was read from. */
+interface AnsweredReading {
+    readonly audioUrl: string | null;
+    readonly reading: AudioReading;
+}
+
+const NOTHING_ASKED: AnsweredReading = { audioUrl: null, reading: UNREAD };
 
 let sharedContext: AudioContext | null = null;
 
@@ -106,13 +119,16 @@ async function read(audioUrl: string, bucketCount: number, signal: AbortSignal):
  * answer to the request, which is where a refusal states its reason -- neither a media element nor
  * a waveform library exposes that, so audio a server declines to serve is otherwise only silence.
  * The file is the one the browser already holds for playing it.
+ *
+ * A reading stays until the next address asked for is read, and `pending` holds for as long as that
+ * address is on its way, so a view keeps the contour it has while it shows the next one coming.
  */
-export function useAudioPeaks(audioUrl: string | null, bucketCount: number): AudioReading {
-    const [reading, setReading] = useState<AudioReading>(UNREAD);
+export function useAudioPeaks(audioUrl: string | null, bucketCount: number): AudioPeaksReading {
+    const [answered, setAnswered] = useState<AnsweredReading>(NOTHING_ASKED);
 
     useEffect(() => {
         if (audioUrl === null) {
-            setReading(UNREAD);
+            setAnswered(NOTHING_ASKED);
             return undefined;
         }
 
@@ -126,7 +142,7 @@ export function useAudioPeaks(audioUrl: string | null, bucketCount: number): Aud
             })
             .then((next) => {
                 if (active) {
-                    setReading(next);
+                    setAnswered({ audioUrl, reading: next });
                 }
             });
 
@@ -136,5 +152,6 @@ export function useAudioPeaks(audioUrl: string | null, bucketCount: number): Aud
         };
     }, [audioUrl, bucketCount]);
 
-    return reading;
+    const pending = audioUrl !== null && answered.audioUrl !== audioUrl;
+    return useMemo(() => ({ ...answered.reading, pending }), [answered, pending]);
 }

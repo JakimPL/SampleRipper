@@ -65,4 +65,23 @@ describe("TabBar", () => {
         expect(screen.getByTestId("morph-pair-dot")).not.toHaveClass("is-half");
         expect(screen.getByRole("link", { name: "Cloud" })).toContainElement(screen.getByTestId("morph-pair-dot"));
     });
+
+    it("hides the dot while the morph is off, and shows it back as it turns on", () => {
+        useMorphStore.getState().setEnd("first", "a");
+        render(
+            <MemoryRouter>
+                <TabBar tabs={TABS} activeTabId="samples-list" />
+            </MemoryRouter>,
+        );
+
+        act(() => {
+            useMorphStore.getState().setEnabled(false);
+        });
+        expect(screen.queryByTestId("morph-pair-dot")).not.toBeInTheDocument();
+
+        act(() => {
+            useMorphStore.getState().setEnabled(true);
+        });
+        expect(screen.getByTestId("morph-pair-dot")).toHaveClass("is-half");
+    });
 });

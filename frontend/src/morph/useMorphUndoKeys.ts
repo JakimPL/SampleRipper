@@ -41,13 +41,13 @@ export function undoCommandOf(event: KeyboardEvent): UndoCommand | null {
 }
 
 /**
- * Ctrl+Z and Ctrl+Y over the morph's ends from anywhere in the app, the text fields excepted,
- * where the browser's own undo keeps working.
+ * Ctrl+Z and Ctrl+Y over the morph's ends from anywhere in the app while the morph is on, the
+ * text fields excepted, where the browser's own undo keeps working.
  */
 export function useMorphUndoKeys(): void {
     useEffect(() => {
         function handleKeyDown(event: KeyboardEvent): void {
-            if (editsText(event.target)) {
+            if (!useMorphStore.getState().enabled || editsText(event.target)) {
                 return;
             }
             const command = undoCommandOf(event);
