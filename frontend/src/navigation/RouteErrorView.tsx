@@ -9,7 +9,7 @@ export function RouteErrorView(): ReactElement {
     const error = useRouteError();
     return (
         <main className="route-error">
-            <h1>This view stopped short</h1>
+            <h1>Something went wrong</h1>
             <ErrorNotice message={describeError(error)} />
             <p>
                 <Link to="/">Back to the workspace</Link>

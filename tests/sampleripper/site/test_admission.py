@@ -195,4 +195,4 @@ def test_a_port_the_platform_names_no_port_is_refused(environment: dict[str, str
     with pytest.raises(SiteRefusedError) as refusal:
         site_port(environment)
 
-    assert refusal.value.problems[0] == NO_PORT or "names no port" in refusal.value.problems[0]
+    assert refusal.value.problems[0] == NO_PORT or "isn't a valid port" in refusal.value.problems[0]

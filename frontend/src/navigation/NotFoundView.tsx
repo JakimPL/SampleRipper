@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 export function NotFoundView(): ReactElement {
     return (
         <main className="not-found">
-            <h1>Nothing lives at this address</h1>
+            <h1>Page not found</h1>
             <p>
                 <Link to="/">Back to the workspace</Link>
             </p>

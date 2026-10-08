@@ -119,7 +119,7 @@ describe("PhoneShell", () => {
         expect(await screen.findByRole("heading", { level: 1, name: "kick" })).toBeInTheDocument();
         expect(useSelectionStore.getState().focusedSampleHash).toBe("abc");
         expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
-        expect(screen.queryByRole("region", { name: "Sample in hand" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "Selected sample" })).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Samples" })).toHaveAttribute("aria-current", "page");
     });
 
@@ -130,7 +130,7 @@ describe("PhoneShell", () => {
         fireEvent.click(screen.getByRole("button", { name: "Back" }));
 
         expect(await screen.findByRole("heading", { level: 1, name: "Samples" })).toBeInTheDocument();
-        expect(await screen.findByRole("region", { name: "Sample in hand" })).toBeInTheDocument();
+        expect(await screen.findByRole("region", { name: "Selected sample" })).toBeInTheDocument();
     });
 
     it("returns from a page to the tab it was opened from", async () => {

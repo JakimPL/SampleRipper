@@ -52,8 +52,8 @@ const CLOUD_TABS_LABEL = "What the cloud shows";
 
 const NO_TAGS: readonly TopLevelTag[] = [];
 const EMPTY_CAPTIONS: Readonly<Record<ColoringMode, string>> = {
-    category: "No sample carries a category yet. A scoring of the listening model writes them.",
-    label: "No sample carries a label yet. Labels written in a sample's detail panel appear here.",
+    category: "No categories yet. Build the cloud to get suggestions.",
+    label: "No labels yet. Labels you add to samples appear here.",
 };
 
 interface HoveredPoint {

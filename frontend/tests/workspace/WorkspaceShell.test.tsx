@@ -130,13 +130,13 @@ describe("WorkspaceShell", () => {
         getSampleRelations.mockResolvedValue([]);
         getSimilarSamples.mockResolvedValue([]);
         renderShellAt("/");
-        expect(screen.queryByText(/no rate the library is known to play it at/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/playback speed of this sample is unknown/)).not.toBeInTheDocument();
 
         act(() => {
             useSelectionStore.getState().focusSample("abc");
         });
 
-        expect(await screen.findByText(/no rate the library is known to play it at/)).toBeInTheDocument();
+        expect(await screen.findByText(/playback speed of this sample is unknown/)).toBeInTheDocument();
         expect(await screen.findByRole("heading", { name: "kick" })).toBeInTheDocument();
     });
 

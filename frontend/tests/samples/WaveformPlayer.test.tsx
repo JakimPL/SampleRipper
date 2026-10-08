@@ -92,7 +92,7 @@ describe("WaveformPlayer", () => {
             latestInstance().emit("error", new Error("404"));
         });
 
-        expect(screen.getByText(/Audio unavailable/)).toBeInTheDocument();
+        expect(screen.getByText(/Can.t play this sample/)).toBeInTheDocument();
         expect(screen.getByRole("button")).toBeDisabled();
     });
 
@@ -302,7 +302,7 @@ describe("WaveformPlayer on a phone", () => {
             latestInstance().emit("error", new Error("404"));
         });
 
-        expect(screen.getByRole("status")).toHaveTextContent(/Audio unavailable/);
+        expect(screen.getByRole("status")).toHaveTextContent(/Can.t play this sample/);
         expect(container.querySelector(".wave-panel-frame")?.textContent).toBe("");
         expect(screen.getByRole("button")).toBeDisabled();
     });

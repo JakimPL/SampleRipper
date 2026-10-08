@@ -24,7 +24,7 @@ function trackerFormatName(format: TrackerFormat): string {
  */
 export function TrackerLegend({ counts, painted, onToggle }: TrackerLegendProps): ReactElement {
     return (
-        <div className="tag-legend" role="group" aria-label="Painted formats">
+        <div className="tag-legend" role="group" aria-label="Formats shown">
             <div className="tag-legend-chips">
                 {counts.map((count) => (
                     <LegendChip

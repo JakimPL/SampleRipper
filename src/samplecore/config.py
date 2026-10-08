@@ -188,10 +188,10 @@ class ServerConfig(BaseModel):
     @model_validator(mode="after")
     def _limits_visitors_where_anyone_visits(self) -> ServerConfig:
         if self.exposure is Exposure.PUBLIC and self.visitors is None:
-            raise ValueError("a library served to anyone names its visitor limits under [server.visitors]")
+            raise ValueError("a library open to anyone needs visitor limits under [server.visitors]")
         if self.exposure is not Exposure.PUBLIC and self.visitors is not None:
             raise ValueError(
-                '[server.visitors] limits a library served to anyone; set exposure = "public" or remove it'
+                '[server.visitors] applies only to a library open to anyone; set exposure = "public" or remove it'
             )
         return self
 
@@ -272,10 +272,10 @@ class LibraryConfig(BaseModel):
     def _publishes_its_own_sample_directories(self) -> LibraryConfig:
         for directory in self.publish.sample_directories:
             if directory not in self.sample_directories:
-                raise ValueError(f"{directory} under [publish] is none of the library's sample_directories")
+                raise ValueError(f"{directory} under [publish] isn't one of the library's sample_directories")
         names = [directory.name for directory in self.publish.sample_directories]
         if len(set(names)) != len(names):
-            raise ValueError("the sample directories a site shows need folder names of their own")
+            raise ValueError("the sample directories a site shows must have different folder names")
         return self
 
     @field_validator("sample_exclusions")
@@ -471,7 +471,7 @@ def _read_tables(content: str, config_path: Path) -> dict[str, object]:
     unknown_tables = sorted(set(data) - set(readable))
     if unknown_tables:
         raise ConfigurationError(
-            f"{config_path} holds settings this project does not read: {', '.join(unknown_tables)}. "
+            f"{config_path} has settings SampleRipper does not use: {', '.join(unknown_tables)}. "
             f"Settings belong under {', '.join(f'[{table}]' for table in readable)}."
         )
     return data
@@ -554,8 +554,8 @@ def _reject_placeholder_paths(config: LibraryConfig, resolved_path: Path) -> Non
     )
     if placeholders:
         raise ConfigurationError(
-            f"{resolved_path} still carries the example's stand-in path for {', '.join(placeholders)}. "
-            "Open it and name your own module collection and library directories."
+            f"{resolved_path} still has the example's stand-in path for {', '.join(placeholders)}. "
+            "Open it and set your own module and library folders."
         )
 
 
@@ -573,8 +573,8 @@ def _reject_placeholder_passwords(config: LibraryConfig, resolved_path: Path) ->
     ]
     if placeholders:
         raise ConfigurationError(
-            f"{resolved_path} still carries the example's stand-in password for {', '.join(placeholders)}. "
-            "Put a password of your own in its place."
+            f"{resolved_path} still has the example's stand-in password for {', '.join(placeholders)}. "
+            "Replace it with a password of your own."
         )
 
 

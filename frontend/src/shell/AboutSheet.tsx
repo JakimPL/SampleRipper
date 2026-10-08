@@ -11,7 +11,7 @@ interface AboutSheetProps {
 
 export const ABOUT_TITLE = "About";
 const APP_NAME = "SampleRipper";
-const DESCRIPTION = "Browse, audition, label and morph the samples of a tracker module library.";
+const DESCRIPTION = "Browse, listen to, label and morph the samples of a tracker module library.";
 const AUTHOR_LINE = "Made by Jakim / Stage Magician";
 const REPOSITORY_URL = "https://github.com/JakimPL/SampleRipper";
 const REPOSITORY_LABEL = "Source on GitHub";

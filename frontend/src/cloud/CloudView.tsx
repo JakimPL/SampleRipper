@@ -1040,8 +1040,8 @@ export function CloudView({
             )}
             {points.length === 0 && (
                 <div className="cloud-empty">
-                    <h4>No cloud coordinates yet</h4>
-                    <p>Run the embedding pipeline to populate this view with positions.</p>
+                    <h4>The cloud is empty</h4>
+                    <p>Build the cloud to see your samples here.</p>
                 </div>
             )}
         </div>

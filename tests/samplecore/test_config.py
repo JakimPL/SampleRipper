@@ -528,7 +528,7 @@ def test_a_library_served_to_anyone_without_visitor_limits_is_refused(tmp_path: 
 
 def test_visitor_limits_on_a_library_at_home_are_refused(tmp_path: Path) -> None:
     """Limits beside a local exposure say someone meant a site, which the config does not serve."""
-    with pytest.raises(InvalidSettingsError, match="limits a library served to anyone"):
+    with pytest.raises(InvalidSettingsError, match="applies only to a library open to anyone"):
         _library_config(tmp_path, f'[server]\nexposure = "local"\n{SITE_VISITORS_TABLE}')
 
 

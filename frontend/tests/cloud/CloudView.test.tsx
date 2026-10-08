@@ -222,7 +222,7 @@ describe("CloudView", () => {
     it("shows an honest empty state when there are no cloud coordinates yet", async () => {
         await renderCloudView();
 
-        expect(screen.getByText("No cloud coordinates yet")).toBeInTheDocument();
+        expect(screen.getByText("The cloud is empty")).toBeInTheDocument();
     });
 
     it("draws every given point through the scatterplot", async () => {

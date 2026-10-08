@@ -20,20 +20,20 @@ const TOUCH_GUIDE: readonly GuideSection[] = [
     {
         title: "Lists",
         entries: [
-            { gesture: "Tap a row", meaning: "takes the sample in hand and plays it" },
+            { gesture: "Tap a row", meaning: "selects the sample and plays it" },
             { gesture: "Hold a row", meaning: "opens its stars, heart and label", whenEditing: true },
             { gesture: "Hold a row", meaning: "opens its actions", whenEditing: false },
             { gesture: "Tap ›", meaning: "opens the sample or module as a page" },
-            { gesture: "Tap the heart", meaning: "keeps the sample close", whenEditing: true },
+            { gesture: "Tap the heart", meaning: "marks the sample as a favorite", whenEditing: true },
         ],
     },
     {
         title: "The tray",
         entries: [
-            { gesture: "Tap the waveform", meaning: "plays or pauses the sample in hand" },
+            { gesture: "Tap the waveform", meaning: "plays or pauses the selected sample" },
             {
                 gesture: "Tap a star or the heart",
-                meaning: "rates the sample in hand, or keeps it close",
+                meaning: "rates the selected sample, or marks it as a favorite",
                 whenEditing: true,
             },
             { gesture: "Double-tap the name", meaning: "opens the sample or module as a page, as › does" },
@@ -42,16 +42,16 @@ const TOUCH_GUIDE: readonly GuideSection[] = [
     {
         title: "A page",
         entries: [
-            { gesture: "Tap ‹ or ›", meaning: "walks the listing one sample at a time" },
+            { gesture: "Tap ‹ or ›", meaning: "moves through the list one sample at a time" },
             { gesture: "Tap ←", meaning: "returns to the list" },
         ],
     },
     {
         title: "The cloud",
         entries: [
-            { gesture: "Tap a point", meaning: "takes it in hand and plays it" },
+            { gesture: "Tap a point", meaning: "selects it and plays it" },
             { gesture: "Double-tap a point", meaning: "opens it" },
-            { gesture: "Tap empty space", meaning: "lets go of the point in hand" },
+            { gesture: "Tap empty space", meaning: "clears the selected point" },
             { gesture: "Drag", meaning: "moves the cloud" },
             { gesture: "Pinch", meaning: "zooms about the fingers" },
             { gesture: "Hold a point", meaning: "opens its actions" },
@@ -63,7 +63,7 @@ const TOUCH_GUIDE: readonly GuideSection[] = [
                 gesture: "A or B along the bottom of the cloud",
                 meaning: "plays that end and selects it: every sample you tap next becomes that end",
             },
-            { gesture: "The × on A or B", meaning: "empties that end; the next sample you tap fills it" },
+            { gesture: "The × on A or B", meaning: "clears that end; the next sample you tap fills it" },
             {
                 gesture: "The Morph button",
                 meaning:
@@ -76,7 +76,7 @@ const TOUCH_GUIDE: readonly GuideSection[] = [
                 meaning: "opens the samples each end has held, newest first; a tap on one makes it that end again",
             },
             { gesture: "The undo and redo buttons in the history", meaning: "undo and redo the ends" },
-            { gesture: "The center button", meaning: "centers the cloud on the point in hand" },
+            { gesture: "The center button", meaning: "centers the cloud on the selected point" },
         ],
     },
 ];
@@ -85,11 +85,11 @@ const POINTER_GUIDE: readonly GuideSection[] = [
     {
         title: "Lists",
         entries: [
-            { gesture: "Click a row", meaning: "takes the sample in hand" },
+            { gesture: "Click a row", meaning: "selects the sample" },
             { gesture: "Double-click, or Enter on the name", meaning: "opens the sample or module" },
             { gesture: "↑ ↓", meaning: "move between rows" },
             { gesture: "Space", meaning: "plays the sample" },
-            { gesture: "F", meaning: "keeps the sample close", whenEditing: true },
+            { gesture: "F", meaning: "marks the sample as a favorite", whenEditing: true },
             { gesture: "1 to 5", meaning: "rate the sample", whenEditing: true },
         ],
     },
@@ -100,7 +100,7 @@ const POINTER_GUIDE: readonly GuideSection[] = [
     {
         title: "The cloud",
         entries: [
-            { gesture: "Click a point", meaning: "takes it in hand and plays it" },
+            { gesture: "Click a point", meaning: "selects it and plays it" },
             { gesture: "Double-click a point", meaning: "opens it" },
             { gesture: "Drag, scroll", meaning: "move and zoom the cloud" },
             {
@@ -111,7 +111,7 @@ const POINTER_GUIDE: readonly GuideSection[] = [
                 gesture: "A or B along the bottom of the cloud",
                 meaning: "plays that end and selects it: every sample you click next becomes that end",
             },
-            { gesture: "The × on A or B", meaning: "empties that end; the next sample you click fills it" },
+            { gesture: "The × on A or B", meaning: "clears that end; the next sample you click fills it" },
             {
                 gesture: "The Morph button",
                 meaning:
@@ -133,7 +133,7 @@ const POINTER_GUIDE: readonly GuideSection[] = [
                 gesture: "Ctrl+Z, Ctrl+Y",
                 meaning: "undo and redo the ends, from anywhere in the app; ⌘Z and ⇧⌘Z on a Mac",
             },
-            { gesture: "Escape", meaning: "lets go of the point in hand" },
+            { gesture: "Escape", meaning: "clears the selected point" },
         ],
     },
 ];

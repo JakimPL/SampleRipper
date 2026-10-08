@@ -8,7 +8,7 @@ import { useAnnotationWriter } from "./useAnnotationWriter";
 
 const SCORE_DECIMAL_PLACES = 2;
 
-export const NO_CATEGORIES = "No categories yet — a scoring of the listening model writes them.";
+export const NO_CATEGORIES = "No categories yet. Build the cloud to get suggestions.";
 
 interface CategoryChoicesProps {
     readonly sample: SampleDetail;

@@ -273,7 +273,7 @@ def _problem(events: tuple[PipelineEvent, ...]) -> str | None:
             case RunRefused():
                 return event.reason
             case AttemptEnded() if event.outcome is not AttemptOutcome.COMPLETED:
-                return f"Step '{event.step}' ended: {event.outcome.value}."
+                return f"The build stopped at the step '{event.step}' ({event.outcome.value})."
             case _:
                 pass
     return None

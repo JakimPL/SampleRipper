@@ -46,7 +46,7 @@ export function LegendSheet({
             {tags.length === 0 ? (
                 <p className="legend-sheet-empty">{emptyCaption}</p>
             ) : (
-                <div className="legend-sheet-chips" role="group" aria-label="Painted tags">
+                <div className="legend-sheet-chips" role="group" aria-label="Tags shown">
                     {tags.map((tag) => (
                         <LegendChip
                             key={tag.name}

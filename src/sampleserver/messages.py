@@ -17,10 +17,10 @@ TOO_MANY_MORPHS: Final[str] = "Too many morphs in a short time. Try again in a m
 MORPHS_BUSY: Final[str] = "The morph renderer is busy. Try again in a moment."
 
 SERVE_REFUSES_PUBLIC: Final[str] = (
-    "This config serves the library to anyone on the internet, which `sampleripper site` does, with its "
-    "renderer and its visitor limits. Start it that way."
+    "This config would serve the library to anyone on the internet. Use `sampleripper site` for "
+    "that; it adds the morph renderer and the visitor limits."
 )
 HOST_BEYOND_EXPOSURE: Final[str] = (
-    'This config serves the library on this computer alone, so it listens on 127.0.0.1. Set exposure = "network" '
-    "under [server] to let other devices on your network open it."
+    "This config serves the library on this computer only, so it listens on 127.0.0.1. To let other devices "
+    'on your network open it, set exposure = "network" under [server].'
 )

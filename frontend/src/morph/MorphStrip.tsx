@@ -20,7 +20,7 @@ import type { MorphStatus } from "./useMorphStatus";
 const WEIGHT_DECIMAL_PLACES = 2;
 const PERCENT_OF_A_SHARE = 100;
 const THUMB_CENTER_SHARE = 0.5;
-const OFFLINE_NOTICE = "Morphing is offline.";
+const OFFLINE_NOTICE = "Morphing isn't available right now.";
 const HISTORY_TITLE = "History";
 
 /** Where the readout stands over the track: on the thumb's own center, whose travel the thumb's width shortens at either end. */

@@ -25,7 +25,7 @@ describe("routes", () => {
     it("shows a page saying nothing lives at an address the application does not answer", () => {
         render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ["/no/such/view"] })} />);
 
-        expect(screen.getByRole("heading", { name: "Nothing lives at this address" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Page not found" })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Back to the workspace" })).toHaveAttribute("href", "/");
     });
 
@@ -67,7 +67,7 @@ describe("routes", () => {
         it("shows what broke and the way back to the workspace", () => {
             render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ["/"] })} />);
 
-            expect(screen.getByRole("heading", { name: "This view stopped short" })).toBeInTheDocument();
+            expect(screen.getByRole("heading", { name: "Something went wrong" })).toBeInTheDocument();
             expect(screen.getByRole("alert")).toHaveTextContent(SHELL_FAILURE);
             expect(screen.getByRole("link", { name: "Back to the workspace" })).toHaveAttribute("href", "/");
         });

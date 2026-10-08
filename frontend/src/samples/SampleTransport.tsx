@@ -9,7 +9,7 @@ import { type RateOption, WaveformPlayer } from "./WaveformPlayer";
 type PlaybackRate = components["schemas"]["SamplePlaybackRate"];
 
 const WAV_EXTENSION = ".wav";
-const NO_RATE_NOTICE = "This sample has no rate the library is known to play it at.";
+const NO_RATE_NOTICE = "The playback speed of this sample is unknown.";
 
 interface SampleTransportProps {
     readonly sample: SampleDetail;

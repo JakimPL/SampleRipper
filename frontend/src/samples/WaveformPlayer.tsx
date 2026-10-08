@@ -28,7 +28,7 @@ interface WaveformPlayerProps {
 const PLAY_LABEL = "Play sample";
 const PAUSE_LABEL = "Pause sample";
 
-const AUDIO_UNAVAILABLE = "Audio unavailable: the file this sample is read from may be gone or changed since its scan.";
+const AUDIO_UNAVAILABLE = "Can't play this sample. Its file may have been moved or changed.";
 
 function describeRateOption(option: RateOption): string {
     const timeWord = option.eventCount === 1 ? "time" : "times";

@@ -360,7 +360,7 @@ describe("CloudPanel", () => {
         expect(screen.getByRole("button", { name: "Category" })).toHaveAttribute("aria-pressed", "true");
         expect(screen.queryByRole("button", { name: "Legend" })).not.toBeInTheDocument();
         expect(await screen.findByRole("button", { name: /BASS DRUM/ })).toHaveAttribute("aria-pressed", "true");
-        expect(toolbarOf(screen.getByRole("group", { name: "Painted tags" }))).toBe(
+        expect(toolbarOf(screen.getByRole("group", { name: "Tags shown" }))).toBe(
             toolbarOf(screen.getByRole("button", { name: "Samples" })),
         );
         await waitFor(() => {
@@ -536,7 +536,7 @@ describe("CloudPanel", () => {
         getCategoryTags.mockResolvedValue([]);
         renderPanel();
 
-        const caption = await screen.findByText(/No sample carries a category yet/);
+        const caption = await screen.findByText(/No categories yet/);
 
         expect(toolbarOf(caption)).toBe(toolbarOf(screen.getByRole("button", { name: "Samples" })));
     });
@@ -573,7 +573,7 @@ describe("CloudPanel", () => {
         renderPanel();
         fireEvent.click(screen.getByRole("button", { name: "Modules" }));
 
-        const legend = await screen.findByRole("group", { name: "Painted formats" });
+        const legend = await screen.findByRole("group", { name: "Formats shown" });
         const chips = within(legend).getAllByRole("button");
         expect(chips.map((chip) => chip.textContent)).toEqual(["XM2", "IT1"]);
         expect(chips.every((chip) => chip.getAttribute("aria-pressed") === "true")).toBe(true);
@@ -840,7 +840,7 @@ describe("CloudPanel on touch", () => {
 
         expect(toolbarOf(legend)).toBe(toolbarOf(screen.getByRole("button", { name: "Samples" })));
         expect(screen.queryByRole("button", { name: "Category" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("group", { name: "Painted tags" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("group", { name: "Tags shown" })).not.toBeInTheDocument();
     });
 
     it("keeps the format chips in the row of a narrow panel's Modules tab", async () => {
@@ -868,8 +868,8 @@ describe("CloudPanel on touch", () => {
         const sheet = screen.getByRole("dialog", { name: "Legend" });
         expect(within(sheet).getByRole("group", { name: "Color by" })).toBeInTheDocument();
         expect(within(sheet).getByRole("button", { name: "Category" })).toHaveAttribute("aria-pressed", "true");
-        expect(screen.queryByRole("group", { name: "Painted tags", hidden: false })).toBe(
-            within(sheet).getByRole("group", { name: "Painted tags" }),
+        expect(screen.queryByRole("group", { name: "Tags shown", hidden: false })).toBe(
+            within(sheet).getByRole("group", { name: "Tags shown" }),
         );
         fireEvent.click(within(sheet).getByRole("button", { name: /BASS DRUM/ }));
         expect(within(sheet).getByRole("button", { name: /BASS DRUM/ })).toHaveAttribute("aria-pressed", "false");
@@ -884,10 +884,10 @@ describe("CloudPanel on touch", () => {
         fireEvent.click(screen.getByRole("button", { name: "Legend" }));
 
         const sheet = screen.getByRole("dialog", { name: "Legend" });
-        expect(within(sheet).getByText(/No sample carries a category yet/)).toBeInTheDocument();
+        expect(within(sheet).getByText(/No categories yet/)).toBeInTheDocument();
         fireEvent.click(within(sheet).getByRole("button", { name: "Labels" }));
         expect(within(sheet).getByRole("button", { name: "Labels" })).toHaveAttribute("aria-pressed", "true");
-        expect(await within(sheet).findByText(/No sample carries a label yet/)).toBeInTheDocument();
+        expect(await within(sheet).findByText(/No labels yet/)).toBeInTheDocument();
         await waitFor(() => {
             expect(getCloudLabels).toHaveBeenCalled();
         });

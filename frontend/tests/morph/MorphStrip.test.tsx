@@ -398,7 +398,7 @@ describe("MorphStrip with a whole pair", () => {
 
     it("says so while no inference process answers, and looks again on request", async () => {
         await showPair(false);
-        expect(screen.getByRole("status")).toHaveTextContent("Morphing is offline");
+        expect(screen.getByRole("status")).toHaveTextContent("Morphing isn't available right now");
 
         serveMorph(true);
         fireEvent.click(screen.getByRole("button", { name: "Check again" }));

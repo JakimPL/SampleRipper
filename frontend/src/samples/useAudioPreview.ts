@@ -34,7 +34,7 @@ export interface PreviewProgress {
 
 const AT_THE_START: PreviewProgress = { key: null, currentTimeSeconds: 0, durationSeconds: 0 };
 
-const UNPLAYABLE_MESSAGE = "the audio could not be played";
+const UNPLAYABLE_MESSAGE = "the sample can't be played";
 
 let audioElement: HTMLAudioElement | null = null;
 let state: PreviewState = { playingKey: null, paused: false, failure: null, source: null };

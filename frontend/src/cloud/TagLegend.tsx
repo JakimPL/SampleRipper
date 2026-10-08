@@ -14,7 +14,7 @@ interface TagLegendProps {
     readonly emptyCaption: string;
 }
 
-const COLLAPSE_LABEL = "Painted only";
+const COLLAPSE_LABEL = "Shown only";
 
 /**
  * The legend that is also the picker, as the end of the cloud's toolbar row: the top-level tags
@@ -62,7 +62,7 @@ export function TagLegend({ tags, painted, onToggle, emptyCaption }: TagLegendPr
     }
 
     return (
-        <div ref={rootRef} className="tag-legend" role="group" aria-label="Painted tags">
+        <div ref={rootRef} className="tag-legend" role="group" aria-label="Tags shown">
             <div className="tag-legend-chips">{!expanded && paintedTags.map(chipOf)}</div>
             {(hiddenCount > 0 || expanded) && (
                 <button

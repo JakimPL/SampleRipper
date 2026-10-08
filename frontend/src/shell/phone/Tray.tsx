@@ -87,7 +87,7 @@ function SampleTray({ hash }: EntityTrayProps): ReactElement {
     }
 
     return (
-        <div className="tray" role="region" aria-label="Sample in hand">
+        <div className="tray" role="region" aria-label="Selected sample">
             <div className="tray-row">
                 <button
                     type="button"
@@ -165,7 +165,7 @@ function ModuleTray({ hash }: EntityTrayProps): ReactElement {
     const state = useModule(hash);
 
     return (
-        <div className="tray" role="region" aria-label="Module in hand">
+        <div className="tray" role="region" aria-label="Selected module">
             <div className="tray-row">
                 <span className="tray-glyph">
                     <Icon name="modules" label={null} />

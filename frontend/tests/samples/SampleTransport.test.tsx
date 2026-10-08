@@ -137,7 +137,7 @@ describe("SampleTransport", () => {
     it("says so for a sample the catalog knows no rate for", () => {
         render(<SampleTransport sample={sampleOf({ playbackRateHz: null })} />);
 
-        expect(screen.getByText(/no rate the library is known to play it at/)).toBeInTheDocument();
+        expect(screen.getByText(/playback speed of this sample is unknown/)).toBeInTheDocument();
         expect(createMock).not.toHaveBeenCalled();
     });
 });

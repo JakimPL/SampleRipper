@@ -149,7 +149,7 @@ describe("Tray", () => {
         renderTray();
 
         expect(await screen.findByText("kick")).toBeInTheDocument();
-        expect(screen.getByRole("region", { name: "Sample in hand" })).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Selected sample" })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Open sample" })).toHaveAttribute("href", `/samples/${SAMPLE_HASH}`);
         expect(await screen.findByText("×3")).toBeInTheDocument();
     });
@@ -234,7 +234,7 @@ describe("Tray", () => {
         renderTray();
 
         expect(await screen.findByText("A Song")).toBeInTheDocument();
-        expect(screen.getByRole("region", { name: "Module in hand" })).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Selected module" })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Open module" })).toHaveAttribute("href", `/modules/${MODULE_HASH}`);
     });
 

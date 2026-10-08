@@ -15,7 +15,7 @@ describe("TrackerLegend", () => {
     it("lists each format with its module count in the order given, pressed while painted", () => {
         render(<TrackerLegend counts={COUNTS} painted={["xm"]} onToggle={vi.fn()} />);
 
-        const chips = within(screen.getByRole("group", { name: "Painted formats" })).getAllByRole("button");
+        const chips = within(screen.getByRole("group", { name: "Formats shown" })).getAllByRole("button");
         expect(chips.map((chip) => chip.textContent)).toEqual(["XM40", "S3M7"]);
         expect(chips.map((chip) => chip.getAttribute("aria-pressed"))).toEqual(["true", "false"]);
     });

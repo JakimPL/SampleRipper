@@ -28,7 +28,7 @@ describe("TagLegend", () => {
         expect(lofi).toHaveAttribute("aria-pressed", "false");
         expect(lofi).toHaveTextContent("33");
         expect(screen.getByRole("button", { name: /PIANO/ })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Painted only" })).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByRole("button", { name: "Shown only" })).toHaveAttribute("aria-expanded", "true");
     });
 
     it("drops every tag, in one order, into the panel over the cloud once expanded", async () => {
@@ -87,14 +87,14 @@ describe("TagLegend", () => {
             />,
         );
 
-        expect(screen.getByRole("button", { name: "Painted only" })).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByRole("button", { name: "Shown only" })).toHaveAttribute("aria-expanded", "true");
     });
 
     it("collapses back to the painted tags", async () => {
         render(<TagLegend tags={TAGS} painted={["SNARE"]} onToggle={vi.fn()} emptyCaption={EMPTY_CAPTION} />);
         await userEvent.click(screen.getByRole("button", { name: "+2 more" }));
 
-        await userEvent.click(screen.getByRole("button", { name: "Painted only" }));
+        await userEvent.click(screen.getByRole("button", { name: "Shown only" }));
 
         expect(screen.queryByRole("button", { name: /LO-FI/ })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "+2 more" })).toHaveAttribute("aria-expanded", "false");

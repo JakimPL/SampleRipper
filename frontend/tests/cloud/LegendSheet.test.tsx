@@ -59,7 +59,7 @@ describe("LegendSheet", () => {
         renderSheet({ tags: [] });
 
         expect(screen.getByText(EMPTY_CAPTION)).toBeInTheDocument();
-        expect(screen.queryByRole("group", { name: "Painted tags" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("group", { name: "Tags shown" })).not.toBeInTheDocument();
     });
 
     it("reports the tag a person toggles", () => {
