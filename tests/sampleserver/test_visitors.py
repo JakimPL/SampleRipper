@@ -10,10 +10,10 @@ from fastapi.testclient import TestClient
 from starlette.requests import HTTPConnection
 
 from samplecore.config import VisitorLimits
+from samplecore.problems import MessageCode
 from sampleserver import visitors
 from sampleserver.app import API_PREFIX
 from sampleserver.dependencies import get_inference_client
-from sampleserver.messages import MORPHS_BUSY, TOO_MANY_MORPHS, TOO_MANY_REQUESTS
 from sampleserver.visitors import (
     RETRY_AFTER_HEADER,
     UNKNOWN_VISITOR,
@@ -132,7 +132,7 @@ def test_a_visitor_past_the_request_budget_is_told_when_to_ask_again() -> None:
         elsewhere = client.get(f"{API_PREFIX}/samples/{FIRST}", headers={ADDRESS_HEADER: "203.0.113.10"})
 
     assert [answer.status_code for answer in answers] == [200, 200, 200, 429]
-    assert answers[-1].json() == {"detail": TOO_MANY_REQUESTS}
+    assert answers[-1].json()["detail"]["code"] == MessageCode.TOO_MANY_REQUESTS
     assert answers[-1].headers[RETRY_AFTER_HEADER] == "1"
     assert elsewhere.status_code == 200
 
@@ -155,11 +155,14 @@ def test_the_gate_spends_one_morph_of_the_visitors_budget_and_everyones() -> Non
     gate = MorphGate(concurrent=limits.concurrent_morphs, limits=limits, clock=clock)
 
     gate.admit("first", names_a_render=False)
-    with pytest.raises(HTTPException, match=TOO_MANY_MORPHS):
+    with pytest.raises(HTTPException) as first_refused:
         gate.admit("first", names_a_render=False)
     gate.admit("second", names_a_render=False)
-    with pytest.raises(HTTPException, match=TOO_MANY_MORPHS):
+    with pytest.raises(HTTPException) as third_refused:
         gate.admit("third", names_a_render=False)
+
+    for refused in (first_refused, third_refused):
+        assert refused.value.detail["code"] == MessageCode.TOO_MANY_MORPHS
 
 
 def test_a_request_naming_a_render_passes_until_the_visitor_is_in_debt() -> None:
@@ -170,8 +173,10 @@ def test_a_request_naming_a_render_passes_until_the_visitor_is_in_debt() -> None
     gate.admit("visitor", names_a_render=True)
     gate.charge("visitor")
 
-    with pytest.raises(HTTPException, match=TOO_MANY_MORPHS):
+    with pytest.raises(HTTPException) as refused:
         gate.admit("visitor", names_a_render=True)
+
+    assert refused.value.detail["code"] == MessageCode.TOO_MANY_MORPHS
 
 
 def test_a_gate_without_visitor_limits_charges_no_budget() -> None:
@@ -185,9 +190,11 @@ def test_the_gate_holds_as_many_renders_as_it_may_and_turns_the_next_away() -> N
     gate = MorphGate(concurrent=1, limits=None, clock=Clock())
 
     with gate.slot():
-        with pytest.raises(HTTPException, match=MORPHS_BUSY):
+        with pytest.raises(HTTPException) as refused:
             with gate.slot():
                 pass
+
+    assert refused.value.detail["code"] == MessageCode.MORPHS_BUSY
     with gate.slot():
         pass
 

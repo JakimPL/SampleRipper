@@ -9,6 +9,7 @@ from typing import Final
 import pytest
 
 from samplecore.config import LibraryConfig
+from samplecore.problems import MessageCode
 from sampleripper.app.jobs import BuildTarget, JobAlreadyRunningError, JobRunner, JobStatus, JobView, StepState
 from sampleripper.pipeline.settings import DescriptorSource
 from sampleripper.pipeline.steps.library import library_graph
@@ -86,7 +87,9 @@ def test_a_failed_build_names_the_step_and_shows_the_end_of_its_log(tmp_path: Pa
     runner.start(config, BuildTarget.ALL)
     view = _finished(runner)
 
-    assert view.problem is not None and "thumbnails" in view.problem
+    assert view.problem is not None
+    assert view.problem.code == MessageCode.BUILD_STEP_STOPPED
+    assert view.problem.params["step"] == "thumbnails"
     assert view.log_tail[-1] == "the disk is full"
 
 

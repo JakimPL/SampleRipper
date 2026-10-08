@@ -1,6 +1,7 @@
 import { type ReactElement, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { messageOfProblem } from "../api/problem";
 import {
     type BuildDevice,
     type BuildTarget,
@@ -14,11 +15,11 @@ import { M, type Message } from "../messages/messageIds";
 import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
 import { buttonClassName } from "../shared/controls/buttonClassName";
+import { failureOf } from "../shared/failure";
 import { ActionSheet } from "../shared/overlay/ActionSheet";
 import { BuildProgress } from "./BuildProgress";
 import { CheckOption } from "./CheckOption";
 import { NetworkOption } from "./NetworkOption";
-import { describeRefusal } from "./refusal";
 import { SetupMessage, type SetupMessageText } from "./SetupMessage";
 import { SetupPane } from "./SetupPane";
 import { useLibraryStats } from "./useLibraryStats";
@@ -56,7 +57,10 @@ function libraryStatus(state: SetupState, unsavedChanges: boolean, stats: Librar
         case "starting":
             return { content: { id: M.setup.library.starting }, tone: "normal" };
         case "failed":
-            return { content: state.problem ?? { id: M.setup.library.failed }, tone: "error" };
+            return {
+                content: state.problem === null ? { id: M.setup.library.failed } : messageOfProblem(state.problem),
+                tone: "error",
+            };
         case "ready":
             return unsavedChanges
                 ? { content: { id: M.setup.library.saveFolderChangesFirst }, tone: "normal" }
@@ -105,7 +109,7 @@ function OpenLibraryButton({ ready, primary }: OpenLibraryButtonProps): ReactEle
  */
 export function LibraryPanel({ state, unsavedChanges, onChanged }: LibraryPanelProps): ReactElement {
     const { text, textOf } = useMessages();
-    const [refusal, setRefusal] = useState<string | null>(null);
+    const [refusal, setRefusal] = useState<Message | null>(null);
     const [confirming, setConfirming] = useState(false);
     const build = state.build;
     const running = build?.status === "running";
@@ -124,7 +128,7 @@ export function LibraryPanel({ state, unsavedChanges, onChanged }: LibraryPanelP
         try {
             onChanged(await action());
         } catch (error: unknown) {
-            setRefusal(describeRefusal(error));
+            setRefusal(failureOf(error));
         }
     }
 

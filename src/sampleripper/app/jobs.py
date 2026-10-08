@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from samplecore.config import LibraryConfig
 from samplecore.models.base import FROZEN
+from samplecore.problems import MessageCode, Problem, ProblemError
 from samplecore.progress import ProgressReport, read_progress
 from sampleripper.app.processes import child_environment
 from sampleripper.pipeline.events import (
@@ -36,8 +37,11 @@ LOG_TAIL_LINES: Final[int] = 20
 _logger = logging.getLogger(__name__)
 
 
-class JobAlreadyRunningError(Exception):
+class JobAlreadyRunningError(ProblemError):
     """Raised when a build is asked for while another one runs."""
+
+    def __init__(self) -> None:
+        super().__init__(Problem.of(MessageCode.BUILD_ALREADY_RUNNING, reason=None))
 
 
 @unique
@@ -90,7 +94,7 @@ class JobView(BaseModel):
     started_at: datetime
     ended_at: datetime | None
     steps: tuple[StepView, ...]
-    problem: str | None
+    problem: Problem | None
     log_tail: tuple[str, ...]
 
 
@@ -179,7 +183,7 @@ class JobRunner:
             JobAlreadyRunningError: a build already runs.
         """
         if self.is_running:
-            raise JobAlreadyRunningError("A build is already running. Wait for it to finish or cancel it.")
+            raise JobAlreadyRunningError
         layout = PipelineLayout(config.library_root)
         known_runs = set(layout.runs.iterdir()) if layout.runs.is_dir() else set()
         self._log_path = config.library_root / LOGS_DIRECTORY_NAME / JOB_LOG_NAME
@@ -267,13 +271,15 @@ def _decided_state(verdict: StepVerdict) -> StepState:
             return StepState.SKIPPED
 
 
-def _problem(events: tuple[PipelineEvent, ...]) -> str | None:
+def _problem(events: tuple[PipelineEvent, ...]) -> Problem | None:
     for event in events:
         match event:
             case RunRefused():
-                return event.reason
+                return Problem.of(MessageCode.BUILD_REFUSED, reason=event.reason)
             case AttemptEnded() if event.outcome is not AttemptOutcome.COMPLETED:
-                return f"The build stopped at the step '{event.step}' ({event.outcome.value})."
+                return Problem.of(
+                    MessageCode.BUILD_STEP_STOPPED, reason=None, step=event.step, outcome=event.outcome.name.lower()
+                )
             case _:
                 pass
     return None

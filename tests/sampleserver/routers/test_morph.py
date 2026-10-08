@@ -141,7 +141,7 @@ def test_an_end_whose_sample_files_are_all_gone_is_not_found_before_the_process_
     )
 
     assert response.status_code == 404
-    assert "Gone 01.wav" in response.json()["detail"]
+    assert "Gone 01.wav" in response.json()["detail"]["reason"]
     assert upstream.requests == []
 
 
@@ -163,7 +163,7 @@ def test_no_process_answering_reads_as_unavailable(client: TestClient) -> None:
     status = client.get("/morph/status")
 
     assert audio.status_code == 503
-    assert INFERENCE_URL in audio.json()["detail"]
+    assert INFERENCE_URL in audio.json()["detail"]["reason"]
     assert status.json() == {"available": False, "service": None}
 
 
@@ -173,7 +173,7 @@ def test_the_process_s_own_refusals_are_relayed_with_their_detail(client: TestCl
     response = client.get("/morph/audio", params={"first": FIRST, "second": SECOND, "weight": 0.5})
 
     assert response.status_code == 404
-    assert response.json()["detail"].startswith("no object is stored")
+    assert response.json()["detail"]["reason"].startswith("no object is stored")
 
 
 @pytest.mark.parametrize("weight", (0.305, 2.0))
@@ -211,7 +211,7 @@ def test_the_process_s_other_answers_are_read_defensively(
     response = client.get("/morph/audio", params={"first": FIRST, "second": SECOND, "weight": 0.5})
 
     assert response.status_code == status
-    assert detail in response.json()["detail"]
+    assert detail in response.json()["detail"]["reason"]
 
 
 def test_a_render_taking_longer_than_it_is_waited_for_reads_as_a_gateway_timeout(client: TestClient) -> None:
@@ -223,7 +223,7 @@ def test_a_render_taking_longer_than_it_is_waited_for_reads_as_a_gateway_timeout
     response = client.get("/morph/audio", params={"first": FIRST, "second": SECOND, "weight": 0.5})
 
     assert response.status_code == 504
-    assert "did not finish the render" in response.json()["detail"]
+    assert "did not finish the render" in response.json()["detail"]["reason"]
 
 
 def test_a_status_the_process_cannot_state_reads_as_unavailable(client: TestClient) -> None:

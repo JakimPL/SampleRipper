@@ -1,13 +1,13 @@
 import { type ReactElement, useState } from "react";
 
 import { chooseSources, type LibrarySources, type SetupState } from "../api/setup";
-import { M, type MessageId } from "../messages/messageIds";
+import { M, type Message, type MessageId } from "../messages/messageIds";
 import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
+import { failureOf } from "../shared/failure";
 import { FolderPath } from "./FolderPath";
 import { FolderPicker } from "./FolderPicker";
 import { PathRow } from "./PathRow";
-import { describeRefusal } from "./refusal";
 import { SetupMessage, type SetupMessageText } from "./SetupMessage";
 import { SetupPane } from "./SetupPane";
 import type { SourcesDraft } from "./useSourcesDraft";
@@ -42,7 +42,7 @@ function withChosenFolder(sources: LibrarySources, target: PickerTarget, path: s
 
 interface FooterConditions {
     readonly saving: boolean;
-    readonly refusal: string | null;
+    readonly refusal: Message | null;
     readonly buildRunning: boolean;
     readonly hasSources: boolean;
     readonly saved: boolean;
@@ -73,7 +73,7 @@ export function SourcesForm({ state, draft, onSaved }: SourcesFormProps): ReactE
     const { text } = useMessages();
     const [picker, setPicker] = useState<PickerTarget | null>(null);
     const [saving, setSaving] = useState(false);
-    const [refusal, setRefusal] = useState<string | null>(null);
+    const [refusal, setRefusal] = useState<Message | null>(null);
 
     const sources = draft.sources;
     const configured = state.sources !== null;
@@ -100,7 +100,7 @@ export function SourcesForm({ state, draft, onSaved }: SourcesFormProps): ReactE
             onSaved(saved);
             draft.reset(saved.sources ?? sources);
         } catch (error: unknown) {
-            setRefusal(describeRefusal(error));
+            setRefusal(failureOf(error));
         } finally {
             setSaving(false);
         }

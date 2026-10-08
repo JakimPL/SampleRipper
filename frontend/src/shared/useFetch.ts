@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
-import { describeError, type FetchState } from "./fetchState";
+import { failureOf } from "./failure";
+import type { FetchState } from "./fetchState";
 import { cachedRequest, getCachedResult, subscribeRequest } from "./requestCache";
 
 export interface FetchOptions {
@@ -65,7 +66,7 @@ export function useFetch<T>(
             })
             .catch((error: unknown) => {
                 if (active) {
-                    setState({ status: "error", message: describeError(error) });
+                    setState({ status: "error", message: failureOf(error) });
                 }
             });
         return (): void => {

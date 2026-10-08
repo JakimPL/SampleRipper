@@ -36,6 +36,6 @@ describe("MorphDistance", () => {
 
         render(<MorphDistance first="abc" second="def" />);
 
-        expect(await screen.findByText("no vector yet")).toBeInTheDocument();
+        expect(await screen.findByText(keyed(M.errors.unexpected, { reason: "no vector yet" }))).toBeInTheDocument();
     });
 });

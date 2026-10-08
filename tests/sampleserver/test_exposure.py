@@ -24,6 +24,7 @@ from samplecore.models.sample_file import FileFingerprint, SampleFile, SampleFil
 from samplecore.models.sample_properties import SampleOccurrence, XMSampleProperties
 from samplecore.models.tracker import TrackerFormat
 from samplecore.paths import PACKAGES_DIRECTORY
+from samplecore.problems import MessageCode
 from samplecore.sample_files.decoding import decode_sample_file
 from samplecore.storage import audio_store
 from samplecore.storage.repositories.module import PostgresModuleRepository
@@ -33,7 +34,6 @@ from samplecore.storage.repositories.sample_annotation import PostgresSampleAnno
 from samplecore.storage.repositories.sample_file import PostgresSampleFileRepository
 from samplecore.storage.repositories.sample_properties import PostgresSamplePropertiesRepository
 from sampleserver.app import API_PREFIX
-from sampleserver.messages import CURATION_WITHHELD
 from tests.sampleserver.conftest import INFERENCE_URL, SAMPLE_DIRECTORY_NAMES
 
 PACK_DIRECTORY_NAME: Final[str] = SAMPLE_DIRECTORY_NAMES[0]
@@ -216,7 +216,7 @@ def test_a_public_listing_narrows_and_orders_by_no_decision(
     response = public_client.get(f"/samples?{query}")
 
     assert response.status_code == 422
-    assert response.json()["detail"] == CURATION_WITHHELD
+    assert response.json()["detail"]["code"] == MessageCode.CURATION_WITHHELD
 
 
 @pytest.mark.parametrize("path", ["/cloud/labels", "/curation/annotations/vocabulary", "/curation/annotations/tags"])

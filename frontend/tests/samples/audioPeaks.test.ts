@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { normalized, peaksFrom, useAudioPeaks } from "../../src/samples/audioPeaks";
 
-const REFUSAL = "the two ends are heard 9.2 times apart in rate, and a morph spans at most 4";
+const REFUSAL = { code: "morph_refused", params: {}, reason: "the two ends are heard 9.2 times apart" } as const;
 const AUDIO_URL = "/api/morph/audio?first=a&second=b&weight=0.625";
 
 class FailingDecoder {
@@ -76,7 +76,7 @@ describe("useAudioPeaks", () => {
         vi.unstubAllGlobals();
     });
 
-    it("reads back the server's own words about audio it would not serve", async () => {
+    it("reads back the problem the server names for audio it would not serve", async () => {
         vi.stubGlobal("AudioContext", FailingDecoder);
         vi.stubGlobal(
             "fetch",
@@ -91,20 +91,20 @@ describe("useAudioPeaks", () => {
         const { result } = renderHook(() => useAudioPeaks(AUDIO_URL, 8));
 
         await waitFor(() => {
-            expect(result.current.refusal).toEqual({ status: 422, detail: REFUSAL });
+            expect(result.current.refusal).toEqual({ status: 422, problem: REFUSAL });
         });
         expect(result.current.peaks).toBeNull();
         expect(result.current.pending).toBe(false);
     });
 
-    it("reads back the status of audio refused with no words of its own", async () => {
+    it("reads back the status of audio refused with no problem named", async () => {
         vi.stubGlobal("AudioContext", FailingDecoder);
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 503 })));
 
         const { result } = renderHook(() => useAudioPeaks(AUDIO_URL, 8));
 
         await waitFor(() => {
-            expect(result.current.refusal).toEqual({ status: 503, detail: null });
+            expect(result.current.refusal).toEqual({ status: 503, problem: null });
         });
     });
 

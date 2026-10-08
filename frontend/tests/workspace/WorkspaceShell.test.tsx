@@ -9,6 +9,7 @@ import { routes } from "../../src/navigation/router";
 import { LAYOUT_STORAGE_KEY, type StoredLayout } from "../../src/workspace/dockviewPersistence";
 import type * as ModulesListPanelModule from "../../src/workspace/panels/ModulesListPanel";
 import { useSelectionStore } from "../../src/workspace/selectionStore";
+import { keyed } from "../support/keyedMessages";
 import { choosePair } from "../support/morphPair";
 
 const MODULES_FAILURE = "the modules panel read a page that was not there";
@@ -96,7 +97,10 @@ describe("WorkspaceShell", () => {
 
         renderShellAt("/modules");
 
-        expect(await screen.findByText(MODULES_FAILURE)).toHaveAttribute("role", "alert");
+        expect(await screen.findByText(keyed(M.errors.unexpected, { reason: MODULES_FAILURE }))).toHaveAttribute(
+            "role",
+            "alert",
+        );
         expect(panelTabTitles()).toContain(M.workspace.panels.cloud);
         expect(panelTabTitles()).toContain(M.workspace.panels.samples);
         vi.restoreAllMocks();

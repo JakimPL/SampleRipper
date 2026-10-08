@@ -66,7 +66,7 @@ function TrayIdentity({ entity, children }: TrayIdentityProps): ReactElement {
 }
 
 function SampleTray({ hash }: EntityTrayProps): ReactElement {
-    const { text } = useMessages();
+    const { text, textOf } = useMessages();
     const preview = useSamplePreview(hash);
     const detail = useSampleDetail(hash);
     const sample = detail.status === "success" ? detail.data.sample : null;
@@ -152,7 +152,7 @@ function SampleTray({ hash }: EntityTrayProps): ReactElement {
                     </>
                 )}
                 {message !== null && (
-                    <span className="annotation-row-message" role="alert" title={message}>
+                    <span className="annotation-row-message" role="alert" title={textOf(message)}>
                         {text(M.samples.annotation.notSaved)}
                     </span>
                 )}

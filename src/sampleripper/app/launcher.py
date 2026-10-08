@@ -20,6 +20,7 @@ from samplecore.models.base import FROZEN
 from samplecore.models.service_role import ServiceRole
 from samplecore.paths import default_library_root
 from samplecore.ports import PortUnavailableError, free_port
+from samplecore.problems import MessageCode, Problem, ProblemError
 from samplecore.storage.cluster.embedded.binaries import PostgresBinariesUnavailableError
 from samplecore.storage.cluster.embedded.server import EmbeddedCluster, EmbeddedClusterError
 from samplecore.storage.database import connect
@@ -39,15 +40,20 @@ RENDERER_LOG_NAME: Final[str] = "renderer.log"
 RENDERER_NAME: Final[str] = "morph renderer"
 RENDERER_HOST_OPTION: Final[str] = "--host"
 RENDERER_PORT_OPTION: Final[str] = "--port"
-LIBRARY_IN_USE: Final[str] = "Another SampleRipper has this library open. Quit that one, then try again."
-PUBLIC_LIBRARY_REFUSED: Final[str] = (
-    'This library is set up to be served to anyone on the internet. Set exposure = "local" '
-    "under [server] in its config to open it here."
-)
 
 
-class LibraryInUseError(Exception):
+class LibraryInUseError(ProblemError):
     """Raised when another application, run under another config, holds the library open."""
+
+    def __init__(self) -> None:
+        super().__init__(Problem.of(MessageCode.LIBRARY_IN_USE, reason=None))
+
+
+class PublicLibraryRefusedError(ProblemError):
+    """Raised when the config serves the library to anyone, which a site alone does."""
+
+    def __init__(self) -> None:
+        super().__init__(Problem.of(MessageCode.PUBLIC_LIBRARY_REFUSED, reason=None))
 
 
 ACTIVATION_FAILURES: Final[tuple[type[Exception], ...]] = (
@@ -57,6 +63,7 @@ ACTIVATION_FAILURES: Final[tuple[type[Exception], ...]] = (
     PortUnavailableError,
     OperationalError,
     LibraryInUseError,
+    PublicLibraryRefusedError,
     LockUnavailableError,
     ServiceRoleRefusedError,
 )
@@ -64,12 +71,25 @@ ACTIVATION_FAILURES: Final[tuple[type[Exception], ...]] = (
 _logger = logging.getLogger(__name__)
 
 
-class LibraryClosedError(Exception):
+class LibraryClosedError(ProblemError):
     """Raised when a build or a build option is asked for before the library is open."""
 
 
-class BuildInProgressError(Exception):
+class BuildInProgressError(ProblemError):
     """Raised when new folders are chosen while a build runs over the library the current ones opened."""
+
+    def __init__(self) -> None:
+        super().__init__(Problem.of(MessageCode.BUILD_IN_PROGRESS, reason=None))
+
+
+def problem_of(error: Exception) -> Problem:
+    """The problem a failure to open the library tells a person: its own where it has one, its words otherwise."""
+    if isinstance(error, ProblemError):
+        return error.problem
+    code = (
+        MessageCode.CONFIGURATION_REFUSED if isinstance(error, ConfigurationError) else MessageCode.LIBRARY_OPEN_FAILED
+    )
+    return Problem.of(code, reason=str(error))
 
 
 @unique
@@ -97,7 +117,7 @@ class SetupState(BaseModel):
     build_device: BuildDevice | None
     suggested_library_root: str
     manages_database: bool | None
-    problem: str | None
+    problem: Problem | None
     build: JobView | None
     home_network: HomeNetworkReach
 
@@ -141,7 +161,7 @@ class Launcher:
         self._held_library: HeldLibrary | None = None
         self._renderer: ChildProcess | None = None
         self._activation: asyncio.Task[None] | None = None
-        self._problem: str | None = None
+        self._problem: Problem | None = None
         self._lock = asyncio.Lock()
 
     @property
@@ -179,7 +199,7 @@ class Launcher:
         try:
             self._config = load_config(self._config_path)
         except ConfigurationError as error:
-            self._problem = str(error)
+            self._problem = problem_of(error)
             return
         self._schedule_activation(self._config)
 
@@ -191,7 +211,7 @@ class Launcher:
             ConfigurationError: the choices fail validation, and the config file stays as it was.
         """
         if self._builds.is_running:
-            raise BuildInProgressError("Wait for the build to finish or cancel it.")
+            raise BuildInProgressError
         self._config = write_library_sources(self._config_path, sources)
         self._schedule_activation(self._config)
 
@@ -203,7 +223,7 @@ class Launcher:
             ConfigurationError: the config file, with the options in it, fails validation.
         """
         if self._config is None:
-            raise LibraryClosedError("Save your folders first.")
+            raise LibraryClosedError(Problem.of(MessageCode.SAVE_FOLDERS_FIRST, reason=None))
         self._config = write_library_options(self._config_path, options)
 
     def build(self, target: BuildTarget) -> None:
@@ -214,7 +234,7 @@ class Launcher:
             JobAlreadyRunningError: a build already runs.
         """
         if self._config is None or self._catalog is None:
-            raise LibraryClosedError("The library isn't open yet.")
+            raise LibraryClosedError(Problem.of(MessageCode.LIBRARY_NOT_OPEN, reason=None))
         self._builds.start(self._config, target)
 
     def cancel_build(self) -> None:
@@ -262,17 +282,17 @@ class Launcher:
                 await self._open_library(config)
             except ACTIVATION_FAILURES as error:
                 _logger.error("Could not open the library: %s", error)
-                self._problem = str(error)
+                self._problem = problem_of(error)
                 await self._close_library()
 
     async def _open_library(self, config: LibraryConfig) -> None:
         """Open the library, which the app serves only where its exposure lets a person at this computer edit it.
 
         Raises:
-            ConfigurationError: the config serves the library to anyone, which a site alone does.
+            PublicLibraryRefusedError: the config serves the library to anyone, which a site alone does.
         """
         if not ServingPolicy.of(config.server).permits_desktop_app:
-            raise ConfigurationError(PUBLIC_LIBRARY_REFUSED)
+            raise PublicLibraryRefusedError
         await run_in_threadpool(self._prepare_database, config)
         curator_url = await run_in_threadpool(_curator_url, config)
         inference = _free_inference_address(config.inference)
@@ -337,7 +357,7 @@ class Launcher:
             return None
         lock = try_lock(library_lock_path(root))
         if lock is None:
-            raise LibraryInUseError(LIBRARY_IN_USE)
+            raise LibraryInUseError
         previous, self._held_library = self._held_library, HeldLibrary(root=root, lock=lock)
         return previous
 

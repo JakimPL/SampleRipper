@@ -178,7 +178,10 @@ describe("SampleRow", () => {
 
         await userEvent.click(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 3 }) }));
 
-        expect(await screen.findByRole("alert")).toHaveAttribute("title", "request failed with status 500");
+        expect(await screen.findByRole("alert")).toHaveAttribute(
+            "title",
+            keyed(M.errors.unexpected, { reason: "request failed with status 500" }),
+        );
         expect(screen.getByRole("button", { name: keyed(M.samples.rating.rate, { value: 3 }) })).toHaveAttribute(
             "aria-pressed",
             "false",

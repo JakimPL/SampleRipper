@@ -5,7 +5,7 @@ import type { Message } from "../messages/messageIds";
 import { M } from "../messages/messageIds";
 import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
-import { describeError } from "../shared/fetchState";
+import { failureOf } from "../shared/failure";
 import { BottomSheet } from "../shared/overlay/BottomSheet";
 import { FolderPath } from "./FolderPath";
 import { SetupMessage, type SetupMessageText } from "./SetupMessage";
@@ -23,7 +23,7 @@ const FOLDER_GLYPH = "📁";
 
 type ListingState =
     | { readonly status: "loading" }
-    | { readonly status: "error"; readonly message: string }
+    | { readonly status: "error"; readonly message: Message }
     | { readonly status: "ready"; readonly listing: FolderListing };
 
 function describeListing(listing: ListingState): SetupMessageText {
@@ -72,7 +72,7 @@ export function FolderPicker({ title, initialPath, onChoose, onClose }: FolderPi
             })
             .catch((error: unknown) => {
                 if (active) {
-                    setListing({ status: "error", message: describeError(error) });
+                    setListing({ status: "error", message: failureOf(error) });
                 }
             });
         return (): void => {
@@ -94,7 +94,7 @@ export function FolderPicker({ title, initialPath, onChoose, onClose }: FolderPi
             })
             .catch((error: unknown) => {
                 if (active) {
-                    setListing({ status: "error", message: describeError(error) });
+                    setListing({ status: "error", message: failureOf(error) });
                 }
             });
         return (): void => {

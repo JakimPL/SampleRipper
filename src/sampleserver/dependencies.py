@@ -7,14 +7,15 @@ from pathlib import Path
 from typing import Final
 
 import httpx
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, Request
 from sqlalchemy import Connection
 
+from samplecore.problems import MessageCode
 from samplecore.spectral_distance import SpectralVectors
 from samplecore.storage.database import checkout_read_only
 from samplecore.storage.repositories.sample_category import PostgresSampleCategoryRepository
-from sampleserver.messages import NOT_FOUND
 from sampleserver.policy import ServingPolicy
+from sampleserver.problems import plain_problem, refusal
 from sampleserver.response_cache import RevisionedJsonCache
 from sampleserver.spectral_cache import SpectralVectorCache
 from sampleserver.visitors import MorphGate
@@ -50,7 +51,7 @@ def require_shown_curation(policy: ServingPolicy = Depends(get_policy)) -> None:
         HTTPException: 404 where the library shows no labels, ratings or favorites.
     """
     if not policy.shows_curation:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=NOT_FOUND)
+        raise refusal(HTTPStatus.NOT_FOUND, plain_problem(MessageCode.NOT_FOUND))
 
 
 def get_inference_client(request: Request) -> httpx.AsyncClient:

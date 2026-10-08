@@ -1,5 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 
+import type { Message } from "../messages/messageIds";
+import { useMessages } from "../messages/useMessages";
 import { classNames } from "../shared/classNames";
 
 interface WavePanelProps {
@@ -13,7 +15,7 @@ interface WavePanelProps {
      * Why the audio is missing: the transport says it in the time's place, and on a phone a line
      * under the row says it, the frame's corner then staying clear.
      */
-    readonly failure: string | null;
+    readonly failure: Message | null;
     /** Controls of the transport row alone, such as the rate a sample is heard at. */
     readonly controls: ReactNode;
     readonly download: ReactElement | null;
@@ -37,6 +39,7 @@ export function WavePanel({
     controls,
     download,
 }: WavePanelProps): ReactElement {
+    const { textOf } = useMessages();
     return (
         <div className={classNames("wave-panel", compact && "wave-panel-compact")}>
             {compact ? playButton : null}
@@ -52,7 +55,7 @@ export function WavePanel({
                     {failure === null ? (
                         <span className="time">{readout}</span>
                     ) : (
-                        <span className="cell-muted">{failure}</span>
+                        <span className="cell-muted">{textOf(failure)}</span>
                     )}
                     {controls}
                     {download}
@@ -60,7 +63,7 @@ export function WavePanel({
             )}
             {compact && failure !== null && (
                 <p className="wave-panel-failure cell-muted" role="status">
-                    {failure}
+                    {textOf(failure)}
                 </p>
             )}
         </div>

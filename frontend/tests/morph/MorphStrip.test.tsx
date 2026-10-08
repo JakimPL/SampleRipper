@@ -28,7 +28,7 @@ const SECOND_RATE_HZ = 16726;
 const STORED_SECONDS = 0.5;
 const MOVED_WEIGHT = 0.25;
 const POINTER_CLICK_DETAIL = 1;
-const REFUSAL = "the two ends are heard 9.2 times apart in rate, and a morph spans at most 4";
+const REFUSAL = { code: "morph_refused", params: {}, reason: "the two ends are heard 9.2 times apart" } as const;
 const MOVED_RENDER_URL = `/api/morph/audio?first=${FIRST}&second=${SECOND}&weight=${String(MOVED_WEIGHT)}`;
 const NAMES: Readonly<Record<string, string>> = { [FIRST]: "kick_808", [SECOND]: "" };
 
@@ -570,7 +570,9 @@ describe("MorphStrip opened out", () => {
         );
         await showPairOpened(true);
 
-        expect((await screen.findByText(REFUSAL)).closest(".transport")).toBeInTheDocument();
+        expect(
+            (await screen.findByText(keyed(M.errors.morphRefused, { reason: REFUSAL.reason }))).closest(".transport"),
+        ).toBeInTheDocument();
         expect(waveFrame()?.textContent).toBe("");
         expect(morphPlay()).toBeDisabled();
     });

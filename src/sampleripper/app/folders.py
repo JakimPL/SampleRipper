@@ -10,6 +10,7 @@ from platformdirs import user_desktop_path, user_documents_path, user_downloads_
 from pydantic import BaseModel
 
 from samplecore.models.base import FROZEN
+from samplecore.problems import MessageCode, Problem, ProblemError
 from samplecore.sample_files.decoding import SAMPLE_FILE_SUFFIXES
 from sampleextract.discovery import FORMAT_LOADERS
 
@@ -18,7 +19,7 @@ MOUNT_DIRECTORIES: Final[tuple[Path, ...]] = (Path("/Volumes"), Path("/media"), 
 FILESYSTEM_ROOT: Final[Path] = Path("/")
 
 
-class FolderUnreadableError(Exception):
+class FolderUnreadableError(ProblemError):
     """Raised when a folder a person opens in the folder browser cannot be listed."""
 
 
@@ -75,11 +76,13 @@ def list_folder(path: Path) -> FolderListing:
     """
     folder = path.expanduser().resolve()
     if not folder.is_dir():
-        raise FolderUnreadableError(f"{folder} is not a folder")
+        raise FolderUnreadableError(Problem.of(MessageCode.FOLDER_NOT_A_FOLDER, reason=None, folder=str(folder)))
     try:
         entries = sorted(_visible_entries(folder), key=lambda entry: entry.name.casefold())
     except OSError as error:
-        raise FolderUnreadableError(f"Can't open {folder}: {error.strerror}") from error
+        raise FolderUnreadableError(
+            Problem.of(MessageCode.FOLDER_UNREADABLE, reason=error.strerror, folder=str(folder))
+        ) from error
     files = [entry for entry in entries if entry.is_file()]
     return FolderListing(
         path=str(folder),

@@ -12,6 +12,7 @@ from starlette.routing import BaseRoute, Match, NoMatchFound
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 from starlette.types import Receive, Scope, Send
 
+from samplecore.problems import MessageCode, Problem
 from sampleripper.app.launcher import Launcher
 from sampleripper.app.routes import setup
 from sampleserver.app import API_PREFIX
@@ -20,7 +21,6 @@ from sampleserver.local_person import LocalPersonOrHomeDevices
 from sampleserver.policy import ServingPolicy
 
 SETUP_PREFIX: Final[str] = f"{API_PREFIX}/setup"
-CLOSED_LIBRARY_DETAIL: Final[str] = "The library isn't open yet. Check the setup page."
 
 
 class CatalogRoute(BaseRoute):
@@ -50,9 +50,10 @@ class CatalogRoute(BaseRoute):
     async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
         catalog = self._launcher.catalog
         if catalog is None:
-            await JSONResponse({"detail": CLOSED_LIBRARY_DETAIL}, status_code=HTTP_503_SERVICE_UNAVAILABLE)(
-                scope, receive, send
-            )
+            await JSONResponse(
+                {"detail": Problem.of(MessageCode.LIBRARY_NOT_OPEN, reason=None).model_dump(mode="json")},
+                status_code=HTTP_503_SERVICE_UNAVAILABLE,
+            )(scope, receive, send)
             return
         await catalog(scope, receive, send)
 

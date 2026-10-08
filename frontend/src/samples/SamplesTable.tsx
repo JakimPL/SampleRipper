@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { SampleSelection, SampleSummary } from "../api/samples";
 import { useContainerWidth } from "../layout/useContainerWidth";
 import { useLayoutMode } from "../layout/useLayoutMode";
-import { M } from "../messages/messageIds";
+import { M, type Message } from "../messages/messageIds";
 import { useMessages } from "../messages/useMessages";
 import { fitColumns } from "../shared/columnFit";
 import { Button } from "../shared/controls/Button";
@@ -39,7 +39,7 @@ interface SamplesTableProps {
     readonly hasMore: boolean;
     readonly isLoadingMore: boolean;
     readonly onLoadMore: () => void;
-    readonly loadMoreError: string | null;
+    readonly loadMoreError: Message | null;
     readonly groupByEquivalence: boolean;
     readonly onGroupByEquivalenceChange: (groupByEquivalence: boolean) => void;
     readonly selection: SampleSelection;
@@ -66,7 +66,7 @@ export function SamplesTable({
     selection,
     onSelectionChange,
 }: SamplesTableProps): ReactElement {
-    const { text } = useMessages();
+    const { text, textOf } = useMessages();
     const [globalFilter, setGlobalFilter] = useState("");
     const [sorting, setSorting] = useState<SortingState>([]);
     const scrollElementRef = useRef<HTMLDivElement | null>(null);
@@ -209,7 +209,7 @@ export function SamplesTable({
                                 {text(M.samples.table.loadMore)}
                             </Button>
                         )}
-                        {loadMoreError !== null && <span className="error-notice">{loadMoreError}</span>}
+                        {loadMoreError !== null && <span className="error-notice">{textOf(loadMoreError)}</span>}
                     </>
                 }
             />

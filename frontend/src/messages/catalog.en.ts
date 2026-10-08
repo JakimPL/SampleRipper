@@ -1,4 +1,5 @@
 import { CLOUD_MESSAGES } from "./areas/cloud.en";
+import { ERRORS_MESSAGES } from "./areas/errors.en";
 import { LAYOUT_MESSAGES } from "./areas/layout.en";
 import { MODULES_MESSAGES } from "./areas/modules.en";
 import { MORPH_MESSAGES } from "./areas/morph.en";
@@ -23,5 +24,6 @@ export const CATALOG_EN = {
     shell: SHELL_MESSAGES,
     workspace: WORKSPACE_MESSAGES,
     theme: THEME_MESSAGES,
+    errors: ERRORS_MESSAGES,
     layout: LAYOUT_MESSAGES,
 } as const;

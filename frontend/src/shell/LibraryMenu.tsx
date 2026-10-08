@@ -2,13 +2,13 @@ import { type ReactElement, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { quitApplication } from "../api/setup";
-import { M } from "../messages/messageIds";
+import { M, type Message } from "../messages/messageIds";
 import { useMessages } from "../messages/useMessages";
 import { CLOSED_PATH } from "../setup/ClosedView";
-import { describeRefusal } from "../setup/refusal";
 import { SETUP_PATH } from "../setup/SetupGate";
 import { useSetupProbe } from "../setup/useSetupProbe";
 import { Button } from "../shared/controls/Button";
+import { failureOf } from "../shared/failure";
 import { DisclosureMenu } from "../shared/overlay/DisclosureMenu";
 
 /**
@@ -18,9 +18,9 @@ import { DisclosureMenu } from "../shared/overlay/DisclosureMenu";
  */
 export function LibraryMenu(): ReactElement | null {
     const setup = useSetupProbe();
-    const { text } = useMessages();
+    const { text, textOf } = useMessages();
     const navigate = useNavigate();
-    const [refusal, setRefusal] = useState<string | null>(null);
+    const [refusal, setRefusal] = useState<Message | null>(null);
 
     async function handleQuit(): Promise<void> {
         setRefusal(null);
@@ -28,7 +28,7 @@ export function LibraryMenu(): ReactElement | null {
             await quitApplication();
             void navigate(CLOSED_PATH, { replace: true });
         } catch (error: unknown) {
-            setRefusal(describeRefusal(error));
+            setRefusal(failureOf(error));
         }
     }
 
@@ -59,7 +59,7 @@ export function LibraryMenu(): ReactElement | null {
             </Button>
             {refusal !== null && (
                 <p className="menu-note" role="alert">
-                    {refusal}
+                    {textOf(refusal)}
                 </p>
             )}
         </DisclosureMenu>

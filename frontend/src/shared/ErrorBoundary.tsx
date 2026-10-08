@@ -1,17 +1,17 @@
 import { Component, type ReactElement, type ReactNode } from "react";
 
-import { M } from "../messages/messageIds";
+import { M, type Message } from "../messages/messageIds";
 import { useMessages } from "../messages/useMessages";
 import { Button } from "./controls/Button";
 import { ErrorNotice } from "./ErrorNotice";
-import { describeError } from "./fetchState";
+import { failureOf } from "./failure";
 
 interface ErrorBoundaryProps {
     readonly children: ReactNode;
 }
 
 interface ErrorBoundaryState {
-    readonly message: string | null;
+    readonly message: Message | null;
 }
 
 function TryAgainButton({ onClick }: { readonly onClick: () => void }): ReactElement {
@@ -38,7 +38,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     }
 
     public static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
-        return { message: describeError(error) };
+        return { message: failureOf(error) };
     }
 
     public render(): ReactNode {

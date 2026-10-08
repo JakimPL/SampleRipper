@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { listSamples, type SampleSelection, type SampleSummary } from "../api/samples";
-import { describeError } from "../shared/fetchState";
+import type { Message } from "../messages/messageIds";
+import { failureOf } from "../shared/failure";
 
 // Each summary embeds a thumbnail, so the listing arrives one window at a time as it scrolls.
 export const WINDOW_PAGE_LIMIT = 200;
@@ -12,7 +13,7 @@ export interface WindowedSamples {
     readonly loadedCount: number;
     readonly groupCount: number;
     readonly total: number;
-    readonly message: string | null;
+    readonly message: Message | null;
     readonly isLoadingMore: boolean;
     readonly hasMore: boolean;
     readonly loadMore: () => void;
@@ -57,7 +58,7 @@ export function useWindowedSamples(groupByEquivalence: boolean, selection: Sampl
     const [total, setTotal] = useState(0);
     const [exhausted, setExhausted] = useState(false);
     const [status, setStatus] = useState<WindowedSamples["status"]>("loading");
-    const [message, setMessage] = useState<string | null>(null);
+    const [message, setMessage] = useState<Message | null>(null);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const generationRef = useRef(0);
     const loadingMoreRef = useRef(false);
@@ -84,7 +85,7 @@ export function useWindowedSamples(groupByEquivalence: boolean, selection: Sampl
                 if (generation !== generationRef.current) {
                     return;
                 }
-                setMessage(describeError(error));
+                setMessage(failureOf(error));
                 setStatus("error");
             });
     }, [selection]);
@@ -112,7 +113,7 @@ export function useWindowedSamples(groupByEquivalence: boolean, selection: Sampl
                     return;
                 }
                 setStatus("error");
-                setMessage(describeError(error));
+                setMessage(failureOf(error));
             })
             .finally(() => {
                 if (generation !== generationRef.current) {

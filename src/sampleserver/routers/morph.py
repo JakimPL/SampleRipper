@@ -7,12 +7,13 @@ from pathlib import Path
 from typing import Annotated, Final
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from pydantic import BaseModel, ValidationError
 from trackmod.schema.scalars import Rate
 
 from samplecore.models.base import FROZEN
 from samplecore.models.morph import HeardMorphPoint, MorphPoint, MorphServiceStatus
+from samplecore.problems import MessageCode
 from samplecore.storage.audio_store import NOMINAL_WAV_RATE
 from samplecore.storage.playback_rates import resolved_playback_rates
 from samplecore.storage.repositories.sample_file import PostgresSampleFileRepository
@@ -27,9 +28,9 @@ from sampleserver.dependencies import (
     get_sample_directories,
 )
 from sampleserver.inference_client import STATUS_TIMEOUT_SECONDS, timed_out_detail, unavailable_detail
-from sampleserver.messages import MORPH_REFUSED, MORPH_TIMED_OUT, MORPH_UNAVAILABLE
 from sampleserver.parameters import WAV_CONTENT, WAV_MEDIA_TYPE, ErrorDetail
 from sampleserver.policy import ServingPolicy
+from sampleserver.problems import refusal
 from sampleserver.sample_files import files_inside, unreadable_audio
 from sampleserver.visitors import MorphGate
 
@@ -149,14 +150,12 @@ async def get_morph_audio(
     except httpx.TimeoutException as error:
         detail = timed_out_detail(str(client.base_url))
         _logger.warning("%s", detail)
-        raise HTTPException(
-            status_code=HTTPStatus.GATEWAY_TIMEOUT, detail=policy.refusal(detail, plain=MORPH_TIMED_OUT)
-        ) from error
+        raise refusal(HTTPStatus.GATEWAY_TIMEOUT, policy.refusal(detail, code=MessageCode.MORPH_TIMED_OUT)) from error
     except httpx.TransportError as error:
         detail = unavailable_detail(str(client.base_url))
         _logger.warning("%s", detail)
-        raise HTTPException(
-            status_code=HTTPStatus.SERVICE_UNAVAILABLE, detail=policy.refusal(detail, plain=MORPH_UNAVAILABLE)
+        raise refusal(
+            HTTPStatus.SERVICE_UNAVAILABLE, policy.refusal(detail, code=MessageCode.MORPH_UNAVAILABLE)
         ) from error
 
     relayed = {name: value for name, value in upstream.headers.items() if name.lower() in RELAYED_HEADERS}
@@ -164,14 +163,14 @@ async def get_morph_audio(
         return Response(status_code=HTTPStatus.NOT_MODIFIED, headers=relayed)
     if upstream.status_code in RELAYED_REFUSALS:
         _logger.warning("The inference process refused a morph: %s", _upstream_detail(upstream))
-        raise HTTPException(
-            status_code=upstream.status_code,
-            detail=policy.refusal(_upstream_detail(upstream), plain=MORPH_REFUSED),
+        raise refusal(
+            HTTPStatus(upstream.status_code),
+            policy.refusal(_upstream_detail(upstream), code=MessageCode.MORPH_REFUSED),
         )
     if upstream.status_code != HTTPStatus.OK:
         detail = f"the inference process answered {upstream.status_code}: {_upstream_detail(upstream)}"
         _logger.warning("%s", detail)
-        raise HTTPException(status_code=HTTPStatus.BAD_GATEWAY, detail=policy.refusal(detail, plain=MORPH_REFUSED))
+        raise refusal(HTTPStatus.BAD_GATEWAY, policy.refusal(detail, code=MessageCode.MORPH_REFUSED))
 
     if gate is not None and visitor is not None and headers:
         gate.charge(visitor)

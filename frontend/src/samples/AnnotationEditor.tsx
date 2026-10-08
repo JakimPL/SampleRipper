@@ -37,7 +37,7 @@ export function defaultScopeFor(sample: SampleDetail): AnnotationScope {
  * shows the decisions as they stand.
  */
 export function AnnotationEditor({ sample, scope, onScopeChange }: AnnotationEditorProps): ReactElement {
-    const { text } = useMessages();
+    const { text, textOf } = useMessages();
     const current = useSampleAnnotation(sample.hash, decisionsOf(sample));
     const { change, message } = useAnnotationWriter(sample.hash, scope);
 
@@ -108,7 +108,7 @@ export function AnnotationEditor({ sample, scope, onScopeChange }: AnnotationEdi
                     </label>
                 )}
             </div>
-            {message !== null && <p className="annotation-editor-message">{message}</p>}
+            {message !== null && <p className="annotation-editor-message">{textOf(message)}</p>}
         </div>
     );
 }

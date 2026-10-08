@@ -1,7 +1,8 @@
 import type { ReactElement } from "react";
 
+import { messageOfProblem, type Problem } from "../api/problem";
 import type { BuildStep, BuildView, StepState } from "../api/setup";
-import { M, type MessageId } from "../messages/messageIds";
+import { M, type Message, type MessageId } from "../messages/messageIds";
 import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
 import { buttonClassName } from "../shared/controls/buttonClassName";
@@ -43,6 +44,12 @@ const BUILD_HEADINGS: Readonly<Record<BuildView["status"], MessageId>> = {
     failed: M.setup.progress.headings.failed,
     canceled: M.setup.progress.headings.canceled,
 };
+
+function buildProblemMessage(problem: Problem, text: TextFormatter): Message {
+    const step = problem.params.step;
+    const named = typeof step === "string" ? stepName(step, text) : step;
+    return messageOfProblem({ ...problem, params: { ...problem.params, step: named ?? "" } });
+}
 
 function stepName(step: string, text: TextFormatter): string {
     const id = stepMessageId(step);
@@ -168,7 +175,9 @@ export function BuildProgress({ build, onCancel }: BuildProgressProps): ReactEle
                             <li className="listbox-row listbox-empty">{text(M.setup.progress.gettingReady)}</li>
                         )}
                     </ol>
-                    {build.problem !== null && <SetupMessage message={{ content: build.problem, tone: "error" }} />}
+                    {build.problem !== null && (
+                        <SetupMessage message={{ content: buildProblemMessage(build.problem, text), tone: "error" }} />
+                    )}
                     {build.status === "failed" && build.log_tail.length > 0 && (
                         <details className="build-log">
                             <summary className={buttonClassName({ variant: "quiet" })}>

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import { M } from "../../src/messages/messageIds";
 import { WavePanel } from "../../src/samples/WavePanel";
 import { Icon } from "../../src/shared/icons/Icon";
 
@@ -50,7 +51,7 @@ describe("WavePanel", () => {
                 playButton={PLAY_BUTTON}
                 view={<p>the frame</p>}
                 readout={READOUT}
-                failure="the audio is gone"
+                failure={{ id: M.samples.player.unavailable }}
                 controls={null}
                 download={null}
             />,
@@ -59,7 +60,7 @@ describe("WavePanel", () => {
         expect(tagsOf(container.querySelector(".wave-panel"))).toEqual(["BUTTON", "DIV", "SPAN", "P"]);
         expect(container.querySelector(".wave-panel-slot")).toBeInTheDocument();
         expect(container.querySelector(".wave-time")).not.toBeInTheDocument();
-        expect(screen.getByRole("status")).toHaveTextContent("the audio is gone");
+        expect(screen.getByRole("status")).toHaveTextContent(M.samples.player.unavailable);
         expect(container.querySelector(".wave-panel-frame")).toHaveTextContent(/^the frame$/);
     });
 
@@ -91,13 +92,13 @@ describe("WavePanel", () => {
                 playButton={PLAY_BUTTON}
                 view={<p>the frame</p>}
                 readout={READOUT}
-                failure="the audio is gone"
+                failure={{ id: M.samples.player.unavailable }}
                 controls={null}
                 download={null}
             />,
         );
 
-        expect(screen.getByText("the audio is gone")).toBeInTheDocument();
+        expect(screen.getByText(M.samples.player.unavailable)).toBeInTheDocument();
         expect(container.querySelector(".time")).not.toBeInTheDocument();
     });
 });

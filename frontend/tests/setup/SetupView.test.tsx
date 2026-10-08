@@ -75,7 +75,9 @@ describe("SetupView", () => {
         renderPage();
 
         expect(await screen.findByRole("alert")).toHaveTextContent(
-            keyed(M.setup.view.unreachable, { message: "connection refused" }),
+            keyed(M.setup.view.unreachable, {
+                message: keyed(M.errors.unexpected, { reason: "connection refused" }),
+            }),
         );
         expect(screen.getByRole("button", { name: M.setup.topBar.quit })).toBeDisabled();
     });

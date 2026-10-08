@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { refusalDetail } from "../api/client";
+import { readProblem } from "../api/client";
+import type { Problem } from "../api/problem";
 import type { WaveformPeak } from "../api/samples";
 
 const SILENT: WaveformPeak = { minimum: 0, maximum: 0 };
 
-/** Why the server served no audio: the status it answered with, and its own words where it gave any. */
+/** Why the server served no audio: the status it answered with, and the problem it named where it named one. */
 export interface AudioRefusal {
     readonly status: number;
-    readonly detail: string | null;
+    readonly problem: Problem | null;
 }
 
 /** Audio as a view draws it: its contour, how long it lasts, and what the server said where it served none. */
@@ -106,8 +107,8 @@ async function read(audioUrl: string, bucketCount: number, signal: AbortSignal):
     }
     const response = await fetch(audioUrl, { signal });
     if (!response.ok) {
-        const detail = await refusalDetail(response);
-        return { ...UNREAD, refusal: { status: response.status, detail } };
+        const problem = await readProblem(response);
+        return { ...UNREAD, refusal: { status: response.status, problem } };
     }
     const buffer = await context.decodeAudioData(await response.arrayBuffer());
     return {

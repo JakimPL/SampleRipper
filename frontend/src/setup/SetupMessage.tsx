@@ -6,11 +6,8 @@ import { classNames } from "../shared/classNames";
 
 export type MessageTone = "normal" | "error";
 
-/** A catalog message, or text the server wrote and the page shows as it came. */
-export type SetupMessageContent = Message | string;
-
 export interface SetupMessageText {
-    readonly content: SetupMessageContent;
+    readonly content: Message;
     readonly tone: MessageTone;
 }
 
@@ -25,14 +22,13 @@ interface SetupMessageProps {
  */
 export function SetupMessage({ message, className }: SetupMessageProps): ReactElement {
     const { textOf } = useMessages();
-    const content = message?.content;
     return (
         <p
             className={classNames("setup-message", className)}
             data-tone={message?.tone ?? "normal"}
             role={message?.tone === "error" ? "alert" : "status"}
         >
-            {typeof content === "string" ? content : content === undefined ? null : textOf(content)}
+            {message === null ? null : textOf(message.content)}
         </p>
     );
 }

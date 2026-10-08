@@ -27,7 +27,7 @@ interface CategoryChoicesProps {
  * Where the person here may change nothing, the categories are shown with their scores alone.
  */
 export function CategoryChoices({ sample, scope }: CategoryChoicesProps): ReactElement {
-    const { text } = useMessages();
+    const { text, textOf } = useMessages();
     const current = useSampleAnnotation(sample.hash, decisionsOf(sample));
     const { change, message } = useAnnotationWriter(sample.hash, scope);
     const label = current?.label ?? null;
@@ -70,7 +70,7 @@ export function CategoryChoices({ sample, scope }: CategoryChoicesProps): ReactE
                     );
                 })}
             </div>
-            {message !== null && <p className="annotation-editor-message">{message}</p>}
+            {message !== null && <p className="annotation-editor-message">{textOf(message)}</p>}
         </div>
     );
 }

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type * as SamplesApi from "../../src/api/samples";
 import { type SampleSummary, WHOLE_CATALOG } from "../../src/api/samples";
+import { M } from "../../src/messages/messageIds";
 import { useWindowedSamples, WINDOW_PAGE_LIMIT } from "../../src/samples/useWindowedSamples";
 
 const { listSamples } = vi.hoisted(() => ({ listSamples: vi.fn() }));
@@ -234,6 +235,6 @@ describe("useWindowedSamples", () => {
         await waitFor(() => {
             expect(result.current.status).toBe("error");
         });
-        expect(result.current.message).toBe("network down");
+        expect(result.current.message).toEqual({ id: M.errors.unexpected, values: { reason: "network down" } });
     });
 });

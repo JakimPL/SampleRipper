@@ -240,7 +240,11 @@ describe("LibraryPanel", () => {
             stateWith({
                 ...RUNNING_BUILD,
                 status: "failed",
-                problem: "The build stopped at the step 'thumbnails' (failed).",
+                problem: {
+                    code: "build_step_stopped",
+                    params: { step: "thumbnails", outcome: "failed" },
+                    reason: null,
+                },
                 log_tail: ["the disk is full"],
             }),
         );

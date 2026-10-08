@@ -29,16 +29,27 @@ describe("a refused request", () => {
         vi.unstubAllGlobals();
     });
 
-    it("carries the server's own detail in its message", async () => {
+    function refusedWith(detail: unknown): void {
         vi.stubGlobal(
             "fetch",
-            vi.fn().mockResolvedValue({
-                ok: false,
-                status: 422,
-                json: () => Promise.resolve({ detail: "no such sample" }),
-            }),
+            vi.fn().mockResolvedValue({ ok: false, status: 422, json: () => Promise.resolve({ detail }) }),
         );
+    }
 
-        await expect(requestJson("/samples/x")).rejects.toThrow("no such sample");
+    it("carries the problem the server names", async () => {
+        const problem = { code: "folders_overlap", params: { directory: "/a", other: "/a/b" }, reason: null } as const;
+        refusedWith(problem);
+
+        await expect(requestJson("/samples/x")).rejects.toMatchObject({ problem } satisfies Partial<ApiError>);
+    });
+
+    it.each([
+        { name: "plain text", detail: "no such sample" },
+        { name: "a list of validation errors", detail: [{ msg: "too short" }] },
+        { name: "a code the app does not know", detail: { code: "unheard_of", params: {}, reason: null } },
+    ])("carries no problem where the server's detail is $name", async ({ detail }) => {
+        refusedWith(detail);
+
+        await expect(requestJson("/samples/x")).rejects.toMatchObject({ problem: null } satisfies Partial<ApiError>);
     });
 });

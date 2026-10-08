@@ -3,7 +3,6 @@ import { useState } from "react";
 
 import { type SampleSelection, WHOLE_CATALOG } from "../../api/samples";
 import { M } from "../../messages/messageIds";
-import { useMessages } from "../../messages/useMessages";
 import { SamplesTable } from "../../samples/SamplesTable";
 import { useWindowedSamples } from "../../samples/useWindowedSamples";
 import { ErrorNotice } from "../../shared/ErrorNotice";
@@ -12,7 +11,6 @@ import { Loading } from "../../shared/Loading";
 const GROUP_BY_EQUIVALENCE_DEFAULT = true;
 
 export function SamplesListPanel(): ReactElement {
-    const { text } = useMessages();
     const [groupByEquivalence, setGroupByEquivalence] = useState(GROUP_BY_EQUIVALENCE_DEFAULT);
     const [selection, setSelection] = useState<SampleSelection>(WHOLE_CATALOG);
     const state = useWindowedSamples(groupByEquivalence, selection);
@@ -21,7 +19,7 @@ export function SamplesListPanel(): ReactElement {
         return <Loading />;
     }
     if (state.status === "error" && state.items.length === 0) {
-        return <ErrorNotice message={state.message ?? text(M.workspace.samplesList.unknownError)} />;
+        return <ErrorNotice message={state.message ?? { id: M.workspace.samplesList.unknownError }} />;
     }
 
     return (

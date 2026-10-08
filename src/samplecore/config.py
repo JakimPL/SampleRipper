@@ -22,6 +22,7 @@ from pydantic_core import ErrorDetails
 from samplecore.models.service_role import ServiceRole
 from samplecore.passwords import new_password
 from samplecore.paths import CHECKOUT_CONFIG_PATH, EXAMPLE_CONFIG_PATH, runs_from_checkout, user_config_file
+from samplecore.problems import MessageCode, Problem, ProblemValueError
 from samplecore.storage.atomic import PRIVATE_FILE_MODE, write_bytes_atomically
 from samplecore.storage.cluster.embedded.state import managed_catalog_url, managed_service_url
 
@@ -80,11 +81,16 @@ class ServiceRoleUnconfiguredError(ConfigurationError):
 
 
 class InvalidSettingsError(ConfigurationError):
-    """Raised when a config's settings fail validation; `problems` holds each one as a sentence a person reads."""
+    """Raised when a config's settings fail validation.
 
-    def __init__(self, message: str, *, problems: tuple[str, ...]) -> None:
+    `problems` holds each failure as a sentence a person reads, and `issues` the same failures as
+    problems the web app words itself.
+    """
+
+    def __init__(self, message: str, *, problems: tuple[str, ...], issues: tuple[Problem, ...]) -> None:
         super().__init__(message)
         self.problems = problems
+        self.issues = issues
 
 
 class InferenceConfig(BaseModel):
@@ -261,11 +267,24 @@ class LibraryConfig(BaseModel):
     def _names_separate_absolute_directories(cls, directories: tuple[Path, ...]) -> tuple[Path, ...]:
         for directory in directories:
             if not directory.is_absolute():
-                raise ValueError(f"{directory} must be an absolute path")
+                raise ProblemValueError(
+                    Problem.of(
+                        MessageCode.FOLDER_NOT_ABSOLUTE,
+                        reason=f"{directory} must be an absolute path",
+                        directory=str(directory),
+                    )
+                )
         for index, directory in enumerate(directories):
             for other in directories[index + 1 :]:
                 if directory.is_relative_to(other) or other.is_relative_to(directory):
-                    raise ValueError(f"{directory} and {other} overlap. Choose each folder only once.")
+                    raise ProblemValueError(
+                        Problem.of(
+                            MessageCode.FOLDERS_OVERLAP,
+                            reason=f"{directory} and {other} overlap. Choose each folder only once.",
+                            directory=str(directory),
+                            other=str(other),
+                        )
+                    )
         return directories
 
     @model_validator(mode="after")
@@ -282,7 +301,9 @@ class LibraryConfig(BaseModel):
     @classmethod
     def _holds_patterns(cls, exclusions: tuple[str, ...]) -> tuple[str, ...]:
         if any(not pattern.strip() for pattern in exclusions):
-            raise ValueError("an exclusion must be a pattern such as *loop*")
+            raise ProblemValueError(
+                Problem.of(MessageCode.EXCLUSION_EMPTY, reason="an exclusion must be a pattern such as *loop*")
+            )
         return exclusions
 
     @field_validator("database_url", "server_database_url", "curation_database_url")
@@ -404,6 +425,7 @@ def parse_config(content: str, config_path: Path) -> LibraryConfig:
         raise InvalidSettingsError(
             _describe_invalid_fields(error, config_path),
             problems=tuple(_problem(detail) for detail in error.errors()),
+            issues=tuple(_issue(detail) for detail in error.errors()),
         ) from error
     _reject_placeholder_paths(config, config_path)
     _reject_placeholder_passwords(config, config_path)
@@ -583,6 +605,14 @@ def _problem(detail: ErrorDetails) -> str:
     raised = detail.get("ctx", {}).get("error")
     text = str(raised) if isinstance(raised, ValueError) else detail["msg"]
     return text if text.endswith(".") else f"{text}."
+
+
+def _issue(detail: ErrorDetails) -> Problem:
+    """One failed setting as a problem: the one its validator names, or a general one holding the sentence."""
+    raised = detail.get("ctx", {}).get("error")
+    if isinstance(raised, ProblemValueError):
+        return raised.problem
+    return Problem.of(MessageCode.SETTINGS_INVALID, reason=_problem(detail))
 
 
 def _describe_invalid_fields(error: ValidationError, config_path: Path) -> str:

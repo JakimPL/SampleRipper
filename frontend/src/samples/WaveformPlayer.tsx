@@ -97,7 +97,7 @@ export function WaveformPlayer({
                 />
             }
             readout={readout}
-            failure={player.hasFailed ? text(M.samples.player.unavailable) : null}
+            failure={player.hasFailed ? { id: M.samples.player.unavailable } : null}
             controls={
                 rateOptions.length > 1 && (
                     <label>

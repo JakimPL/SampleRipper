@@ -2,13 +2,12 @@ import { type ReactElement, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { quitApplication, type SetupState } from "../api/setup";
-import { M } from "../messages/messageIds";
+import { M, type Message } from "../messages/messageIds";
 import { useMessages } from "../messages/useMessages";
+import { failureOf } from "../shared/failure";
 import { Loading } from "../shared/Loading";
 import { CLOSED_PATH } from "./ClosedView";
 import { LibraryPanel } from "./LibraryPanel";
-import { describeRefusal } from "./refusal";
-import type { SetupMessageContent } from "./SetupMessage";
 import { SetupTopBar } from "./SetupTopBar";
 import { SourcesForm } from "./SourcesForm";
 import { lastKnownState, type SetupSource, useSetupState } from "./useSetupState";
@@ -56,11 +55,14 @@ function SetupPlaceholder({ source }: { readonly source: SetupSource }): ReactEl
  */
 export function SetupView(): ReactElement {
     const { source, accept } = useSetupState();
+    const { textOf } = useMessages();
     const navigate = useNavigate();
-    const [quitRefusal, setQuitRefusal] = useState<string | null>(null);
+    const [quitRefusal, setQuitRefusal] = useState<Message | null>(null);
     const state = lastKnownState(source);
-    const unreachable: SetupMessageContent | null =
-        source.status === "unreachable" ? { id: M.setup.view.unreachable, values: { message: source.message } } : null;
+    const unreachable: Message | null =
+        source.status === "unreachable"
+            ? { id: M.setup.view.unreachable, values: { message: textOf(source.failure) } }
+            : null;
     const notice = quitRefusal ?? unreachable;
 
     async function handleQuit(): Promise<void> {
@@ -69,7 +71,7 @@ export function SetupView(): ReactElement {
             await quitApplication();
             void navigate(CLOSED_PATH, { replace: true });
         } catch (error: unknown) {
-            setQuitRefusal(describeRefusal(error));
+            setQuitRefusal(failureOf(error));
         }
     }
 

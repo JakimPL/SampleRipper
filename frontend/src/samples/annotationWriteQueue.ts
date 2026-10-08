@@ -4,7 +4,7 @@ import {
     type AnnotationsWritten,
     changeSampleAnnotation,
 } from "../api/curation";
-import { describeError } from "../shared/fetchState";
+import { failureOf } from "../shared/failure";
 import { useAnnotationStore } from "./annotationStore";
 
 const tailBySampleHash = new Map<string, Promise<void>>();
@@ -54,7 +54,7 @@ export function queueAnnotationChange(
                 return written;
             },
             (error: unknown) => {
-                useAnnotationStore.getState().failChange(sequence, reach, describeError(error));
+                useAnnotationStore.getState().failChange(sequence, reach, failureOf(error));
                 throw error;
             },
         );

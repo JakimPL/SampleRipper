@@ -1,14 +1,14 @@
 import type { ReactElement } from "react";
 
-import { M } from "../messages/messageIds";
+import { M, type Message } from "../messages/messageIds";
 import { useMessages } from "../messages/useMessages";
 import { Button } from "../shared/controls/Button";
 import { ThemeMenu } from "../theme/ThemeMenu";
-import { SetupMessage, type SetupMessageContent } from "./SetupMessage";
+import { SetupMessage } from "./SetupMessage";
 
 interface SetupTopBarProps {
     /** What the application has to say about itself, such as a quit it refused. */
-    readonly notice: SetupMessageContent | null;
+    readonly notice: Message | null;
     readonly quitEnabled: boolean;
     readonly onQuit: () => void;
 }

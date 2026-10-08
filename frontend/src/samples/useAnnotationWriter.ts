@@ -2,6 +2,7 @@ import { useCallback } from "react";
 
 import type { AnnotationChanges, AnnotationScope, AnnotationsWritten } from "../api/curation";
 import { CLOUD_LABELS_CACHE_KEY } from "../cloud/useCloudLabels";
+import type { Message } from "../messages/messageIds";
 import { invalidateRequest } from "../shared/requestCache";
 import { useAnnotationError, useIsSavingSample } from "./annotationStore";
 import { queueAnnotationChange } from "./annotationWriteQueue";
@@ -16,7 +17,7 @@ export interface AnnotationWriter {
     /** Change the decisions this gesture names, leaving the sample's others as they are; null where nobody here may. */
     readonly change: ((changes: AnnotationChanges) => void) | null;
     readonly isSaving: boolean;
-    readonly message: string | null;
+    readonly message: Message | null;
 }
 
 function forgetWhatTheWriteChanged(written: AnnotationsWritten, changes: AnnotationChanges): void {

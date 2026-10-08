@@ -30,6 +30,7 @@ from samplecore.config import (
 )
 from samplecore.models.service_role import ServiceRole
 from samplecore.paths import EXAMPLE_CONFIG_PATH
+from samplecore.problems import MessageCode
 from samplecore.storage.atomic import PRIVATE_FILE_MODE
 from samplecore.storage.cluster.embedded.state import (
     ManagedClusterMissingError,
@@ -439,6 +440,27 @@ def test_a_refused_setting_is_named_with_its_validators_own_sentence(tmp_path: P
     sentence = f"{Path('/samples')} and {Path('/samples/drums')} overlap. Choose each folder only once."
     assert refusal.value.problems == (sentence,)
     assert str(refusal.value).endswith(f"sample_directories: {sentence}")
+
+
+def test_a_refused_setting_is_also_reported_as_a_problem_the_web_app_words(tmp_path: Path) -> None:
+    content = _library_table(tmp_path) + 'sample_directories = ["/samples", "/samples/drums"]\n'
+
+    with pytest.raises(InvalidSettingsError) as refusal:
+        parse_config(content, tmp_path / "config.toml")
+
+    (issue,) = refusal.value.issues
+    assert issue.code is MessageCode.FOLDERS_OVERLAP
+    assert issue.params == {"directory": str(Path("/samples")), "other": str(Path("/samples/drums"))}
+
+
+def test_a_refused_setting_without_a_problem_of_its_own_is_reported_as_invalid_settings(tmp_path: Path) -> None:
+    content = _library_table(tmp_path) + '[inference]\nurl = "ftp://nowhere"\n'
+
+    with pytest.raises(InvalidSettingsError) as refusal:
+        parse_config(content, tmp_path / "config.toml")
+
+    assert [issue.code for issue in refusal.value.issues] == [MessageCode.SETTINGS_INVALID]
+    assert refusal.value.issues[0].reason == refusal.value.problems[0]
 
 
 def test_a_blank_sample_exclusion_is_refused() -> None:

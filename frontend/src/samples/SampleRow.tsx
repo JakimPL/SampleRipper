@@ -53,7 +53,7 @@ interface SampleRowProps {
  * they stand and its keys and sheet leave them alone.
  */
 export function SampleRow({ sample, groupByEquivalence, visibleColumns, input }: SampleRowProps): ReactElement {
-    const { text } = useMessages();
+    const { text, textOf } = useMessages();
     const { href, isHighlighted, isFocused, onClick, onDoubleClick, onKeyDown } = useEntityRowInteractions({
         kind: "sample",
         hash: sample.hash,
@@ -181,7 +181,7 @@ export function SampleRow({ sample, groupByEquivalence, visibleColumns, input }:
                         }
                     />
                     {message !== null && (
-                        <span className="annotation-row-message" role="alert" title={message}>
+                        <span className="annotation-row-message" role="alert" title={textOf(message)}>
                             {text(M.samples.annotation.notSaved)}
                         </span>
                     )}
