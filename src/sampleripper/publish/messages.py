@@ -20,7 +20,6 @@ NO_READER_PASSWORD: Final[str] = (
     "Set SAMPLERIPPER_PUBLISH_READER_PASSWORD to the reader password your site uses, the same "
     "one that is in its SAMPLERIPPER_SERVER_DATABASE_URL."
 )
-WEAK_READER_PASSWORD: Final[str] = "The reader password is shorter than {length} characters. Use a generated one."
 NOT_A_PUBLICATION: Final[str] = (
     "The database already holds a catalog that SampleRipper did not publish. Publishing replaces "
     "everything in it, so choose an empty database or one you published to before."

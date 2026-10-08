@@ -29,6 +29,7 @@ from sampleripper.app.instance.lock import HeldLock, LockUnavailableError, try_l
 from sampleripper.app.instance.place import library_lock_path
 from sampleripper.app.jobs import BuildTarget, JobRunner, JobView
 from sampleripper.app.listener import HomeNetworkReach
+from sampleripper.app.messages import LIBRARY_OPEN, LIBRARY_OPEN_FAILED
 from sampleripper.app.processes import child_environment, probe_build_device
 from sampleripper.children import ChildProcess
 from sampleripper.pipeline.devices import BuildDevice
@@ -281,7 +282,7 @@ class Launcher:
             try:
                 await self._open_library(config)
             except ACTIVATION_FAILURES as error:
-                _logger.error("Could not open the library: %s", error)
+                _logger.error(LIBRARY_OPEN_FAILED, error)
                 self._problem = problem_of(error)
                 await self._close_library()
 
@@ -314,7 +315,7 @@ class Launcher:
             log_path=config.library_root / LOGS_DIRECTORY_NAME / RENDERER_LOG_NAME,
         )
         self._renderer.start()
-        _logger.info("The library at %s is open.", config.library_root)
+        _logger.info(LIBRARY_OPEN, config.library_root)
 
     def _prepare_database(self, config: LibraryConfig) -> None:
         """Hold the library and start its managed database, stopping the one of a library held before and letting it go.

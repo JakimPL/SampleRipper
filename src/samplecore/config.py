@@ -19,6 +19,31 @@ from pydantic import (
 )
 from pydantic_core import ErrorDetails
 
+from samplecore.messages import (
+    DATABASE_URL_HINT,
+    DATABASE_URL_UNPARSABLE,
+    EXCLUSION_EMPTY,
+    FOLDER_NOT_ABSOLUTE,
+    FOLDERS_OVERLAP,
+    INFERENCE_URL_NO_HOST,
+    INFERENCE_URL_NO_PORT,
+    INFERENCE_URL_ROOT,
+    INFERENCE_URL_SCHEME,
+    INVALID_SETTINGS,
+    INVALID_TOML,
+    NO_CONFIG_DIRECTORY,
+    NO_CONFIG_FILE,
+    NO_EXAMPLE_CONFIG,
+    PLACEHOLDER_PASSWORDS,
+    PLACEHOLDER_PATHS,
+    PUBLISHED_FOLDER_NAMES_REPEAT,
+    PUBLISHED_FOLDER_UNKNOWN,
+    SERVICE_ROLE_UNCONFIGURED,
+    TABLE_WRITTEN_AS_VALUE,
+    UNKNOWN_TABLES,
+    VISITOR_LIMITS_MISSING,
+    VISITOR_LIMITS_UNUSED,
+)
 from samplecore.models.service_role import ServiceRole
 from samplecore.passwords import new_password
 from samplecore.paths import CHECKOUT_CONFIG_PATH, EXAMPLE_CONFIG_PATH, runs_from_checkout, user_config_file
@@ -109,9 +134,11 @@ class InferenceConfig(BaseModel):
     def _names_a_bindable_address(cls, url: str) -> str:
         parts = urlsplit(url)
         if parts.scheme != INFERENCE_SCHEME:
-            raise ValueError(f"{url} must use {INFERENCE_SCHEME}://, as in {DEFAULT_INFERENCE_URL}")
+            raise ValueError(
+                INFERENCE_URL_SCHEME.format(url=url, scheme=INFERENCE_SCHEME, example=DEFAULT_INFERENCE_URL)
+            )
         if parts.path not in ("", "/") or parts.query or parts.fragment:
-            raise ValueError(f"{url} must name the process's root, as in {DEFAULT_INFERENCE_URL}")
+            raise ValueError(INFERENCE_URL_ROOT.format(url=url, example=DEFAULT_INFERENCE_URL))
         _required_host(parts)
         _required_port(parts)
         return url
@@ -194,11 +221,9 @@ class ServerConfig(BaseModel):
     @model_validator(mode="after")
     def _limits_visitors_where_anyone_visits(self) -> ServerConfig:
         if self.exposure is Exposure.PUBLIC and self.visitors is None:
-            raise ValueError("a library open to anyone needs visitor limits under [server.visitors]")
+            raise ValueError(VISITOR_LIMITS_MISSING)
         if self.exposure is not Exposure.PUBLIC and self.visitors is not None:
-            raise ValueError(
-                '[server.visitors] applies only to a library open to anyone; set exposure = "public" or remove it'
-            )
+            raise ValueError(VISITOR_LIMITS_UNUSED)
         return self
 
 
@@ -270,7 +295,7 @@ class LibraryConfig(BaseModel):
                 raise ProblemValueError(
                     Problem.of(
                         MessageCode.FOLDER_NOT_ABSOLUTE,
-                        reason=f"{directory} must be an absolute path",
+                        reason=FOLDER_NOT_ABSOLUTE.format(directory=directory),
                         directory=str(directory),
                     )
                 )
@@ -280,7 +305,7 @@ class LibraryConfig(BaseModel):
                     raise ProblemValueError(
                         Problem.of(
                             MessageCode.FOLDERS_OVERLAP,
-                            reason=f"{directory} and {other} overlap. Choose each folder only once.",
+                            reason=FOLDERS_OVERLAP.format(directory=directory, other=other),
                             directory=str(directory),
                             other=str(other),
                         )
@@ -291,19 +316,17 @@ class LibraryConfig(BaseModel):
     def _publishes_its_own_sample_directories(self) -> LibraryConfig:
         for directory in self.publish.sample_directories:
             if directory not in self.sample_directories:
-                raise ValueError(f"{directory} under [publish] isn't one of the library's sample_directories")
+                raise ValueError(PUBLISHED_FOLDER_UNKNOWN.format(directory=directory))
         names = [directory.name for directory in self.publish.sample_directories]
         if len(set(names)) != len(names):
-            raise ValueError("the sample directories a site shows must have different folder names")
+            raise ValueError(PUBLISHED_FOLDER_NAMES_REPEAT)
         return self
 
     @field_validator("sample_exclusions")
     @classmethod
     def _holds_patterns(cls, exclusions: tuple[str, ...]) -> tuple[str, ...]:
         if any(not pattern.strip() for pattern in exclusions):
-            raise ProblemValueError(
-                Problem.of(MessageCode.EXCLUSION_EMPTY, reason="an exclusion must be a pattern such as *loop*")
-            )
+            raise ProblemValueError(Problem.of(MessageCode.EXCLUSION_EMPTY, reason=EXCLUSION_EMPTY))
         return exclusions
 
     @field_validator("database_url", "server_database_url", "curation_database_url")
@@ -323,7 +346,7 @@ class LibraryConfig(BaseModel):
         try:
             make_url(database_url)
         except ArgumentError as error:
-            raise ValueError(f"must be a URL such as {EXAMPLE_DATABASE_URL}") from error
+            raise ValueError(DATABASE_URL_UNPARSABLE.format(example=EXAMPLE_DATABASE_URL)) from error
         return database_url
 
     @property
@@ -356,8 +379,7 @@ class LibraryConfig(BaseModel):
         if self.manages_database:
             return managed_service_url(self.library_root, service)
         raise ServiceRoleUnconfiguredError(
-            f"The config names no {setting}, the role a served {service.value} connects as. Set it in the "
-            f"[{LIBRARY_TABLE}] table, then run `sampleripper setup database` to create the role."
+            SERVICE_ROLE_UNCONFIGURED.format(setting=setting, service=service.value, table=LIBRARY_TABLE)
         )
 
     def database_urls(self) -> dict[str, str]:
@@ -394,10 +416,7 @@ def load_config(path: Path | None = None) -> LibraryConfig:
     """
     resolved_path = resolve_config_path(path)
     if not resolved_path.is_file():
-        raise ConfigurationError(
-            f"No config file at {resolved_path}. Run `sampleripper setup config` to put one there, or copy "
-            "config.example.toml to config.toml yourself, and fill in your paths."
-        )
+        raise ConfigurationError(NO_CONFIG_FILE.format(path=resolved_path))
     return parse_config(resolved_path.read_text(encoding="utf-8"), resolved_path)
 
 
@@ -464,9 +483,9 @@ def create_config_file(path: Path) -> bool:
         return False
 
     if not EXAMPLE_CONFIG_PATH.is_file():
-        raise ConfigurationError(f"No example config to copy from at {EXAMPLE_CONFIG_PATH}.")
+        raise ConfigurationError(NO_EXAMPLE_CONFIG.format(path=EXAMPLE_CONFIG_PATH))
     if not path.parent.is_dir():
-        raise ConfigurationError(f"No directory {path.parent} to put a config file in; create it first.")
+        raise ConfigurationError(NO_CONFIG_DIRECTORY.format(directory=path.parent))
 
     example = EXAMPLE_CONFIG_PATH.read_text(encoding="utf-8")
     pieces = example.split(PASSWORD_PLACEHOLDER)
@@ -487,14 +506,17 @@ def _read_tables(content: str, config_path: Path) -> dict[str, object]:
     try:
         data = tomllib.loads(content)
     except tomllib.TOMLDecodeError as error:
-        raise ConfigurationError(f"{config_path} is not valid TOML: {error}") from error
+        raise ConfigurationError(INVALID_TOML.format(path=config_path, error=error)) from error
 
     readable = (LIBRARY_TABLE, INFERENCE_TABLE, SERVER_TABLE, PUBLISH_TABLE, PIPELINE_TABLE)
     unknown_tables = sorted(set(data) - set(readable))
     if unknown_tables:
         raise ConfigurationError(
-            f"{config_path} has settings SampleRipper does not use: {', '.join(unknown_tables)}. "
-            f"Settings belong under {', '.join(f'[{table}]' for table in readable)}."
+            UNKNOWN_TABLES.format(
+                path=config_path,
+                unknown=", ".join(unknown_tables),
+                readable=", ".join(f"[{table}]" for table in readable),
+            )
         )
     return data
 
@@ -509,7 +531,7 @@ def _table(data: dict[str, object], name: str, config_path: Path) -> dict[str, o
         case dict() as table:
             return {str(key): value for key, value in table.items()}
         case _:
-            raise ConfigurationError(f"{config_path} sets {name} to a single value; write it as a [{name}] table.")
+            raise ConfigurationError(TABLE_WRITTEN_AS_VALUE.format(path=config_path, name=name))
 
 
 def _anchored_paths(library_data: dict[str, object], config_directory: Path) -> dict[str, object]:
@@ -544,7 +566,7 @@ def _required_host(parts: SplitResult) -> str:
         ValueError: the URL names no host.
     """
     if parts.hostname is None:
-        raise ValueError(f"{parts.geturl()} names no host, as in {DEFAULT_INFERENCE_URL}")
+        raise ValueError(INFERENCE_URL_NO_HOST.format(url=parts.geturl(), example=DEFAULT_INFERENCE_URL))
     return parts.hostname
 
 
@@ -555,7 +577,7 @@ def _required_port(parts: SplitResult) -> int:
         ValueError: the URL leaves its port to the scheme's default.
     """
     if parts.port is None:
-        raise ValueError(f"{parts.geturl()} names no port, as in {DEFAULT_INFERENCE_URL}")
+        raise ValueError(INFERENCE_URL_NO_PORT.format(url=parts.geturl(), example=DEFAULT_INFERENCE_URL))
     return parts.port
 
 
@@ -575,10 +597,7 @@ def _reject_placeholder_paths(config: LibraryConfig, resolved_path: Path) -> Non
         if value.as_posix().startswith(PLACEHOLDER_PATH_PREFIX)
     )
     if placeholders:
-        raise ConfigurationError(
-            f"{resolved_path} still has the example's stand-in path for {', '.join(placeholders)}. "
-            "Open it and set your own module and library folders."
-        )
+        raise ConfigurationError(PLACEHOLDER_PATHS.format(path=resolved_path, settings=", ".join(placeholders)))
 
 
 def _reject_placeholder_passwords(config: LibraryConfig, resolved_path: Path) -> None:
@@ -594,10 +613,7 @@ def _reject_placeholder_passwords(config: LibraryConfig, resolved_path: Path) ->
         setting for setting, url in config.database_urls().items() if make_url(url).password == PASSWORD_PLACEHOLDER
     ]
     if placeholders:
-        raise ConfigurationError(
-            f"{resolved_path} still has the example's stand-in password for {', '.join(placeholders)}. "
-            "Replace it with a password of your own."
-        )
+        raise ConfigurationError(PLACEHOLDER_PASSWORDS.format(path=resolved_path, settings=", ".join(placeholders)))
 
 
 def _problem(detail: ErrorDetails) -> str:
@@ -621,11 +637,11 @@ def _describe_invalid_fields(error: ValidationError, config_path: Path) -> str:
         f"{'.'.join(str(part) for part in detail['loc'])}: {_problem(detail)}" for detail in error.errors()
     )
     database_hint = (
-        f" A command run without --config also reads the database from {DATABASE_URL_ENVIRONMENT_VARIABLE}."
+        DATABASE_URL_HINT.format(variable=DATABASE_URL_ENVIRONMENT_VARIABLE)
         if any(detail["loc"][:1] == ("database_url",) for detail in error.errors())
         else ""
     )
-    return f"Invalid settings in {config_path}: {problems}{database_hint}"
+    return INVALID_SETTINGS.format(path=config_path, problems=problems, hint=database_hint)
 
 
 def _config_path_from_environment() -> Path | None:

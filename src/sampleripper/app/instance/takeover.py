@@ -9,6 +9,7 @@ from sampleripper.app.instance.lock import HeldLock, try_lock
 from sampleripper.app.instance.place import InstancePlace
 from sampleripper.app.instance.processes import ProcessIdentity
 from sampleripper.app.instance.record import InstanceRecord, read_record
+from sampleripper.app.messages import HOLDER_SILENT, HOLDER_STUCK
 
 
 @dataclass(frozen=True)
@@ -130,9 +131,7 @@ class Takeover:
             if record is None or not self._processes.is_running(record.process):
                 unidentified_since = now if unidentified_since is None else unidentified_since
                 if now - unidentified_since > self._patience.record:
-                    return Refused(
-                        f"Another start of SampleRipper holds {self._place.lock} without saying where it runs."
-                    )
+                    return Refused(HOLDER_SILENT.format(lock=self._place.lock))
                 self._clock.sleep(self._patience.poll)
                 continue
             unidentified_since = None
@@ -170,5 +169,5 @@ class Takeover:
             if lock is not None:
                 return Claimed(lock)
             if self._clock.now() > deadline:
-                return Refused("SampleRipper kept running after it was closed. Restart the computer, then try again.")
+                return Refused(HOLDER_STUCK)
             self._clock.sleep(self._patience.poll)

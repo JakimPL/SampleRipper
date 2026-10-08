@@ -12,7 +12,6 @@ NO_PORT: Final[str] = (
 )
 BAD_PORT: Final[str] = "$PORT isn't a valid port: {value!r}."
 NO_READER: Final[str] = "Set SAMPLERIPPER_SERVER_DATABASE_URL to connect as the reader role that publishing creates."
-WEAK_READER_PASSWORD: Final[str] = "The reader password is shorter than {length} characters. Use a generated one."
 NO_READER_HOST: Final[str] = (
     "SAMPLERIPPER_SERVER_DATABASE_URL has no database host. Put the database's private host between "
     "the @ and the port. A reference to another service works only under that service's own name."

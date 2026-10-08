@@ -14,6 +14,7 @@ from samplecore.config import (
     LibraryConfig,
     parse_config,
 )
+from samplecore.messages import WEAK_READER_PASSWORD
 from samplecore.storage.cluster.provisioning import ADMIN_URL_ENVIRONMENT_VARIABLE
 from sampleripper.site.admission import SiteRefusedError, admit_site, site_port, site_warnings
 from sampleripper.site.messages import (
@@ -26,7 +27,6 @@ from sampleripper.site.messages import (
     PORT_TAKEN_BY_RENDERER,
     RENDERER_BEYOND_THIS_COMPUTER,
     UNREADABLE_AUDIO_STORE,
-    WEAK_READER_PASSWORD,
 )
 from tests.sampleserver.conftest import SITE_VISITORS_TABLE
 
