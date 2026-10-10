@@ -129,8 +129,9 @@ export const SHELL_MESSAGES = {
             clearsEndByTap: "clears that end; the next sample you tap fills it",
             togglesMorphByTap:
                 "turns the morph off and on; while it is off, a tap only plays the point, and the pair waits for this button or Use as A or B to turn it back on",
-            swapsEnds: "swaps the ends and mirrors the weight",
-            opensMorphWaveform: "opens the morph's waveform under the slider",
+            swapsEnds: "swaps the ends and mirrors the weight, or moves a single sample to the other end",
+            opensMorphWaveform:
+                "opens the waveform: the sample's own while one end is filled, the morph's once both are",
             opensHistoryByTap:
                 "opens the samples each end has held, newest first; a tap on one makes it that end again",
             undoesAndRedoesEnds: "undo and redo the ends",

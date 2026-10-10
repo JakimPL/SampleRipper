@@ -1378,8 +1378,10 @@ through `discard`, one more step on the undo line, and selects it, so the next p
 whole pair draws a line between the two ends' markers on the cloud with a knob on it that is the
 weight (`frontend/src/cloud/MorphLink.tsx`), moving with the points through pan and zoom like every
 overlay on the cloud. Once both ends are chosen a slider mirroring the knob's weight opens above
-the row, with the distance between the ends on a desktop, and the waveform button opens the render
-drawn over both ends' traces between the slider and the row.
+the row, with the distance between the ends on a desktop. The waveform button opens, between the
+slider and the row, a lone chosen end's own player (`FocusedSampleTransport`), or once both ends
+are chosen the render drawn over both ends' traces. The swap button trades the ends, so with one
+end chosen it moves that sample to the other end.
 
 The strip lies over the bottom edge of the samples cloud (`frontend/src/morph/MorphStripDock.tsx`),
 so the cloud keeps its size whatever the strip shows. The A and B row stays at the bottom, and a

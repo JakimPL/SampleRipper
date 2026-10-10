@@ -53,10 +53,12 @@ ends, A and B, and one of them is always selected:
    phone or tablet, hold the point and choose **Use as B** (or **Use as A**).
 4. The × on a slot empties that end and selects it, so the next sample you choose fills it.
    Ctrl+Z brings the sample back.
-5. The swap button swaps the ends and mirrors the weight.
+5. The swap button swaps the ends and mirrors the weight. With one end filled, it moves that
+   sample to the other end.
 6. Once both ends are chosen, a slider slides open above them. The morph is drawn at the slider's
    point right away and plays when you let the slider or the cloud's marker go. The waveform button
-   opens the morph's waveform drawn over both ends, just above A and B.
+   opens a waveform just above A and B: the sample's own player while one end is filled, and the
+   morph's waveform drawn over both ends once both are.
 7. The history button opens a column for A and one for B: the samples each end has held, the
    newest at the top, the one it holds now marked. A click on a row makes it that end again. The
    undo and redo buttons in the history take back or repeat the last change, as Ctrl+Z and Ctrl+Y

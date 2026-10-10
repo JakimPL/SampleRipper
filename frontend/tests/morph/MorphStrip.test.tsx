@@ -67,6 +67,10 @@ vi.mock("../../src/samples/useAudioPreview", async () => {
     return { ...actual, useAudioPreview: () => ({ play, playAnswered, playingKey: null, failure: null }) };
 });
 
+vi.mock("../../src/samples/SampleTransport", () => ({
+    FocusedSampleTransport: ({ sampleHash }: { readonly sampleHash: string }) => <p>player {sampleHash}</p>,
+}));
+
 const SERVICE = {
     name: "envelope-first",
     fingerprint: "f".repeat(64),
@@ -289,7 +293,8 @@ describe("MorphStrip while the pair is open", () => {
             }),
         ).toHaveAttribute("aria-pressed", "true");
         expect(slot("B")).toHaveAttribute("aria-pressed", "false");
-        expect(screen.getByRole("button", { name: M.morph.waveform })).toBeDisabled();
+        expect(screen.getByRole("button", { name: M.morph.swap })).toBeEnabled();
+        expect(screen.getByRole("button", { name: M.morph.waveform })).toBeEnabled();
         expect(slider()).not.toBeInTheDocument();
 
         fireEvent.click(slot("B"));
@@ -299,6 +304,34 @@ describe("MorphStrip while the pair is open", () => {
         expect(slot("B")).toHaveAttribute("aria-pressed", "true");
         expect(slider()).toBeInTheDocument();
         expect(screen.getByRole("button", { name: M.morph.waveform })).toBeEnabled();
+    });
+
+    it("opens a lone chosen end's own player from the waveform button, and the morph's once both are chosen", () => {
+        useMorphStore.getState().setEnd("first", FIRST);
+        showEmpty();
+
+        openWaveform();
+
+        expect(screen.getByText(`player ${FIRST}`).closest(".morph-strip-wave")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: M.morph.waveform })).toHaveAttribute("aria-expanded", "true");
+        expect(slider()).not.toBeInTheDocument();
+
+        act(() => {
+            useMorphStore.getState().setEnd("second", SECOND);
+        });
+
+        expect(screen.queryByText(`player ${FIRST}`)).not.toBeInTheDocument();
+        expect(slider()).toBeInTheDocument();
+        expect(morphPlay()).toBeInTheDocument();
+    });
+
+    it("moves a lone chosen sample to the other end on a swap", () => {
+        useMorphStore.getState().setEnd("first", FIRST);
+        showEmpty();
+
+        fireEvent.click(screen.getByRole("button", { name: M.morph.swap }));
+
+        expect(useMorphStore.getState()).toMatchObject({ first: null, second: FIRST });
     });
 
     it("lets the focus go on a click on a slot, and keeps it on a slot pressed from the keyboard", () => {
@@ -480,6 +513,26 @@ describe("MorphStrip clearing an end", () => {
         fireEvent.click(clear, { detail: POINTER_CLICK_DETAIL });
 
         expect(document.body).toHaveFocus();
+    });
+
+    it("keeps the open waveform on the end that stays, and slides it shut once both are empty", async () => {
+        await showPairOpened(true);
+
+        fireEvent.click(screen.getByRole("button", { name: CLEAR_LABELS.second }));
+
+        expect(morphPlay()).not.toBeInTheDocument();
+        const player = screen.getByText(`player ${FIRST}`);
+        expect(screen.getByRole("button", { name: M.morph.waveform })).toHaveAttribute("aria-expanded", "true");
+
+        fireEvent.click(screen.getByRole("button", { name: CLEAR_LABELS.first }));
+
+        expect(screen.getByRole("button", { name: M.morph.waveform })).toBeDisabled();
+        const closing = player.closest(".collapsible");
+        expect(closing).toHaveAttribute("aria-hidden", "true");
+        if (closing instanceof HTMLElement) {
+            fireEvent.transitionEnd(closing);
+        }
+        expect(screen.queryByText(`player ${FIRST}`)).not.toBeInTheDocument();
     });
 
     it("slides the slider shut over the pair it last showed once the pair breaks", async () => {

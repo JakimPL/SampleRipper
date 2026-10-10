@@ -4,6 +4,7 @@ import { useId, useMemo, useRef } from "react";
 import { useLayoutMode } from "../layout/useLayoutMode";
 import { M } from "../messages/messageIds";
 import { useMessages } from "../messages/useMessages";
+import { FocusedSampleTransport } from "../samples/SampleTransport";
 import { Button } from "../shared/controls/Button";
 import { Icon } from "../shared/icons/Icon";
 import { Collapsible } from "../shared/motion/Collapsible";
@@ -59,6 +60,18 @@ interface MorphPairEnds {
 
 interface PairProps extends MorphPairEnds {
     readonly playback: MorphPlayback;
+}
+
+/** What the waveform section draws: the morph over both ends of a whole pair, or the one end chosen on its own. */
+type StripWaveform =
+    ({ readonly kind: "pair" } & MorphPairEnds) | { readonly kind: "lone"; readonly sampleHash: string };
+
+/** The waveform section's drawing for the ends as they stand, or `null` while both are empty. */
+function stripWaveformOf(pair: MorphPairEnds | null, lone: string | null): StripWaveform | null {
+    if (pair !== null) {
+        return { kind: "pair", ...pair };
+    }
+    return lone !== null ? { kind: "lone", sampleHash: lone } : null;
 }
 
 /** The slider between the two ends, and the distance between them where the panel has room for it. */
@@ -132,14 +145,16 @@ function MorphPairWaveform({ first, second, playback }: PairProps): ReactElement
  * The morph along the bottom of the cloud: a slot for each end of the pair, the swap between them,
  * the waveform button and the history button, always that one row at the bottom. The selected slot
  * takes every sample picked next, and tapping a slot selects it; the swap button swaps the ends,
- * and the × of a chosen end empties it. Above the row a drawer stacks, from the top, the notice
- * that morphing is offline, the history, the slider with the distance once both ends are chosen,
- * and the waveform nearest the row; each section slides open and closed. The morph is drawn at the
- * slider's point as soon as both ends are chosen, unheard, so the ends themselves are heard first;
- * letting the slider go sounds a point through the shared preview element, the way the marker on
- * the cloud does, and the waveform draws whichever point was let go last. The history opens as a
- * column per end of the samples it has held, or as a sheet of them on a phone. A closing section
- * goes on showing the pair it last showed until it has slid shut.
+ * moving a lone chosen sample to the other end, and the × of a chosen end empties it. Above the
+ * row a drawer stacks, from the top, the notice that morphing is offline, the history, the slider
+ * with the distance once both ends are chosen, and the waveform nearest the row; each section
+ * slides open and closed. The waveform is a lone chosen end's own player, and once both ends are
+ * chosen the morph drawn over both. The morph is drawn at the slider's point as soon as both ends
+ * are chosen, unheard, so the ends themselves are heard first; letting the slider go sounds a point
+ * through the shared preview element, the way the marker on the cloud does, and the waveform draws
+ * whichever point was let go last. The history opens as a column per end of the samples it has
+ * held, or as a sheet of them on a phone. A closing section goes on showing what it last showed
+ * until it has slid shut.
  */
 export function MorphStrip(): ReactElement {
     const { text } = useMessages();
@@ -160,8 +175,12 @@ export function MorphStrip(): ReactElement {
         (): MorphPairEnds | null => (first !== null && second !== null ? { first, second } : null),
         [first, second],
     );
+    const noEndChosen = first === null && second === null;
+    const lone = pair === null ? (first ?? second) : null;
+    const waveform = useMemo(() => stripWaveformOf(pair, lone), [pair, lone]);
     const shownPair = useLastPresent(pair);
-    const waveformShown = expanded && pair !== null;
+    const shownWaveform = useLastPresent(waveform);
+    const waveformShown = expanded && waveform !== null;
 
     return (
         <section className="morph-strip" aria-label={text(M.morph.strip)}>
@@ -185,21 +204,23 @@ export function MorphStrip(): ReactElement {
                 )}
             </Collapsible>
             <Collapsible open={waveformShown}>
-                {shownPair !== null && (
+                {shownWaveform !== null && (
                     <div className="morph-strip-wave morph-strip-section" id={bodyId}>
-                        <MorphPairWaveform first={shownPair.first} second={shownPair.second} playback={playback} />
+                        {shownWaveform.kind === "pair" ? (
+                            <MorphPairWaveform
+                                first={shownWaveform.first}
+                                second={shownWaveform.second}
+                                playback={playback}
+                            />
+                        ) : (
+                            <FocusedSampleTransport sampleHash={shownWaveform.sampleHash} />
+                        )}
                     </div>
                 )}
             </Collapsible>
             <div className="morph-strip-row">
                 <MorphSlot end="first" hash={first} />
-                <Button
-                    variant="secondary"
-                    icon
-                    aria-label={text(M.morph.swap)}
-                    disabled={pair === null}
-                    onClick={swap}
-                >
+                <Button variant="secondary" icon aria-label={text(M.morph.swap)} disabled={noEndChosen} onClick={swap}>
                     <Icon name="swap" label={null} />
                 </Button>
                 <MorphSlot end="second" hash={second} />
@@ -209,7 +230,7 @@ export function MorphStrip(): ReactElement {
                     aria-label={text(M.morph.waveform)}
                     aria-expanded={waveformShown}
                     aria-controls={bodyId}
-                    disabled={pair === null}
+                    disabled={noEndChosen}
                     onClick={toggleExpanded}
                 >
                     <Icon name="waveform" label={null} />
