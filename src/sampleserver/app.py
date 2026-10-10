@@ -10,8 +10,9 @@ from fastapi.middleware.gzip import GZipMiddleware
 
 from samplecore.config import ServerConfig
 from samplecore.models.service_role import ServiceRole
-from samplecore.storage.database import create_pooled_engine
+from samplecore.storage.database import SERVED_POOL_OVERFLOW, create_pooled_engine
 from sampleserver.admission import AdmittedRequestsOnly
+from sampleserver.connections import CatalogConnections
 from sampleserver.frontend import FrontendMount
 from sampleserver.headers import SecurityHeaders
 from sampleserver.inference_client import build_inference_client
@@ -83,9 +84,12 @@ def create_app(
         The app creates nothing: its role may read and, for a curator, write labels, so the schema
         it reads is prepared beforehand by the catalog's owner. The pool and the inference client
         live as long as the app, so their connections are reused across requests, and both are
-        closed when the app stops.
+        closed when the app stops. Every request reaches the pool through one `CatalogConnections`,
+        admitting as many at once as the pool holds connections.
         """
-        application.state.engine = create_pooled_engine(application.state.database_url, pool_size=READ_POOL_SIZE)
+        engine = create_pooled_engine(application.state.database_url, pool_size=READ_POOL_SIZE)
+        application.state.engine = engine
+        application.state.connections = CatalogConnections(engine, capacity=READ_POOL_SIZE + SERVED_POOL_OVERFLOW)
         application.state.inference_client = build_inference_client(application.state.inference_url)
         try:
             yield

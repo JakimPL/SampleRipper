@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Iterator
+from http import HTTPStatus
 from pathlib import Path
 from typing import Final
 
+import anyio
+import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -24,6 +28,8 @@ from tests.sampleserver.conftest import INFERENCE_URL, LOCAL_CLIENT, LOCAL_ORIGI
 INDEX_MARKUP: Final[str] = "<!doctype html><title>SampleRipper</title>"
 MILLISECONDS_PER_SECOND: Final[int] = 1000
 SECONDS_PER_MINUTE: Final[int] = 60
+# Three times the worker threads a synchronous route runs on, and eight times the pool's connections.
+BURST_REQUESTS: Final[int] = 120
 
 
 class ConnectionsAtResponseStart:
@@ -131,6 +137,26 @@ def test_a_request_reads_the_catalog_through_one_connection(served_app: FastAPI)
         client.get(f"{API_PREFIX}/samples")
 
     assert len(checkouts) == 1
+
+
+def test_a_burst_of_requests_past_the_worker_threads_is_answered_in_full(served_app: FastAPI) -> None:
+    """Requests arriving together queue for the pool's connections, each answered as one comes back."""
+
+    async def burst() -> Counter[int]:
+        statuses: Counter[int] = Counter()
+        transport = httpx.ASGITransport(app=served_app, client=LOCAL_CLIENT)
+
+        async def ask(client: httpx.AsyncClient) -> None:
+            statuses[(await client.get(f"{API_PREFIX}/stats")).status_code] += 1
+
+        async with served_app.router.lifespan_context(served_app):
+            async with httpx.AsyncClient(transport=transport, base_url=LOCAL_ORIGIN) as client:
+                async with anyio.create_task_group() as group:
+                    for _ in range(BURST_REQUESTS):
+                        group.start_soon(ask, client)
+        return statuses
+
+    assert anyio.run(burst) == Counter({HTTPStatus.OK: BURST_REQUESTS})
 
 
 def test_a_served_connection_ends_a_long_statement_and_an_idle_transaction(_database_url: str) -> None:

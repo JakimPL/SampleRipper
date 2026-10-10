@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
-from contextlib import AbstractContextManager, closing
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager
 from http import HTTPStatus
 from pathlib import Path
 from typing import Final
@@ -12,8 +12,8 @@ from sqlalchemy import Connection
 
 from samplecore.problems import MessageCode
 from samplecore.spectral_distance import SpectralVectors
-from samplecore.storage.database import checkout_read_only
 from samplecore.storage.repositories.sample_category import PostgresSampleCategoryRepository
+from sampleserver.connections import CatalogConnections
 from sampleserver.policy import ServingPolicy
 from sampleserver.problems import plain_problem, refusal
 from sampleserver.response_cache import RevisionedJsonCache
@@ -60,20 +60,25 @@ def get_inference_client(request: Request) -> httpx.AsyncClient:
     return client
 
 
-def get_connection(request: Request) -> Iterator[Connection]:
+def _catalog_connections(request: Request) -> CatalogConnections:
+    """The gate every request passes on its way to one of the catalog's pooled connections."""
+    connections: CatalogConnections = request.app.state.connections
+    return connections
+
+
+async def get_connection(request: Request) -> AsyncIterator[Connection]:
     """A read-only connection to the app's configured catalog, checked out of the pool for one request.
 
     A single SQLAlchemy ``Connection`` is not safe to use concurrently from the thread pool
     FastAPI's synchronous route handlers run in, so each request holds one of its own and returns
     it when done; the pool keeps the connection open for the next request, which is what makes a
-    sound or a hover cost a query rather than a handshake. Postgres itself refuses any write on
-    the transaction, the same as a role-level grant would.
+    sound or a hover cost a query rather than a handshake. The request waits for it on the event
+    loop (`CatalogConnections`), so a burst of requests queues for the pool with every worker
+    thread free. Postgres itself refuses any write on the transaction, the same as a role-level
+    grant would.
     """
-    connection = checkout_read_only(request.app.state.engine)
-    try:
+    async with _catalog_connections(request).read_only() as connection:
         yield connection
-    finally:
-        connection.close()
 
 
 # Every route reading the catalog shares this one dependency, released as the route returns: the pool
@@ -81,7 +86,7 @@ def get_connection(request: Request) -> Iterator[Connection]:
 # of the pool, and a dependency sharing it with its route reads through the same connection.
 READ_CONNECTION: Final = Depends(get_connection, scope="function")
 
-ConnectionOpener = Callable[[], AbstractContextManager[Connection]]
+ConnectionOpener = Callable[[], AbstractAsyncContextManager[Connection]]
 
 
 def get_connection_opener(request: Request) -> ConnectionOpener:
@@ -90,11 +95,10 @@ def get_connection_opener(request: Request) -> ConnectionOpener:
     A route that awaits another process after reading holds no pooled connection while it waits,
     which a dependency holding one for the whole request would.
     """
-    engine = request.app.state.engine
-    return lambda: closing(checkout_read_only(engine))
+    return _catalog_connections(request).read_only
 
 
-def get_curation_connection(request: Request) -> Iterator[Connection]:
+async def get_curation_connection(request: Request) -> AsyncIterator[Connection]:
     """A writable connection for the one thing this application records: a person's own labels.
 
     Every other route reads through `get_connection`, whose transaction Postgres itself refuses a
@@ -103,11 +107,8 @@ def get_curation_connection(request: Request) -> Iterator[Connection]:
     the pool clears the read-only rule from a connection as it comes back, so each checkout carries
     only the rule its own dependency sets.
     """
-    connection = request.app.state.engine.connect()
-    try:
+    async with _catalog_connections(request).writable() as connection:
         yield connection
-    finally:
-        connection.close()
 
 
 CURATION_CONNECTION: Final = Depends(get_curation_connection, scope="function")

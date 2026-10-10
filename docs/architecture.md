@@ -902,7 +902,11 @@ reader, checked out per request (`sampleserver.dependencies.READ_CONNECTION`), w
 own concurrent-connection handling supports natively, so multiple people browsing the library
 through one deployed server works correctly with no shared state between workers. A route and every
 dependency it reads through share one connection, which goes back to the pool as the route returns,
-before its answer is sent, so a caller reading an answer slowly holds none of the pool. Postgres ends
+before its answer is sent, so a caller reading an answer slowly holds none of the pool. A request
+waits for its connection on the event loop (`sampleserver.connections.CatalogConnections`), which
+admits as many requests at once as the pool holds connections: the worker threads synchronous
+routes run on each hold a connection already checked out, so a burst of requests larger than the
+thread pool queues for the pool and is answered in turn. Postgres ends
 a served statement after 30 seconds and a transaction left idle after 60
 (`samplecore.storage.database.create_pooled_engine`), longer than a whole-catalog read or a cached
 answer's rebuild takes. `GET /api/health` answers once the catalog does, at the cost of `SELECT 1`,
@@ -1374,8 +1378,10 @@ through `discard`, one more step on the undo line, and selects it, so the next p
 whole pair draws a line between the two ends' markers on the cloud with a knob on it that is the
 weight (`frontend/src/cloud/MorphLink.tsx`), moving with the points through pan and zoom like every
 overlay on the cloud. Once both ends are chosen a slider mirroring the knob's weight opens above
-the row, with the distance between the ends on a desktop, and the waveform button opens the render
-drawn over both ends' traces between the slider and the row.
+the row, with the distance between the ends on a desktop. The waveform button opens, between the
+slider and the row, a lone chosen end's own player (`FocusedSampleTransport`), or once both ends
+are chosen the render drawn over both ends' traces. The swap button trades the ends, so with one
+end chosen it moves that sample to the other end.
 
 The strip lies over the bottom edge of the samples cloud (`frontend/src/morph/MorphStripDock.tsx`),
 so the cloud keeps its size whatever the strip shows. The A and B row stays at the bottom, and a

@@ -9,6 +9,7 @@ from typing import Annotated, Final
 import httpx
 from fastapi import APIRouter, Depends, Query, Request, Response
 from pydantic import BaseModel, ValidationError
+from starlette.concurrency import run_in_threadpool
 from trackmod.schema.scalars import Rate
 
 from samplecore.models.base import FROZEN
@@ -54,7 +55,7 @@ class MorphAvailability(BaseModel):
     service: MorphServiceStatus | None
 
 
-def get_heard_point(
+async def get_heard_point(
     point: Annotated[MorphPoint, Query()],
     open_connection: ConnectionOpener = Depends(get_connection_opener),
     library_root: Path = Depends(get_library_root),
@@ -73,15 +74,14 @@ def get_heard_point(
     Raises:
         HTTPException: 404 when an end lives only in sample files and every one of them is gone or changed.
     """
-    with open_connection() as connection:
-        rates = resolved_playback_rates(connection, [point.first, point.second])
-        sample_files = files_inside(
-            PostgresSampleFileRepository(connection).list_for_samples([point.first, point.second]), sample_directories
-        )
-    audio = SampleAudio.of_files(library_root, sample_files)
+    ends = [point.first, point.second]
+    async with open_connection() as connection:
+        rates = await run_in_threadpool(resolved_playback_rates, connection, ends)
+        cataloged_files = await run_in_threadpool(PostgresSampleFileRepository(connection).list_for_samples, ends)
+    audio = SampleAudio.of_files(library_root, files_inside(cataloged_files, sample_directories))
     try:
-        first_location = audio.location_to_read(point.first)
-        second_location = audio.location_to_read(point.second)
+        first_location = await run_in_threadpool(audio.location_to_read, point.first)
+        second_location = await run_in_threadpool(audio.location_to_read, point.second)
     except SampleUnavailableError as error:
         raise unreadable_audio(error, policy) from error
     return HeardMorphPoint(

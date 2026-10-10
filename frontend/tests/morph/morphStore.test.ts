@@ -37,6 +37,14 @@ describe("morphStore", () => {
         expect(useMorphStore.getState()).toMatchObject({ first: B, second: A, weight: 0.75 });
     });
 
+    it("moves a lone end to the other one on a swap", () => {
+        useMorphStore.getState().setEnd("first", A);
+
+        useMorphStore.getState().swap();
+
+        expect(useMorphStore.getState()).toMatchObject({ first: null, second: A });
+    });
+
     it("snaps every weight it is handed", () => {
         useMorphStore.getState().setWeight(0.304);
 

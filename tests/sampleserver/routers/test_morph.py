@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -237,8 +237,8 @@ def test_the_catalog_connection_is_closed_before_the_render_is_awaited(
 ) -> None:
     held: list[bool] = []
 
-    @contextmanager
-    def tracked() -> Iterator[Connection]:
+    @asynccontextmanager
+    async def tracked() -> AsyncIterator[Connection]:
         held.append(True)
         yield connection
         held[-1] = False

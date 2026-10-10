@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import Connection
+from starlette.concurrency import run_in_threadpool
 from trackmod.schema.scalars import Rate
 
 from samplecore.equivalence_classes import classes_by_member_hash, compute_equivalence_classes
@@ -362,7 +363,7 @@ def _categories(
     response_class=FileResponse,
     responses={200: {"content": WAV_CONTENT}, **NOT_FOUND_RESPONSE},
 )
-def get_sample_audio(
+async def get_sample_audio(
     sample_hash: SampleHashPath,
     library_root: Path = Depends(get_library_root),
     open_connection: ConnectionOpener = Depends(get_connection_opener),
@@ -385,29 +386,32 @@ def get_sample_audio(
             and no cataloged file in this server's sample directories holds the sample now.
     """
     if not policy.serves_uncataloged_audio:
-        with open_connection() as connection:
-            if PostgresSampleRepository(connection).get(sample_hash) is None:
-                raise refusal(HTTPStatus.NOT_FOUND, plain_problem(MessageCode.NOT_FOUND))
+        async with open_connection() as connection:
+            sample = await run_in_threadpool(PostgresSampleRepository(connection).get, sample_hash)
+        if sample is None:
+            raise refusal(HTTPStatus.NOT_FOUND, plain_problem(MessageCode.NOT_FOUND))
     path = audio_store.object_path(library_root, sample_hash)
-    if path.is_file():
+    if await run_in_threadpool(path.is_file):
         return FileResponse(path, media_type=WAV_MEDIA_TYPE, headers={"Cache-Control": IMMUTABLE_CACHE_CONTROL})
 
-    with open_connection() as connection:
-        sample_files = files_inside(
-            PostgresSampleFileRepository(connection).list_for_samples([sample_hash]), sample_directories
+    async with open_connection() as connection:
+        cataloged_files = await run_in_threadpool(
+            PostgresSampleFileRepository(connection).list_for_samples, [sample_hash]
         )
+    audio = SampleAudio.of_files(library_root, files_inside(cataloged_files, sample_directories))
     try:
-        sample_pcm = SampleAudio.of_files(library_root, sample_files).read_by_hash(sample_hash)
+        wav = await run_in_threadpool(_encoded_wav, audio, sample_hash)
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail=f"no sample stored with hash {sample_hash!r}") from error
     except SampleUnavailableError as error:
         raise unreadable_audio(error, policy) from error
 
-    return Response(
-        audio_store.encode_wav(sample_pcm),
-        media_type=WAV_MEDIA_TYPE,
-        headers={"Cache-Control": IMMUTABLE_CACHE_CONTROL},
-    )
+    return Response(wav, media_type=WAV_MEDIA_TYPE, headers={"Cache-Control": IMMUTABLE_CACHE_CONTROL})
+
+
+def _encoded_wav(audio: SampleAudio, sample_hash: str) -> bytes:
+    """The sample decoded from its files and encoded the way the store encodes an object."""
+    return audio_store.encode_wav(audio.read_by_hash(sample_hash))
 
 
 @router.get("/{sample_hash}/preview", responses=NOT_FOUND_RESPONSE)

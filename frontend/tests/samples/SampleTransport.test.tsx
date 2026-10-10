@@ -1,9 +1,21 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import type * as SamplesApi from "../../src/api/samples";
 import type { SampleDetail } from "../../src/api/samples";
 import { M } from "../../src/messages/messageIds";
-import { SampleTransport } from "../../src/samples/SampleTransport";
+import { FocusedSampleTransport, SampleTransport } from "../../src/samples/SampleTransport";
+
+const { getSample, getSampleRelations, getSimilarSamples } = vi.hoisted(() => ({
+    getSample: vi.fn(),
+    getSampleRelations: vi.fn().mockResolvedValue([]),
+    getSimilarSamples: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("../../src/api/samples", async () => {
+    const actual = await vi.importActual<typeof SamplesApi>("../../src/api/samples");
+    return { ...actual, getSample, getSampleRelations, getSimilarSamples };
+});
 
 const { instances, createMock } = vi.hoisted(() => {
     class FakeWaveSurfer {
@@ -140,5 +152,26 @@ describe("SampleTransport", () => {
 
         expect(screen.getByText(M.samples.player.noRate)).toBeInTheDocument();
         expect(createMock).not.toHaveBeenCalled();
+    });
+});
+
+describe("FocusedSampleTransport", () => {
+    it("reads a sample known by its hash and plays it at the rate the library sounds it at", async () => {
+        getSample.mockResolvedValue(sampleOf({ playbackRateHz: 22050, playbackRates: TWO_RATES }));
+
+        render(<FocusedSampleTransport sampleHash="abc" />);
+
+        await waitFor(() => {
+            expect(screen.getByLabelText(M.samples.player.rateLabel)).toHaveValue("22050");
+        });
+        expect(getSample).toHaveBeenCalledWith("abc");
+    });
+
+    it("says what went wrong when the catalog cannot be reached", async () => {
+        getSample.mockRejectedValue(new TypeError("no network in a test"));
+
+        render(<FocusedSampleTransport sampleHash="abc" />);
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(M.errors.unreachable);
     });
 });
