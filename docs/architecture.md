@@ -902,7 +902,11 @@ reader, checked out per request (`sampleserver.dependencies.READ_CONNECTION`), w
 own concurrent-connection handling supports natively, so multiple people browsing the library
 through one deployed server works correctly with no shared state between workers. A route and every
 dependency it reads through share one connection, which goes back to the pool as the route returns,
-before its answer is sent, so a caller reading an answer slowly holds none of the pool. Postgres ends
+before its answer is sent, so a caller reading an answer slowly holds none of the pool. A request
+waits for its connection on the event loop (`sampleserver.connections.CatalogConnections`), which
+admits as many requests at once as the pool holds connections: the worker threads synchronous
+routes run on each hold a connection already checked out, so a burst of requests larger than the
+thread pool queues for the pool and is answered in turn. Postgres ends
 a served statement after 30 seconds and a transaction left idle after 60
 (`samplecore.storage.database.create_pooled_engine`), longer than a whole-catalog read or a cached
 answer's rebuild takes. `GET /api/health` answers once the catalog does, at the cost of `SELECT 1`,
