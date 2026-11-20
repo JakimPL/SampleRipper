@@ -11,10 +11,11 @@ from samplemorph.service import cli as service_cli
 
 @unique
 class MorphCommand(StrEnum):
-    """What this pipeline does from a shell: writing a morph filter, and serving morphs."""
+    """What this pipeline does from a shell: writing a morph filter, serving morphs, and compiling the renderer ahead of time."""
 
     RESPONSE = response.COMMAND_NAME
     SERVE = service_cli.COMMAND_NAME
+    WARM = service_cli.WARM_COMMAND_NAME
 
 
 def main(argv: list[str], *, prog: str) -> None:
@@ -25,6 +26,8 @@ def main(argv: list[str], *, prog: str) -> None:
     match command:
         case MorphCommand.SERVE:
             service_cli.run(config, arguments)
+        case MorphCommand.WARM:
+            service_cli.warm(config, arguments)
         case MorphCommand.RESPONSE:
             with open_catalog_connection(config.catalog_url()) as connection:
                 response.run(connection, config, arguments)
@@ -37,4 +40,5 @@ def parse_arguments(argv: list[str], *, prog: str) -> argparse.Namespace:
     commands = parser.add_subparsers(dest="command", required=True)
     response.add_parser(commands)
     service_cli.add_parser(commands)
+    service_cli.add_warm_parser(commands)
     return parser.parse_args(argv)

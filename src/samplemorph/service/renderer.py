@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import math
 import threading
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import IO, Final
@@ -51,7 +52,8 @@ class MorphRenderer:
     caches are bounded by the bytes they hold. One lock serializes rendering, so one render's
     working arrays are held at a time; the caches have a lock of their own, so a render already
     made is served while another is being made. The memory a render worked in is handed back to the
-    system once it is done (`samplecore.allocator`), so the process holds its caches and little else.
+    system once it is done (`samplecore.allocator`), so the process holds its caches and little else,
+    and a process asked for nothing for a while empties its caches too (`release_when_idle`).
 
     Audio is rendered through the route the process serves and a filter is read under the route
     filters are built from, so a process whose renders glide hands over the filter between a pair all
@@ -75,6 +77,7 @@ class MorphRenderer:
         )
         self._cache_lock = threading.Lock()
         self._render_lock = threading.Lock()
+        self._last_asked = time.monotonic()
 
     @property
     def fingerprint(self) -> str:
@@ -143,6 +146,7 @@ class MorphRenderer:
             SampleUnavailableError: an end's file is gone, unreadable, holds another sample, or lies
                 outside every sample directory served.
         """
+        self._last_asked = time.monotonic()
         cached = self._cached_render(point)
         if cached is not None:
             return cached
@@ -245,6 +249,7 @@ class MorphRenderer:
         The ends are read only once the response is known to be missing, and under the render lock,
         since reading them is the part of the work worth doing once.
         """
+        self._last_asked = time.monotonic()
         cached = self._cached_response(key)
         if cached is not None:
             return cached
@@ -268,6 +273,22 @@ class MorphRenderer:
             del first, second, response
         release_free_memory()
         return written
+
+    def release_when_idle(self, *, now: float) -> bool:
+        """Empty every cache once nothing has been asked of the process for its idle limit, and hand their memory back.
+
+        `now` is a reading of `time.monotonic`. Returns whether the caches were emptied, which happens
+        once per quiet spell: a process holding nothing is left as it is.
+        """
+        with self._cache_lock:
+            quiet = now - self._last_asked >= self._settings.limits.idle_seconds
+            if not quiet or len(self._pairs) + len(self._renders) + len(self._responses) == 0:
+                return False
+            self._pairs.clear()
+            self._renders.clear()
+            self._responses.clear()
+        release_free_memory()
+        return True
 
     def _pair_rate(self, first_rate_hz: float, second_rate_hz: float) -> float:
         """The rate two sounds are heard at together, once their rates are known to lie within the limits.

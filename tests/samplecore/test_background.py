@@ -5,7 +5,7 @@ from contextlib import AbstractAsyncContextManager
 
 import pytest
 
-from sampleserver.background import running_beside
+from samplecore.background import running_beside
 
 
 class _Ticking:

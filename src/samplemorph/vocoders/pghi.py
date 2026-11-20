@@ -4,6 +4,7 @@ from functools import cache
 from typing import Final, Protocol
 
 import librosa
+import numba
 import numpy as np
 from numpy.typing import NDArray
 
@@ -28,13 +29,19 @@ class _PhaseIntegrator(Protocol):
 
 @cache
 def _integrator() -> _PhaseIntegrator:
+    """pghipy's integrator, compiled with its machine code kept in numba's cache.
+
+    pghipy compiles its integrator afresh in every process, which takes a renderer more than ten
+    seconds to start; compiled again from its own Python function with the cache on, a process
+    whose cache already holds it loads it in a fraction of a second.
+    """
     try:
         # pylint: disable=import-outside-toplevel
         from pghipy import pghi
     except ImportError as error:
         raise ImportError(MISSING_EXTRA_MESSAGE) from error
 
-    integrator: _PhaseIntegrator = pghi
+    integrator: _PhaseIntegrator = numba.njit(cache=True)(pghi.py_func)
     return integrator
 
 

@@ -9,11 +9,11 @@ from typing import Final
 from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
 
+from samplecore.background import running_beside
 from samplecore.config import ServerConfig
 from samplecore.models.service_role import ServiceRole
 from samplecore.storage.database import SERVED_POOL_OVERFLOW, create_pooled_engine
 from sampleserver.admission import AdmittedRequestsOnly
-from sampleserver.background import running_beside
 from sampleserver.connections import CatalogConnections
 from sampleserver.frontend import FrontendMount
 from sampleserver.headers import SecurityHeaders

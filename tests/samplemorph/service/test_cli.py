@@ -13,6 +13,7 @@ from samplemorph.cli import MorphCommand, main
 from samplemorph.paths import DEFAULT_FILTER_SELECTION_PATH, DEFAULT_SELECTION_PATH
 from samplemorph.routes.selection import read_filter_selection, read_route_selection
 from samplemorph.service import renderer as renderer_module
+from samplemorph.service.messages import RENDERER_COMPILED
 from samplemorph.service.renderer import load_renderer
 from samplemorph.service.settings import ServiceSettings
 
@@ -128,3 +129,34 @@ def test_a_missing_configuration_ends_the_process(tmp_path: Path, monkeypatch: p
         main([MorphCommand.SERVE], prog=PROGRAM)
 
     assert raised.value.code == ExitStatus.REFUSED
+
+
+def test_warming_builds_and_warms_the_renderer_and_binds_no_address(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, settings: ServiceSettings, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bound: list[str] = []
+    loaded: list[ServiceSettings] = []
+    monkeypatch.setattr(uvicorn, "run", lambda *arguments, **options: bound.append("bound"))
+    monkeypatch.setattr(renderer_module, "load_renderer", loaded.append)
+    monkeypatch.setenv(CONFIG_PATH_ENVIRONMENT_VARIABLE, str(_write_config(tmp_path, inference_url=None)))
+
+    main([MorphCommand.WARM], prog=PROGRAM)
+
+    assert len(loaded) == 1
+    assert loaded[0].selection == read_route_selection(DEFAULT_SELECTION_PATH)
+    assert not bound
+    assert RENDERER_COMPILED in capsys.readouterr().out
+
+
+def test_warming_with_a_selection_file_it_cannot_read_ends_with_one_message(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv(CONFIG_PATH_ENVIRONMENT_VARIABLE, str(_write_config(tmp_path, inference_url=None)))
+
+    with pytest.raises(SystemExit) as raised:
+        main([MorphCommand.WARM, "--selection", str(tmp_path / "absent.yaml")], prog=PROGRAM)
+
+    assert raised.value.code == ExitStatus.REFUSED
+    reported = capsys.readouterr().err
+    assert "Warming nothing:" in reported
+    assert "Traceback" not in reported

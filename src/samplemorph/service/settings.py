@@ -13,6 +13,7 @@ RESPONSE_CACHE_BYTES: Final[int] = 64 * MEBIBYTE
 MAXIMUM_UPLOAD_BYTES: Final[int] = 64 * MEBIBYTE
 MAXIMUM_RATE_RATIO: Final[float] = 16.0
 MAXIMUM_RENDER_FRAMES: Final[int] = 2**20
+IDLE_SECONDS: Final[float] = 600.0
 CACHE_CONTROL: Final[str] = "private, no-cache"
 WAV_MEDIA_TYPE: Final[str] = "audio/wav"
 RESPONSE_MEDIA_TYPE: Final[str] = "application/octet-stream"
@@ -26,7 +27,9 @@ class RenderLimits:
     by the ratio between them; four octaves of it are served, beyond that the request is refused.
     The frame bound holds one render's memory to what a listener's click should cost: at the bound,
     about 24 seconds at 44.1 kHz, and a longer render grows in proportion. The pair cache keeps the
-    prepared ends of the pairs heard last, which are two spectrograms a pair.
+    prepared ends of the pairs heard last, which are two spectrograms a pair. A process asked for
+    nothing for `idle_seconds` empties its caches, so a quiet renderer holds its code alone; the
+    first morph after that prepares its pair again.
     """
 
     maximum_rate_ratio: float = MAXIMUM_RATE_RATIO
@@ -35,6 +38,7 @@ class RenderLimits:
     pair_cache_bytes: int = PAIR_CACHE_BYTES
     response_cache_bytes: int = RESPONSE_CACHE_BYTES
     maximum_upload_bytes: int = MAXIMUM_UPLOAD_BYTES
+    idle_seconds: float = IDLE_SECONDS
 
 
 @dataclass(frozen=True)

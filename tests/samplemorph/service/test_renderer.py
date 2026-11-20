@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from typing import Any
@@ -11,7 +12,7 @@ from numpy.typing import NDArray
 from samplecore.models.morph import HeardMorphPoint, MorphPair
 from samplemorph.routes.envelope import PreparedPair
 from samplemorph.service import renderer as renderer_module
-from samplemorph.service.renderer import RenderBoundsError, load_renderer
+from samplemorph.service.renderer import MorphRenderer, RenderBoundsError, load_renderer
 from samplemorph.service.settings import MAXIMUM_RENDER_FRAMES, RenderLimits, ServiceSettings
 from tests.samplemorph.service.conftest import StoredLibrary
 
@@ -172,3 +173,45 @@ def test_a_filter_hands_its_working_memory_back_once_it_is_built(
     renderer.response(pair)
 
     assert len(releases) == 1
+
+
+class TestARendererLeftQuiet:
+    """A renderer keeps its caches while it is asked for morphs, and empties them once a quiet spell outlasts its limit."""
+
+    @pytest.fixture
+    def quiet_renderer(self, settings: ServiceSettings, library: StoredLibrary) -> MorphRenderer:
+        renderer = load_renderer(settings)
+        renderer.render(
+            HeardMorphPoint(
+                first=library.hashes[0],
+                second=library.hashes[1],
+                weight=0.75,
+                first_rate_hz=FIRST_RATE_HZ,
+                second_rate_hz=FIRST_RATE_HZ,
+            )
+        )
+        return renderer
+
+    def test_a_renderer_asked_for_a_morph_a_moment_ago_keeps_its_caches(self, quiet_renderer: MorphRenderer) -> None:
+        assert not quiet_renderer.release_when_idle(now=time.monotonic())
+        assert (quiet_renderer.pair_count, quiet_renderer.render_count) == (1, 1)
+
+    def test_a_quiet_spell_past_the_limit_empties_the_caches_and_hands_their_memory_back(
+        self, quiet_renderer: MorphRenderer, settings: ServiceSettings, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        releases: list[int] = []
+        monkeypatch.setattr(renderer_module, "release_free_memory", lambda: releases.append(1))
+
+        later = time.monotonic() + settings.limits.idle_seconds
+
+        assert quiet_renderer.release_when_idle(now=later)
+        assert (quiet_renderer.pair_count, quiet_renderer.render_count, quiet_renderer.response_count) == (0, 0, 0)
+        assert releases == [1]
+
+    def test_a_renderer_already_emptied_is_left_as_it_is(
+        self, quiet_renderer: MorphRenderer, settings: ServiceSettings
+    ) -> None:
+        later = time.monotonic() + settings.limits.idle_seconds
+        quiet_renderer.release_when_idle(now=later)
+
+        assert not quiet_renderer.release_when_idle(now=later)

@@ -847,7 +847,18 @@ each carries a validator built from a fingerprint over the route's description, 
 revalidates every play, and one holding the render is answered with a 304 by the process that made
 it. A point whose ends are heard more than sixteen times apart in rate, or that would render past
 `MAXIMUM_RENDER_FRAMES`, is refused with 422 before any rendering, and the render and pair caches
-are bounded by the bytes they hold.
+are bounded by the bytes they hold. A process asked for nothing for ten minutes empties its caches
+and hands their memory back (`MorphRenderer.release_when_idle`, checked once a minute), so a quiet
+renderer holds its code alone and the next morph prepares its pair again.
+
+A renderer warms its route before it answers, and most of that is compiling pghipy's phase
+integrator, which ships uncompiled for every process: `samplemorph.vocoders.pghi` compiles it with
+numba's cache on, so a process whose cache folder (`NUMBA_CACHE_DIR`) already holds the code loads
+it, and a renderer starts in about three seconds where compiling took about twenty.
+`sampleripper morph warm` builds and warms both routes and binds nothing, which is how the image
+saves the code as it is built: it compiles for a generic processor (`NUMBA_CPU_NAME=generic`), so a
+cache built on the platform's builder loads on whichever host runs the container, and renders take
+the same time as code compiled for the host's own processor.
 
 Beside the audio and the status, a process answers `GET /morph/response`
 with the filter between two samples, named by a validator over the pair alone since it holds at
