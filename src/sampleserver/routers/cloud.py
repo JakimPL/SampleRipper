@@ -110,13 +110,38 @@ def get_cloud(
     gzip receives the body compressed once at the best level rather than per request. The scoring on
     show belongs to the revision of `/cloud/categories` alone, since the points carry none of it.
     """
-    revision: CloudRevision = (
+    return _cached_json(request, cache, _cloud_revision(connection), lambda: _cloud_body(connection))
+
+
+def prepare_cloud_points(connection: Connection, cloud: RevisionedJsonCache) -> None:
+    """Build every sample's point, at the revision `/cloud` reads, into its cache.
+
+    A server holding the answer before it answers anyone serves its first visitor's cloud from
+    memory, the way it serves every visitor after that one.
+    """
+    cloud.prepare(_cloud_revision(connection), lambda: _cloud_body(connection))
+
+
+def prepare_cloud_categories(
+    connection: Connection, *, categories: RevisionedJsonCache, category_tags: RevisionedJsonCache
+) -> None:
+    """Build every sample's top category and the tags they count toward, for the scoring on show, into their caches."""
+    shown = PostgresSampleCategoryRepository(connection).shown_experiment_id()
+    categories.prepare(shown, lambda: _categories_body(connection, shown))
+    category_tags.prepare(shown, lambda: _category_tags_body(connection, shown))
+
+
+def _cloud_revision(connection: Connection) -> CloudRevision:
+    return (
         PostgresCloudCoordinateRepository(connection).revision(),
         PostgresSamplePlaybackRateRepository(connection).revision(),
         PostgresModuleRepository(connection).count(),
         PostgresSampleFileRepository(connection).revision(),
     )
-    return _cached_json(request, cache, revision, lambda: CLOUD_POINTS.dump_json(_cloud_points(connection)))
+
+
+def _cloud_body(connection: Connection) -> bytes:
+    return CLOUD_POINTS.dump_json(_cloud_points(connection))
 
 
 def _cloud_points(connection: Connection) -> tuple[SampleCloudPoint, ...]:
@@ -197,9 +222,12 @@ def get_cloud_categories(
     change once written, so the id of the scoring on show is the whole revision, and a viewer joins
     them to the points by hash. An empty answer says no scoring is shown.
     """
-    repository = PostgresSampleCategoryRepository(connection)
-    shown = repository.shown_experiment_id()
-    return _cached_json(request, cache, shown, lambda: CLOUD_CATEGORIES.dump_json(_top_categories(repository, shown)))
+    shown = PostgresSampleCategoryRepository(connection).shown_experiment_id()
+    return _cached_json(request, cache, shown, lambda: _categories_body(connection, shown))
+
+
+def _categories_body(connection: Connection, experiment_id: int | None) -> bytes:
+    return CLOUD_CATEGORIES.dump_json(_top_categories(PostgresSampleCategoryRepository(connection), experiment_id))
 
 
 def _top_categories(
@@ -253,11 +281,12 @@ def get_cloud_category_tags(
     categories never change once written, which makes the id of the scoring on show the whole revision.
     """
     return _cached_json(
-        request,
-        cache,
-        shown_experiment_id,
-        lambda: CLOUD_CATEGORY_TAGS.dump_json(_tags(connection, shown_experiment_id)),
+        request, cache, shown_experiment_id, lambda: _category_tags_body(connection, shown_experiment_id)
     )
+
+
+def _category_tags_body(connection: Connection, experiment_id: int | None) -> bytes:
+    return CLOUD_CATEGORY_TAGS.dump_json(_tags(connection, experiment_id))
 
 
 def _tags(connection: Connection, experiment_id: int | None) -> tuple[TagSummary, ...]:

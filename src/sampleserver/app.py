@@ -8,6 +8,7 @@ from typing import Final
 from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
 
+from samplecore.background import running_beside
 from samplecore.config import ServerConfig
 from samplecore.models.service_role import ServiceRole
 from samplecore.storage.database import SERVED_POOL_OVERFLOW, create_pooled_engine
@@ -16,7 +17,9 @@ from sampleserver.connections import CatalogConnections
 from sampleserver.frontend import FrontendMount
 from sampleserver.headers import SecurityHeaders
 from sampleserver.inference_client import build_inference_client
+from sampleserver.memory import release_free_memory_periodically
 from sampleserver.policy import ServingPolicy
+from sampleserver.readiness import prepare_whole_catalog_answers
 from sampleserver.response_cache import RevisionedJsonCache
 from sampleserver.routers import cloud, curation, health, modules, morph, samples, stats
 from sampleserver.spectral_cache import SpectralVectorCache
@@ -79,20 +82,32 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
-        """Open the catalog's pool and the inference client before the first request.
+        """Open the catalog's pool and the inference client, and prepare the whole-catalog answers, before the first request.
 
         The app creates nothing: its role may read and, for a curator, write labels, so the schema
         it reads is prepared beforehand by the catalog's owner. The pool and the inference client
         live as long as the app, so their connections are reused across requests, and both are
         closed when the app stops. Every request reaches the pool through one `CatalogConnections`,
-        admitting as many at once as the pool holds connections.
+        admitting as many at once as the pool holds connections. The spectral vectors and the
+        cloud's answers are prepared before the app answers anyone (`sampleserver.readiness`), so
+        its first visitor finds them in memory, and what the app frees is handed back to the
+        system as it runs (`sampleserver.memory`).
         """
         engine = create_pooled_engine(application.state.database_url, pool_size=READ_POOL_SIZE)
+        connections = CatalogConnections(engine, capacity=READ_POOL_SIZE + SERVED_POOL_OVERFLOW)
         application.state.engine = engine
-        application.state.connections = CatalogConnections(engine, capacity=READ_POOL_SIZE + SERVED_POOL_OVERFLOW)
+        application.state.connections = connections
         application.state.inference_client = build_inference_client(application.state.inference_url)
         try:
-            yield
+            await prepare_whole_catalog_answers(
+                connections,
+                spectral_vectors=application.state.spectral_vectors,
+                cloud=application.state.cloud_cache,
+                categories=application.state.categories_cache,
+                category_tags=application.state.category_tags_cache,
+            )
+            async with running_beside(release_free_memory_periodically):
+                yield
         finally:
             await application.state.inference_client.aclose()
             application.state.engine.dispose()

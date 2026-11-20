@@ -14,7 +14,7 @@ def _vectors(vectors_by_hash: dict[str, tuple[float, ...]]) -> SpectralVectors:
     """The matrix form a search reads, built from the vectors a test states by hash."""
     return SpectralVectors(
         hashes=tuple(vectors_by_hash),
-        matrix=np.array(list(vectors_by_hash.values()), dtype=np.float64),
+        matrix=np.array(list(vectors_by_hash.values()), dtype=np.float32),
     )
 
 
@@ -79,7 +79,17 @@ def test_nearest_neighbors_break_a_tie_at_the_limit_by_ascending_hash() -> None:
     """A tie straddling the last place still resolves by hash, whichever rows the partition picked."""
     vectors = SpectralVectors(
         hashes=("t", "d", "c", "b", "a"),
-        matrix=np.array([[0.0], [1.0], [1.0], [1.0], [2.0]]),
+        matrix=np.array([[0.0], [1.0], [1.0], [1.0], [2.0]], dtype=np.float32),
     )
 
     assert nearest_neighbors("t", vectors, limit=2) == (("b", 1.0), ("c", 1.0))
+
+
+def test_nearest_neighbors_sum_single_precision_vectors_in_double_precision() -> None:
+    """Large components that cancel still measure the small distance between them."""
+    vectors = SpectralVectors(
+        hashes=(HASH_A, HASH_B, HASH_C),
+        matrix=np.array([[4096.0, 0.0], [4096.0, 0.5], [4096.0, 3.0]], dtype=np.float32),
+    )
+
+    assert nearest_neighbors(HASH_A, vectors, limit=2) == ((HASH_B, 0.5), (HASH_C, 3.0))

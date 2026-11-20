@@ -43,5 +43,10 @@ class LruCache[Key, Value]:
             _, (_, dropped) = self._entries.popitem(last=False)
             self._weight -= dropped
 
+    def clear(self) -> None:
+        """Forget every value, leaving the whole capacity free."""
+        self._entries.clear()
+        self._weight = 0
+
     def __len__(self) -> int:
         return len(self._entries)

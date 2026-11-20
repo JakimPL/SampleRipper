@@ -27,11 +27,14 @@ from sqlalchemy import (
     UniqueConstraint,
     column,
     create_engine,
+    event,
     func,
     select,
+    text,
 )
 from sqlalchemy.engine import RootTransaction
 from sqlalchemy.pool import NullPool
+from sqlalchemy.sql.elements import TextClause
 from sqlalchemy.types import ARRAY
 from trackmod.core.instruments.behavior import DuplicateAction, DuplicateCheck, NewNoteAction
 from trackmod.core.samples.depth import BitDepth
@@ -309,9 +312,23 @@ sample_spectral_feature = Table(
     "sample_spectral_feature",
     metadata,
     Column("sample_hash", String(64), ForeignKey("sample.hash"), primary_key=True),
-    Column("vector", String, nullable=False),
+    Column("vector", LargeBinary, nullable=False),
     Column("computed_at", DateTime(timezone=True), nullable=False),
 )
+SPECTRAL_VECTOR_STORAGE: Final[TextClause] = text(
+    "ALTER TABLE sample_spectral_feature ALTER COLUMN vector SET STORAGE EXTERNAL"
+)
+
+
+@event.listens_for(sample_spectral_feature, "after_create")
+def _store_vectors_out_of_line(_table: Table, connection: Connection, **_options: object) -> None:
+    """Keep each vector's couple of kilobytes out of line, uncompressed since single-precision values barely compress.
+
+    The table's own rows then stay a few dozen bytes each, so counting them, as a served app does
+    before every search to check that its copy of the vectors still holds, reads little.
+    """
+    connection.execute(SPECTRAL_VECTOR_STORAGE)
+
 
 sample_thumbnail = Table(
     "sample_thumbnail",

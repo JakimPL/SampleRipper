@@ -14,7 +14,7 @@ MODULE_UNEMBEDDED = "3" * 64
 
 
 def _spectral() -> SpectralVectors:
-    return SpectralVectors(hashes=(SAMPLE_B, SAMPLE_A), matrix=np.array([[3.0, 4.0], [0.0, 0.0]]))
+    return SpectralVectors(hashes=(SAMPLE_B, SAMPLE_A), matrix=np.array([[3.0, 4.0], [0.0, 0.0]], dtype=np.float32))
 
 
 def test_a_sample_without_a_vector_is_left_out_of_its_module() -> None:

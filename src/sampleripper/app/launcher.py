@@ -170,6 +170,18 @@ class Launcher:
         """The catalog API while the library is open."""
         return self._catalog
 
+    async def opened_catalog(self) -> FastAPI | None:
+        """The catalog API once the library has finished opening, waiting out an opening under way.
+
+        The application opens a browser as its server starts, while the library is still opening, so
+        a page asking at once is answered with the library when it is open rather than told it is not
+        yet. A caller giving up leaves the opening running.
+        """
+        activation = self._activation
+        if activation is not None and not activation.done():
+            await asyncio.wait({activation})
+        return self._catalog
+
     @property
     def config(self) -> LibraryConfig | None:
         return self._config

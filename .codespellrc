@@ -3,3 +3,4 @@ builtin = clear,en-GB_to_en-US
 dictionary = .codespell-dictionary.txt,-
 skip = */node_modules/*,./build,./bin,./dist,*/.venv/*,*/htmlcov/*,*openapi.json,*schema.ts,*.lock,*lock.json,./.git,./.codespellrc,./.codespell-dictionary.txt
 ignore-words-list = doubleclick
+ignore-regex = \.cancelled\(\)

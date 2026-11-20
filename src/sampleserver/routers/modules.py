@@ -12,14 +12,13 @@ from samplecore.models.module_link import ModuleLink
 from samplecore.models.sample import Sample
 from samplecore.models.sample_properties import TrackerSampleProperties
 from samplecore.models.scalars import Count
-from samplecore.models.thumbnail import SampleThumbnail
+from samplecore.models.thumbnail import SampleThumbnail, WaveformPeak
 from samplecore.models.tracker import TrackerFormat
 from samplecore.storage.repositories.module import PostgresModuleRepository
 from samplecore.storage.repositories.module_link import PostgresModuleLinkRepository
 from samplecore.storage.repositories.sample import PostgresSampleRepository
 from samplecore.storage.repositories.sample_properties import PostgresSamplePropertiesRepository
 from samplecore.storage.repositories.thumbnail import PostgresSampleThumbnailRepository, peaks_from_thumbnail
-from samplecore.waveform import WaveformPeak
 from sampleserver.dependencies import READ_CONNECTION
 from sampleserver.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page
 from sampleserver.parameters import MAX_PAGE_OFFSET, NOT_FOUND_RESPONSE, ModuleHashPath

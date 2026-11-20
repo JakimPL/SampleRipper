@@ -180,6 +180,32 @@ refuses to start. So publish first, then update:
    stopped until this check passes.
 3. **Check that the database is closed:** the PostgreSQL service's TCP Proxy is off.
 
+## Let the site sleep while nobody visits
+
+Railway charges for the memory the site holds while it runs. It can stop the site after a few
+minutes without visitors and start it again when someone arrives, so you pay only while the site is
+in use.
+
+1. **Turn on sleeping.** In the site service's Settings tab, turn on **Serverless**. If the site
+   keeps running after that, redeploy it once from its Deployments tab.
+2. **Wait about ten minutes** without opening the site. The project canvas then shows the site as
+   sleeping.
+3. **Check how long a visitor waits** while it wakes:
+
+   ```sh
+   curl -o /dev/null -s -w '%{http_code} %{time_total}\n' https://<your site>/api/health
+   ```
+
+   It should print `200` and a time under 10 seconds. If it takes longer, or prints `502`, turn
+   Serverless off again.
+
+When the site wakes, the visitor who woke it waits while it starts: the site answers once its
+morph renderer is ready and its cloud is loaded, so everything works from the first page on.
+
+If the site never goes to sleep, something keeps it busy: answering anyone who visits it every
+few minutes, a search engine's crawler included, keeps it awake. Its Metrics tab shows whether
+requests keep arriving.
+
 ## Try it on this computer first
 
 `docker compose` runs the same site with a database of its own, so you can see what visitors will

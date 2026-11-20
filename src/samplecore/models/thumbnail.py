@@ -6,6 +6,15 @@ from samplecore.models.base import FROZEN
 from samplecore.models.scalars import BucketCount, SampleHash
 
 
+class WaveformPeak(BaseModel):
+    """One bucket's amplitude envelope in a compact waveform preview."""
+
+    model_config = FROZEN
+
+    minimum: float
+    maximum: float
+
+
 class SampleThumbnail(BaseModel):
     """A cached, low-resolution amplitude-envelope preview of one Sample's waveform.
 

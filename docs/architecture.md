@@ -567,7 +567,9 @@ the built frontend. The `Launcher` owns what the library needs:
   such as its procedural language, from its program folder as it needs them.
 - **Catalog API.** Once the config validates and the database answers, the launcher builds
   `sampleserver.app.create_app` in process and runs its lifespan; `CatalogRoute` forwards every
-  `/api` path outside the setup routes to it, and answers 503 while the library is closed.
+  `/api` path outside the setup routes to it. A request arriving while the library opens waits for
+  it (`Launcher.opened_catalog`), since the application opens a browser before the library is open
+  and the page asks at once, and one arriving while no library is open or opening is answered 503.
 - **Renderer and builds.** `morph serve` runs as a child process, on the configured `[inference]`
   address or, when another program holds that port, on a free one of the same host
   (`samplecore.ports`), which the catalog API then dials. A build runs `sampleripper
@@ -730,8 +732,12 @@ warning as the site starts, since a platform's volume is filled through the runn
 site serves its catalog, every sample answers "not found" and `GET /api/health` reports
 `audio_present` false until the objects arrive, which the site reads with no restart. The renderer starts as a child with no
 database connection in its environment and one thread per numerical library, its output joining the
-site's, and the site serves once the renderer answers. A renderer that ends while the site serves
-ends the site with status 1, so the platform starts both again.
+site's, and the site serves once the renderer answers, which takes a couple of seconds from the
+image's saved code. A renderer that ends while the site serves ends the site with status 1, so the
+platform starts both again. The API's imports load no signal-processing library, which keeps them
+under a second, and the API prepares its whole-catalog answers before it listens (see
+[Deployment](#deployment)), so a site that answers anyone answers with its renderer warm and its
+cloud in memory.
 
 `[server.visitors]` limits a library served to anyone, and no other exposure takes it
 (`sampleserver.visitors`). A visitor is the address the platform's edge names in
@@ -821,8 +827,13 @@ site's config, `docker/site.toml`, at `/app/config.toml`: `library_root` is `/li
 platform mounts the volume holding the published audio, the renderer listens on the loopback
 address, the exposure is `public` and `[server.visitors]` sizes the limits. It holds no credential:
 the platform names the reader's connection in `SAMPLERIPPER_SERVER_DATABASE_URL`. Its environment
-runs one process (`WEB_CONCURRENCY=1`), and its command is `site --host 0.0.0.0`, on the port
-`$PORT` names; the health check reads `/api/health` there. `railway.json` builds the `Dockerfile` on
+runs one process (`WEB_CONCURRENCY=1`) and holds glibc to two allocator arenas
+(`MALLOC_ARENA_MAX=2`), and its command is `site --host 0.0.0.0`, on the port `$PORT` names; the
+health check reads `/api/health` there. A platform bills the memory a container holds, so both
+processes hand what they free back to the system through `samplecore.allocator`: the API every
+30 seconds (`sampleserver.memory`), the renderer after each render or filter it computes. The
+container then holds what the two processes keep: the API's spectral matrix and cached answers,
+and the renderer's caches. `railway.json` builds the `Dockerfile` on
 Railway, checks `/api/health` as a deployment starts, restarts a site that ends with a failure, and
 rebuilds only when something the image holds changes. `docs/deploying.md` walks a person through it.
 
@@ -842,7 +853,18 @@ each carries a validator built from a fingerprint over the route's description, 
 revalidates every play, and one holding the render is answered with a 304 by the process that made
 it. A point whose ends are heard more than sixteen times apart in rate, or that would render past
 `MAXIMUM_RENDER_FRAMES`, is refused with 422 before any rendering, and the render and pair caches
-are bounded by the bytes they hold.
+are bounded by the bytes they hold. A process asked for nothing for ten minutes empties its caches
+and hands their memory back (`MorphRenderer.release_when_idle`, checked once a minute), so a quiet
+renderer holds its code alone and the next morph prepares its pair again.
+
+A renderer warms its route before it answers, and most of that is compiling pghipy's phase
+integrator, which ships uncompiled for every process: `samplemorph.vocoders.pghi` compiles it with
+numba's cache on, so a process whose cache folder (`NUMBA_CACHE_DIR`) already holds the code loads
+it, and a renderer starts in about three seconds where compiling took about twenty.
+`sampleripper morph warm` builds and warms both routes and binds nothing, which is how the image
+saves the code as it is built: it compiles for a generic processor (`NUMBA_CPU_NAME=generic`), so a
+cache built on the platform's builder loads on whichever host runs the container, and renders take
+the same time as code compiled for the host's own processor.
 
 Beside the audio and the status, a process answers `GET /morph/response`
 with the filter between two samples, named by a validator over the pair alone since it holds at
@@ -926,9 +948,21 @@ scaled up from a per-sample one. A whole-catalog reader scans a table outright i
 every hash it wants (`names_and_rates_for_every_sample` beside `names_and_rates_by_hash`), since a
 hundred thousand bound parameters cost Postgres more than reading every row there is. The statistics
 count and total in one grouped query rather than building a model per sample to sum. The spectral
-vectors, which are stored as text and take a couple of seconds to parse, are held per application in
-`SpectralVectorCache` and re-read only when the table's own revision moves, so a search costs one
-cheap query rather than a fresh parse of the whole embedding.
+vectors are stored as the bytes of their single-precision values
+(`samplecore.storage.vector_bytes`), kept out of line so the table's own rows stay small, and are
+held per application in `SpectralVectorCache`, a single-precision matrix of about a quarter of a
+gigabyte for 127,588 samples of 512 values. The rows arrive a few thousand at a time and each goes
+straight into a matrix sized up front, so the read holds the matrix and one chunk of rows, and
+takes a fraction of a second of parsing. The cache reads them again only when the table's own
+revision moves, so a search costs one cheap query. A search multiplies in single precision and
+assembles its distances in double precision.
+
+A served app prepares the answers a first visitor waits on before it answers anyone
+(`sampleserver.readiness`): it reads the spectral vectors and builds the cloud's points, the
+categories on show and their tags into their caches, side by side, at the revisions their routes
+read, so the first cloud and the first search are served from memory. Uvicorn listens only once
+this is done, and the SampleRipper app reports its library open only then. A catalog that cannot
+be read fails the start, so nobody is answered with part of it.
 
 Postgres supports genuine concurrent readers *and* writers against the same database, unlike this
 project's previous engine (DuckDB), which excluded every other connection -- read-only included --

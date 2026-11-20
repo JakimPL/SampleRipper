@@ -14,10 +14,12 @@ class SpectralVectors:
     ``hashes`` names the sample each row belongs to, in the matrix's own row order. Holding the
     vectors together rather than one per model is what lets a neighbor search measure a whole
     catalog at once, which is arithmetic a hundred thousand separate distance calls cannot reach.
+    The matrix is single precision, as the catalog stores it, which halves what a served
+    application holds for its searches.
     """
 
     hashes: tuple[str, ...]
-    matrix: NDArray[np.float64]
+    matrix: NDArray[np.float32]
 
     @cached_property
     def row_by_hash(self) -> dict[str, int]:
@@ -25,14 +27,9 @@ class SpectralVectors:
         return {sample_hash: row for row, sample_hash in enumerate(self.hashes)}
 
     @cached_property
-    def hash_array(self) -> NDArray[np.str_]:
-        """The hashes as one array, which a tie between distances is broken on."""
-        return np.asarray(self.hashes)
-
-    @cached_property
     def squared_norms(self) -> NDArray[np.float64]:
-        """Each row's squared length, which every search from any sample reuses."""
-        norms: NDArray[np.float64] = np.einsum("ij,ij->i", self.matrix, self.matrix)
+        """Each row's squared length, summed in double precision, which every search from any sample reuses."""
+        norms: NDArray[np.float64] = np.einsum("ij,ij->i", self.matrix, self.matrix, dtype=np.float64)
         return norms
 
 
@@ -54,14 +51,16 @@ def nearest_neighbors(target_hash: str, vectors: SpectralVectors, *, limit: int)
     ``target_hash`` itself is excluded from its own neighbor list. A tied distance is broken by
     ascending hash, so the same inputs always resolve to the same ordering. Only the rows within
     the ``limit``-th distance are ordered, and the distances come from one product against the
-    whole matrix, so a search costs one pass over the catalog.
+    whole matrix, so a search costs one pass over the catalog. The product runs in the matrix's
+    single precision and the distances are assembled from it in double precision, so the sweep
+    copies nothing the size of the matrix.
 
     Raises:
         KeyError: if ``target_hash`` has no vector among these.
     """
     target_row = vectors.row_by_hash[target_hash]
-    target = vectors.matrix[target_row]
-    squared = vectors.squared_norms - 2.0 * (vectors.matrix @ target) + vectors.squared_norms[target_row]
+    products = (vectors.matrix @ vectors.matrix[target_row]).astype(np.float64)
+    squared = vectors.squared_norms - 2.0 * products + vectors.squared_norms[target_row]
     distances = np.sqrt(np.clip(squared, 0.0, None))
     distances[target_row] = np.inf
     kept = min(limit, len(vectors.hashes) - 1)
@@ -69,7 +68,6 @@ def nearest_neighbors(target_hash: str, vectors: SpectralVectors, *, limit: int)
         return ()
 
     threshold = np.partition(distances, kept - 1)[kept - 1]
-    candidates = np.flatnonzero(distances <= threshold)
-    # Sorted on the distance first and the hash second: `lexsort` reads its keys back to front.
-    order = candidates[np.lexsort((vectors.hash_array[candidates], distances[candidates]))]
+    candidates = np.flatnonzero(distances <= threshold).tolist()
+    order = sorted(candidates, key=lambda row: (distances[row], vectors.hashes[row]))
     return tuple((vectors.hashes[row], float(distances[row])) for row in order[:kept])

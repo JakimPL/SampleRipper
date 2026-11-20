@@ -27,7 +27,8 @@ class CatalogRoute(BaseRoute):
     """Every API path outside the setup routes, answered by the catalog API while the library is open.
 
     The catalog API is built again whenever the library opens under new folders, so this route asks
-    the launcher for it on each request, and answers 503 while there is none.
+    the launcher for it on each request. A request arriving while the library opens waits for it,
+    and one arriving while no library is open or opening is answered 503.
     """
 
     def __init__(self, launcher: Launcher) -> None:
@@ -48,7 +49,7 @@ class CatalogRoute(BaseRoute):
         raise NoMatchFound(name, path_params)
 
     async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
-        catalog = self._launcher.catalog
+        catalog = await self._launcher.opened_catalog()
         if catalog is None:
             await JSONResponse(
                 {"detail": Problem.of(MessageCode.LIBRARY_NOT_OPEN, reason=None).model_dump(mode="json")},

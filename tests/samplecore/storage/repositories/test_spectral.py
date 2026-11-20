@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import numpy as np
+import pytest
 from sqlalchemy import Connection
 
 from samplecore.models.sample import Sample
 from samplecore.models.spectral import SampleSpectralFeature
+from samplecore.storage.repositories import spectral
 from samplecore.storage.repositories.spectral import PostgresSampleSpectralFeatureRepository
 
 
@@ -72,3 +75,48 @@ def test_replace_all_with_an_empty_sequence_clears_the_table(connection: Connect
     repository.replace_all([])
 
     assert repository.list_all() == ()
+
+
+def test_a_vector_comes_back_in_single_precision(connection: Connection, stored_sample: Sample) -> None:
+    repository = PostgresSampleSpectralFeatureRepository(connection)
+
+    repository.upsert(_feature(stored_sample.hash, vector=(0.1, -1.0e-8, 3.3)))
+    stored = repository.get(stored_sample.hash)
+
+    assert stored is not None
+    assert stored.vector == tuple(np.asarray((0.1, -1.0e-8, 3.3), dtype=np.float32).tolist())
+
+
+def test_vectors_gather_every_row_into_one_single_precision_matrix(
+    connection: Connection, stored_sample: Sample, stored_sample_b: Sample
+) -> None:
+    repository = PostgresSampleSpectralFeatureRepository(connection)
+    repository.replace_all(
+        [_feature(stored_sample.hash, vector=(1.0, 2.0)), _feature(stored_sample_b.hash, vector=(3.0, 4.0))]
+    )
+
+    vectors = repository.vectors()
+
+    assert vectors.matrix.dtype == np.float32
+    rows = {sample_hash: tuple(vectors.matrix[row].tolist()) for row, sample_hash in enumerate(vectors.hashes)}
+    assert rows == {stored_sample.hash: (1.0, 2.0), stored_sample_b.hash: (3.0, 4.0)}
+
+
+def test_vectors_read_across_several_chunks_of_rows(
+    connection: Connection, stored_sample: Sample, stored_sample_b: Sample, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(spectral, "SPECTRAL_READ_CHUNK_ROWS", 1)
+    repository = PostgresSampleSpectralFeatureRepository(connection)
+    repository.replace_all([_feature(stored_sample.hash, vector=(1.0,)), _feature(stored_sample_b.hash, vector=(2.0,))])
+
+    vectors = repository.vectors()
+
+    assert sorted(vectors.hashes) == sorted((stored_sample.hash, stored_sample_b.hash))
+    assert sorted(vectors.matrix[:, 0].tolist()) == [1.0, 2.0]
+
+
+def test_vectors_of_an_empty_table_hold_no_rows(connection: Connection) -> None:
+    vectors = PostgresSampleSpectralFeatureRepository(connection).vectors()
+
+    assert vectors.hashes == ()
+    assert vectors.matrix.shape[0] == 0

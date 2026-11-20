@@ -4023,6 +4023,7 @@ app = [
     { name = "librosa" },
     { name = "lightning" },
     { name = "mlflow" },
+    { name = "numba" },
     { name = "pghipy" },
     { name = "postgresql-binaries" },
     { name = "psutil" },
@@ -4052,6 +4053,7 @@ descriptor = [
 morph = [
     { name = "fastapi" },
     { name = "librosa" },
+    { name = "numba" },
     { name = "pghipy" },
     { name = "python-multipart" },
     { name = "pyyaml" },
@@ -4104,6 +4106,7 @@ requires-dist = [
     { name = "mlflow", marker = "extra == 'cloud'", specifier = ">=3.6" },
     { name = "mlflow", marker = "extra == 'descriptor'", specifier = ">=3.6" },
     { name = "mlflow", marker = "extra == 'tracking'", specifier = ">=3.6" },
+    { name = "numba", marker = "extra == 'morph'", specifier = ">=0.67" },
     { name = "numpy", specifier = ">=2.1" },
     { name = "pghipy", marker = "extra == 'morph'", specifier = ">=0.1" },
     { name = "platformdirs", specifier = ">=4.4" },

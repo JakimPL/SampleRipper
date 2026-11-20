@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import math
 import threading
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import IO, Final
@@ -10,6 +11,7 @@ from typing import IO, Final
 import numpy as np
 from numpy.typing import NDArray
 
+from samplecore.allocator import release_free_memory
 from samplecore.models.morph import MORPH_WEIGHT_STEPS, HeardMorphPoint, MorphPair, MorphServiceStatus
 from samplecore.models.sample_file import SampleFileLocation
 from samplecore.models.sample_pcm import SamplePCM
@@ -47,9 +49,11 @@ class MorphRenderer:
     A pair's two ends are prepared once, in the frame of the rate the pair is heard at, and kept
     per pair, so a slider over one pair prepares both ends once and then costs one render per
     weight; renders are cached per point, so a weight asked for twice is served from memory. Both
-    caches are bounded by the bytes they hold. One lock serializes rendering, since a synthesis
-    already spreads over every core and two at once would only contend; the caches have a lock of
-    their own, so a render already made is served while another is being made.
+    caches are bounded by the bytes they hold. One lock serializes rendering, so one render's
+    working arrays are held at a time; the caches have a lock of their own, so a render already
+    made is served while another is being made. The memory a render worked in is handed back to the
+    system once it is done (`samplecore.allocator`), so the process holds its caches and little else,
+    and a process asked for nothing for a while empties its caches too (`release_when_idle`).
 
     Audio is rendered through the route the process serves and a filter is read under the route
     filters are built from, so a process whose renders glide hands over the filter between a pair all
@@ -73,6 +77,7 @@ class MorphRenderer:
         )
         self._cache_lock = threading.Lock()
         self._render_lock = threading.Lock()
+        self._last_asked = time.monotonic()
 
     @property
     def fingerprint(self) -> str:
@@ -141,6 +146,7 @@ class MorphRenderer:
             SampleUnavailableError: an end's file is gone, unreadable, holds another sample, or lies
                 outside every sample directory served.
         """
+        self._last_asked = time.monotonic()
         cached = self._cached_render(point)
         if cached is not None:
             return cached
@@ -155,7 +161,9 @@ class MorphRenderer:
             rendered = wav_bytes(waveform, rate_hz=rate_hz)
             with self._cache_lock:
                 self._renders.put(point, rendered)
-            return rendered
+            del waveform
+        release_free_memory()
+        return rendered
 
     def response(self, pair: MorphPair) -> bytes:
         """The bytes of the filter between two samples, which applies at every weight between them.
@@ -241,6 +249,7 @@ class MorphRenderer:
         The ends are read only once the response is known to be missing, and under the render lock,
         since reading them is the part of the work worth doing once.
         """
+        self._last_asked = time.monotonic()
         cached = self._cached_response(key)
         if cached is not None:
             return cached
@@ -261,7 +270,25 @@ class MorphRenderer:
             written = response_payload(response)
             with self._cache_lock:
                 self._responses.put(key, written)
-            return written
+            del first, second, response
+        release_free_memory()
+        return written
+
+    def release_when_idle(self, *, now: float) -> bool:
+        """Empty every cache once nothing has been asked of the process for its idle limit, and hand their memory back.
+
+        `now` is a reading of `time.monotonic`. Returns whether the caches were emptied, which happens
+        once per quiet spell: a process holding nothing is left as it is.
+        """
+        with self._cache_lock:
+            quiet = now - self._last_asked >= self._settings.limits.idle_seconds
+            if not quiet or len(self._pairs) + len(self._renders) + len(self._responses) == 0:
+                return False
+            self._pairs.clear()
+            self._renders.clear()
+            self._responses.clear()
+        release_free_memory()
+        return True
 
     def _pair_rate(self, first_rate_hz: float, second_rate_hz: float) -> float:
         """The rate two sounds are heard at together, once their rates are known to lie within the limits.

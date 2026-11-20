@@ -9,7 +9,7 @@ from trackmod.schema.scalars import Rate
 from samplecore.models.base import FROZEN
 from samplecore.models.channels import ChannelLayout
 from samplecore.models.scalars import Count, Frames, Rating, SampleHash
-from samplecore.waveform import WaveformPeak
+from samplecore.models.thumbnail import WaveformPeak
 
 
 class Sample(BaseModel):

@@ -50,3 +50,15 @@ def test_a_value_heavier_than_the_whole_cache_is_not_kept() -> None:
 
     assert cache.get("oversized") is None
     assert cache.get("kept") == b"1234"
+
+
+def test_clearing_forgets_every_entry_and_frees_the_whole_capacity() -> None:
+    cache = _cache(10)
+    cache.put("first", b"1234")
+    cache.put("second", b"123")
+
+    cache.clear()
+
+    assert len(cache) == 0
+    assert cache.weight == 0
+    assert cache.get("first") is None

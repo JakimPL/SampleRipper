@@ -6,13 +6,11 @@ from typing import Final
 
 import numpy as np
 from numpy.typing import NDArray
-from pydantic import BaseModel
 from scipy.signal import butter, buttord, resample_poly, sosfiltfilt
 from trackmod.binary.pcm.quantize import dequantize, quantize
 from trackmod.core.samples.depth import BitDepth
 
-from samplecore.models.base import FROZEN
-from samplecore.models.thumbnail import SampleThumbnail
+from samplecore.models.thumbnail import SampleThumbnail, WaveformPeak
 
 DEFAULT_WAVEFORM_BUCKET_COUNT: Final[int] = 200
 DEFAULT_THUMBNAIL_BUCKET_COUNT: Final[int] = 32
@@ -24,15 +22,6 @@ SUBSONIC_PASSBAND_RIPPLE_DB: Final[float] = 1.0
 SUBSONIC_STOPBAND_ATTENUATION_DB: Final[float] = 60.0
 SUBSONIC_FILTER_PASSES: Final[int] = 2
 SUBSONIC_SETTLE_PERIODS: Final[float] = 3.0
-
-
-class WaveformPeak(BaseModel):
-    """One bucket's amplitude envelope in a compact waveform preview."""
-
-    model_config = FROZEN
-
-    minimum: float
-    maximum: float
 
 
 def fold_to_mono(waveform: NDArray[np.float64]) -> NDArray[np.float64]:

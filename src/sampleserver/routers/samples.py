@@ -27,6 +27,7 @@ from samplecore.models.scalars import (
     ModuleHash,
     SampleHash,
 )
+from samplecore.models.thumbnail import WaveformPeak
 from samplecore.models.tracker import TrackerFormat
 from samplecore.naming import NO_DISPLAY_NAME
 from samplecore.pitch import (
@@ -48,7 +49,6 @@ from samplecore.storage.repositories.sample_properties import PostgresSampleProp
 from samplecore.storage.repositories.spectral import PostgresSampleSpectralFeatureRepository
 from samplecore.storage.repositories.thumbnail import PostgresSampleThumbnailRepository, peaks_from_thumbnail
 from samplecore.storage.sample_audio import SampleAudio, SampleUnavailableError, is_unchanged
-from samplecore.waveform import WaveformPeak
 from sampleserver.caching import IMMUTABLE_CACHE_CONTROL
 from sampleserver.dependencies import (
     READ_CONNECTION,

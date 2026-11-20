@@ -43,3 +43,9 @@ PLACEHOLDER_PASSWORDS: Final[str] = (
 INVALID_SETTINGS: Final[str] = "Invalid settings in {path}: {problems}{hint}"
 DATABASE_URL_HINT: Final[str] = " A command run without --config also reads the database from {variable}."
 WEAK_READER_PASSWORD: Final[str] = "The reader password is shorter than {length} characters. Use a generated one."
+
+# What a server says in its log when work it runs beside its requests stops.
+
+BACKGROUND_WORK_FAILED: Final[str] = (
+    "Work the server runs beside its requests ({work}) stopped with an error; the server keeps answering without it."
+)

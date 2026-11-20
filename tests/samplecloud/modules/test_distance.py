@@ -16,7 +16,7 @@ PAD = "c" * 64
 BELL = "d" * 64
 SPECTRAL = SpectralVectors(
     hashes=(KICK, SNARE, PAD, BELL),
-    matrix=np.array([[0.0, 0.0], [3.0, 0.0], [0.0, 4.0], [30.0, 40.0]]),
+    matrix=np.array([[0.0, 0.0], [3.0, 0.0], [0.0, 4.0], [30.0, 40.0]], dtype=np.float32),
 )
 
 
@@ -86,7 +86,7 @@ def test_distances_are_symmetric_with_a_zero_diagonal() -> None:
 def test_batches_measure_as_one_whole() -> None:
     generator = np.random.default_rng(0)
     hashes = tuple(format(index + 1, "064x") for index in range(BATCH_MEMBER_COUNT + 40))
-    spectral = SpectralVectors(hashes=hashes, matrix=generator.normal(size=(len(hashes), 3)))
+    spectral = SpectralVectors(hashes=hashes, matrix=generator.normal(size=(len(hashes), 3)).astype(np.float32))
     members = {
         format(module, "064x"): frozenset(hashes[module * 7 : module * 7 + 1 + module % 9])
         for module in range(len(hashes) // 7)

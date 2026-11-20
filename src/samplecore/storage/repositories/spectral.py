@@ -1,17 +1,21 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any, Final, Protocol
 
 import numpy as np
+from numpy.typing import NDArray
 from sqlalchemy import Connection, Row, delete, func, select
 from sqlalchemy.dialects.postgresql import insert as upsert
 
 from samplecore.models.spectral import SampleSpectralFeature
 from samplecore.spectral_distance import SpectralVectors
 from samplecore.storage.database import bulk_insert, sample_spectral_feature
+from samplecore.storage.vector_bytes import VECTOR_DTYPE, decode_vector, encode_vector
+
+# How many rows a whole-catalog read holds at once on its way into the matrix.
+SPECTRAL_READ_CHUNK_ROWS: Final[int] = 4096
 
 
 class SampleSpectralFeatureRepository(Protocol):
@@ -33,11 +37,10 @@ class SampleSpectralFeatureRepository(Protocol):
 class PostgresSampleSpectralFeatureRepository:
     """A SampleSpectralFeatureRepository backed by the catalog's ``sample_spectral_feature`` table.
 
-    ``vector`` is stored as a JSON-encoded string rather than the native ``JSON``/``JSONB`` column
-    type, mirroring ``PostgresSampleRelationRepository``'s own reasoning: its round trip then never
-    depends on a particular database's own JSON representation. ``upsert``
-    replaces a sample's vector outright, mirroring ``PostgresCloudCoordinateRepository``'s own
-    replace-outright semantics -- both come from the same embedding run's fit.
+    ``vector`` is stored as its single-precision values' bytes (`samplecore.storage.vector_bytes`),
+    which a reader turns back into numbers in one copy per row. ``upsert`` replaces a sample's
+    vector outright, mirroring ``PostgresCloudCoordinateRepository``'s own replace-outright
+    semantics -- both come from the same embedding run's fit.
     """
 
     def __init__(self, connection: Connection) -> None:
@@ -46,7 +49,7 @@ class PostgresSampleSpectralFeatureRepository:
     def upsert(self, feature: SampleSpectralFeature) -> None:
         statement = upsert(sample_spectral_feature).values(
             sample_hash=feature.sample_hash,
-            vector=json.dumps(feature.vector),
+            vector=encode_vector(feature.vector),
             computed_at=feature.computed_at,
         )
         statement = statement.on_conflict_do_update(
@@ -70,7 +73,7 @@ class PostgresSampleSpectralFeatureRepository:
             self._connection,
             sample_spectral_feature,
             ["sample_hash", "vector", "computed_at"],
-            ((feature.sample_hash, json.dumps(feature.vector), feature.computed_at) for feature in features),
+            ((feature.sample_hash, encode_vector(feature.vector), feature.computed_at) for feature in features),
         )
 
     def get(self, sample_hash: str) -> SampleSpectralFeature | None:
@@ -86,15 +89,27 @@ class PostgresSampleSpectralFeatureRepository:
     def vectors(self) -> SpectralVectors:
         """Every persisted vector as one matrix, for a search measuring the whole catalog at once.
 
-        Reads the stored text straight into the matrix, since a nearest-neighbor search wants the
-        numbers rather than a model per sample: building a hundred thousand of those costs more than
-        the query that fetched them.
+        The rows arrive `SPECTRAL_READ_CHUNK_ROWS` at a time and each row's bytes go straight into
+        a matrix sized up front by the count the same query reports, so reading a hundred thousand
+        vectors holds the matrix and one chunk of rows at most, and takes a fraction of a second.
         """
-        rows = self._connection.execute(
-            select(sample_spectral_feature.c.sample_hash, sample_spectral_feature.c.vector)
-        ).fetchall()
-        matrix = np.array([json.loads(row.vector) for row in rows], dtype=np.float64)
-        return SpectralVectors(hashes=tuple(row.sample_hash for row in rows), matrix=matrix)
+        result = self._connection.execute(
+            select(
+                # pylint: disable-next=not-callable
+                func.count().over().label("total"),
+                sample_spectral_feature.c.sample_hash,
+                sample_spectral_feature.c.vector,
+            ),
+            execution_options={"yield_per": SPECTRAL_READ_CHUNK_ROWS},
+        )
+        hashes: list[str] = []
+        matrix: NDArray[np.float32] = np.empty((0, 0), dtype=np.float32)
+        for row in result:
+            if not hashes:
+                matrix = np.empty((row.total, len(row.vector) // VECTOR_DTYPE.itemsize), dtype=np.float32)
+            matrix[len(hashes)] = np.frombuffer(row.vector, dtype=VECTOR_DTYPE)
+            hashes.append(row.sample_hash)
+        return SpectralVectors(hashes=tuple(hashes), matrix=matrix)
 
     def revision(self) -> tuple[int, datetime | None]:
         """What the vectors on file amount to right now: how many there are, and when last written.
@@ -117,5 +132,5 @@ class PostgresSampleSpectralFeatureRepository:
 def _row_to_feature(row: Row[Any]) -> SampleSpectralFeature:
     """Reconstruct a SampleSpectralFeature from a Core row, addressed by its own column names."""
     return SampleSpectralFeature(
-        sample_hash=row.sample_hash, vector=tuple(json.loads(row.vector)), computed_at=row.computed_at
+        sample_hash=row.sample_hash, vector=tuple(decode_vector(row.vector).tolist()), computed_at=row.computed_at
     )
