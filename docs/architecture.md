@@ -730,8 +730,12 @@ warning as the site starts, since a platform's volume is filled through the runn
 site serves its catalog, every sample answers "not found" and `GET /api/health` reports
 `audio_present` false until the objects arrive, which the site reads with no restart. The renderer starts as a child with no
 database connection in its environment and one thread per numerical library, its output joining the
-site's, and the site serves once the renderer answers. A renderer that ends while the site serves
-ends the site with status 1, so the platform starts both again.
+site's, and the site serves at once while the renderer warms, which takes a couple of seconds from
+the image's saved code: a platform waking a sleeping site answers its first visitor in seconds, and
+a morph asked for before the renderer answers is refused with 503, as one asked of a renderer that
+is away. A renderer that ends, or answers nothing within `READY_SECONDS`, ends the site with status
+1, so the platform starts both again. The API's start loads no signal-processing library, which
+keeps it under a second.
 
 `[server.visitors]` limits a library served to anyone, and no other exposure takes it
 (`sampleserver.visitors`). A visitor is the address the platform's edge names in

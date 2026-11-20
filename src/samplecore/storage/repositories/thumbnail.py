@@ -5,9 +5,8 @@ from typing import Protocol
 from sqlalchemy import Connection, Row, select
 from sqlalchemy.dialects.postgresql import insert
 
-from samplecore.models.thumbnail import SampleThumbnail
+from samplecore.models.thumbnail import SampleThumbnail, WaveformPeak
 from samplecore.storage.database import sample_thumbnail
-from samplecore.waveform import WaveformPeak
 
 
 class SampleThumbnailRepository(Protocol):
