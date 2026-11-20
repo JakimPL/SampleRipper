@@ -29,7 +29,6 @@ from sqlalchemy import (
     create_engine,
     event,
     func,
-    inspect,
     select,
     text,
 )
@@ -321,20 +320,6 @@ SPECTRAL_VECTOR_STORAGE: Final[TextClause] = text(
 )
 
 
-# A catalog written while the vectors were JSON text holds each as a list; its values, read in
-# order as single precision, are sent the way Postgres sends a `real`, big-endian, which is the
-# byte order `samplecore.storage.vector_bytes` reads.
-TEXT_VECTOR_CONVERSION: Final[TextClause] = text("""
-CREATE OR REPLACE FUNCTION pg_temp.spectral_vector_bytes(vector text) RETURNS bytea LANGUAGE sql IMMUTABLE AS $$
-    SELECT coalesce(string_agg(float4send(item.element::real), ''::bytea ORDER BY item.position), ''::bytea)
-    FROM json_array_elements_text(vector::json) WITH ORDINALITY AS item(element, position)
-$$
-""")
-TEXT_VECTORS_TO_BYTES: Final[TextClause] = text(
-    "ALTER TABLE sample_spectral_feature ALTER COLUMN vector TYPE bytea USING pg_temp.spectral_vector_bytes(vector)"
-)
-
-
 @event.listens_for(sample_spectral_feature, "after_create")
 def _store_vectors_out_of_line(_table: Table, connection: Connection, **_options: object) -> None:
     """Keep each vector's couple of kilobytes out of line, uncompressed since single-precision values barely compress.
@@ -342,22 +327,6 @@ def _store_vectors_out_of_line(_table: Table, connection: Connection, **_options
     The table's own rows then stay a few dozen bytes each, so counting them, as a served app does
     before every search to check that its copy of the vectors still holds, reads little.
     """
-    connection.execute(SPECTRAL_VECTOR_STORAGE)
-
-
-def store_text_vectors_as_bytes(connection: Connection) -> None:
-    """Bring a catalog whose spectral vectors are JSON text to the single-precision bytes every reader expects.
-
-    Every vector keeps its values, rounded to single precision, and the column keeps them out of
-    line the way a fresh catalog creates it. A catalog already holding bytes is left as it is, so
-    this costs one look at the column on every catalog prepared after the first.
-    """
-    columns = inspect(connection).get_columns(sample_spectral_feature.name)
-    vector_type = next(column["type"] for column in columns if column["name"] == "vector")
-    if isinstance(vector_type, LargeBinary):
-        return
-    connection.execute(TEXT_VECTOR_CONVERSION)
-    connection.execute(TEXT_VECTORS_TO_BYTES)
     connection.execute(SPECTRAL_VECTOR_STORAGE)
 
 
@@ -613,13 +582,10 @@ def create_schema(connection: Connection) -> None:
     while staying outside the metadata every rebuild and purge iterates.
 
     Safe to call from several processes opening the same fresh catalog at once: each waits its turn
-    on `claim_schema_creation`, and every one after the first finds the tables already standing. A
-    catalog written while the spectral vectors were JSON text has them converted on the way
-    (`store_text_vectors_as_bytes`), so every reader finds them as it expects them.
+    on `claim_schema_creation`, and every one after the first finds the tables already standing.
     """
     claim_schema_creation(connection)
     metadata.create_all(connection)
-    store_text_vectors_as_bytes(connection)
     create_curation_schema(connection)
 
 

@@ -955,11 +955,7 @@ gigabyte for 127,588 samples of 512 values. The rows arrive a few thousand at a 
 straight into a matrix sized up front, so the read holds the matrix and one chunk of rows, and
 takes a fraction of a second of parsing. The cache reads them again only when the table's own
 revision moves, so a search costs one cheap query. A search multiplies in single precision and
-assembles its distances in double precision. A catalog written while the vectors were JSON text
-has them converted, in place and once, wherever its owner prepares it
-(`samplecore.storage.database.store_text_vectors_as_bytes`, called by `create_schema`): the
-SampleRipper app opening its library, a pipeline command, and a publication preparing the site's
-database.
+assembles its distances in double precision.
 
 A served app prepares the answers a first visitor waits on before it answers anyone
 (`sampleserver.readiness`): it reads the spectral vectors and builds the cloud's points, the
