@@ -5,8 +5,8 @@ from typing import Final
 # What `sampleripper publish` tells the person publishing, each a sentence of its own.
 
 NO_TARGET: Final[str] = (
-    "Set SAMPLERIPPER_PUBLISH_DATABASE_URL to the database you want to publish to, such as the public "
-    "URL of your site's Postgres. Its user must be allowed to create roles and tables."
+    "Set SAMPLERIPPER_PUBLISH_DATABASE_URL to the database you want to publish to, such as the address "
+    "that a tunnel to your site's Postgres prints. Its user must be allowed to create roles and tables."
 )
 UNKNOWN_DRIVER: Final[str] = "SAMPLERIPPER_PUBLISH_DATABASE_URL uses an unsupported database type: {name}."
 SERVER_IN_SETTINGS: Final[str] = (
@@ -45,6 +45,6 @@ PUBLISHED: Final[str] = (
 )
 AUDIO_READY: Final[str] = "The site's audio is in {path}: {files} files, {size}."
 NEXT_STEPS: Final[str] = (
-    "Next: turn off the database's TCP Proxy and redeploy the site. If your samples changed, also upload "
+    "Next: close the tunnel to the database and redeploy the site. If your samples changed, also upload "
     "the audio files from that folder to the site's volume. docs/deploying.md has the commands."
 )

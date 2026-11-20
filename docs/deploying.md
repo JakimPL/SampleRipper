@@ -13,8 +13,8 @@ several gigabytes, so you need Railway's Pro plan.
 - **A copy of this repository**, set up as [Running from source](source.md#setup) describes. You
   run every command in this guide from its folder.
 - **Your library, built** in the SampleRipper app or from the copy of the repository.
-- **The Railway command-line tool**, signed in: `npm install --global @railway/cli`, then
-  `railway login`.
+- **The Railway command-line tool**, signed in, and recent enough that `railway connect --help`
+  lists `--tunnel-only`: `npm install --global @railway/cli`, then `railway login`.
 
 ## Set up the site once
 
@@ -83,22 +83,27 @@ config file in the command: `uv run sampleripper --config ~/.config/SampleRipper
 
    Your module collection is always published. A sample folder is published only when you name it
    here. The page links that `sampleripper links import` recorded are published with the modules.
-2. **Open the database to the internet for a moment.** In the PostgreSQL service's Settings tab,
-   under Networking, turn on the TCP Proxy for port `5432`. Your computer can reach the database
-   only while it's on.
-3. **Copy the database's public address.** It's in the PostgreSQL service's Variables tab, as
-   `DATABASE_PUBLIC_URL`, and looks like this:
+2. **Open a tunnel to the database.** In a second terminal, in the repository's folder, run this
+   and leave it running:
+
+   ```sh
+   railway connect Postgres --tunnel-only --port 6543
+   ```
+
+   It connects port `6543` on your computer to the database through your Railway login, and prints
+   the database's address on your computer:
 
    ```
-   postgresql://postgres:<password>@<name>.proxy.rlwy.net:<port>/railway
+   postgresql://postgres:<password>@127.0.0.1:6543/railway
    ```
 
    It signs in as Railway's own database user, which may create the site's tables and its reader.
-   The address has a host and a port only while the TCP Proxy is on, and turning the proxy on again
-   can change them, so copy it again each time you publish.
-4. **Publish.** These commands read the two secrets without showing them or saving them in your
-   shell's history. Paste the address you copied at the first prompt, and the reader's password at
-   the second:
+   The database stays closed to the internet the whole time: your computer reaches it through the
+   tunnel, which closes when you stop it. Use your database service's name in place of `Postgres`, and any free
+   port in place of `6543`.
+3. **Publish** from your first terminal. These commands read the two secrets without showing them
+   or saving them in your shell's history. Paste the address the tunnel printed at the first prompt,
+   and the reader's password at the second:
 
    ```sh
    read -rs SAMPLERIPPER_PUBLISH_DATABASE_URL && export SAMPLERIPPER_PUBLISH_DATABASE_URL
@@ -112,13 +117,12 @@ config file in the command: `uv run sampleripper --config ~/.config/SampleRipper
    The reader's password must be the one in the site's `SAMPLERIPPER_SERVER_DATABASE_URL`.
    Publishing sets the reader's password, so a different one locks the running site out.
 
-   The connection is encrypted, and the password check is tied to that encryption, so nobody
-   between your computer and Railway can listen in or pose as the database. Publishing never copies
-   your labels, ratings or favorites. If anything it would copy names one of your folders, it stops
-   and changes nothing.
-5. **Close the database again.** In the same place, turn the TCP Proxy off.
-6. **Redeploy the site** from its Deployments tab, so it reads the new catalog.
-7. **Upload the audio** to the site's volume. Publishing ends by naming the folder and how many
+   The tunnel encrypts everything between your computer and Railway, and only someone with access
+   to your Railway project can open one. Publishing never copies your labels, ratings or favorites.
+   If anything it would copy names one of your folders, it stops and changes nothing.
+4. **Close the tunnel** with Ctrl+C in its terminal.
+5. **Redeploy the site** from its Deployments tab, so it reads the new catalog.
+6. **Upload the audio** to the site's volume. Publishing ends by naming the folder and how many
    files it holds. Railway names a volume's files from the volume's own root, which the site sees as
    `/library`:
 
@@ -132,17 +136,18 @@ config file in the command: `uv run sampleripper --config ~/.config/SampleRipper
    never plays them. To clear them out, run `railway volume files delete /objects` before you
    upload, knowing the samples stay silent until the upload finishes.
 
-**Reading the address with the Railway tool.** Instead of copying it in step 3, you can read the
-address straight from Railway, so it never shows on screen:
+**Reading the address with the Railway tool.** You can also build the address from Railway's own
+record of the database, so it stays off your screen:
 
 ```sh
-export SAMPLERIPPER_PUBLISH_DATABASE_URL="$(railway variable list --service Postgres --kv | sed -n 's/^DATABASE_PUBLIC_URL=//p')"
+export SAMPLERIPPER_PUBLISH_DATABASE_URL="$(railway variable list --service Postgres --kv | sed -n 's/^DATABASE_URL=//p' | sed -E 's#@[^@/]+/([^/]*)$#@127.0.0.1:6543/\1#')"
 printf '%s\n' "$SAMPLERIPPER_PUBLISH_DATABASE_URL" | sed -E 's#//[^@]*@#//***@#'
 ```
 
-The second line prints the address with its user and password hidden. It should show a host ending
-in `proxy.rlwy.net`, and a port. Use your database service's name in place of `Postgres`, and then
-run only the last two lines of step 4.
+The first line takes the database's private address and puts the tunnel's end, `127.0.0.1:6543`,
+in place of its host and port. The second prints the result with its user and password hidden, and
+should show `postgresql://***@127.0.0.1:6543/railway`. Use your database service's name in place
+of `Postgres`, and the tunnel's port in place of `6543`. Then run only the last two lines of step 3.
 
 ## Updating the site
 
@@ -151,7 +156,7 @@ version may read tables that the site's database doesn't have yet, and a site mi
 refuses to start. So publish first, then update:
 
 1. **Publish with the new version**, from a copy of the repository that has it. Skip the redeploy in
-   step 6, since the update restarts the site anyway. The site that's running keeps working, because it ignores
+   step 5, since the update restarts the site anyway. The site that's running keeps working, because it ignores
    tables it doesn't know.
 2. **Push or merge the new version** to the branch the site follows. The running site keeps serving
    while Railway builds.
@@ -178,7 +183,8 @@ refuses to start. So publish first, then update:
    Some of the last answers should be `429`. If every answer is `200`, the site trusts the made-up
    addresses, and one visitor could ask for as much as they like. Stop the site, and keep it
    stopped until this check passes.
-3. **Check that the database is closed:** the PostgreSQL service's TCP Proxy is off.
+3. **Check that the database is closed to the internet:** the TCP Proxy is off, under Networking in
+   the PostgreSQL service's Settings tab.
 
 ## Let the site sleep while nobody visits
 

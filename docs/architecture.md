@@ -673,7 +673,10 @@ upload. The database comes from `SAMPLERIPPER_PUBLISH_DATABASE_URL` and the read
 `SAMPLERIPPER_PUBLISH_READER_PASSWORD`, the environment alone. A plain `postgresql://` URL is read
 through psycopg, and a server other than this computer is reached with `sslmode=require` and
 `channel_binding=require`: SCRAM binds the password to the TLS handshake, so a platform's proxy
-presenting a certificate no authority signed cannot stand between the two unnoticed.
+presenting a certificate no authority signed cannot stand between the two unnoticed. A server on
+this computer is reached as the URL names it; a deployment publishes this way, to the local end of
+an SSH tunnel into the platform's private network (`railway connect --tunnel-only`), which encrypts
+the way there.
 
 Everything is read from one `REPEATABLE READ` snapshot of the library's catalog:
 
@@ -808,8 +811,9 @@ rests on it for 120 ms.
   - The visitor a budget belongs to is the address Railway's edge writes into `X-Real-IP`, which a
     deployment is checked for once: a forged `X-Real-IP` splits no budget.
   - On the site's database server, the reader may connect to the databases a publication leaves
-    alone, such as `postgres`, and create temporary tables there; this matters only while the
-    database is open to the internet to publish and the reader's password is known.
+    alone, such as `postgres`, and create temporary tables there; this matters only to someone
+    who knows the reader's password and reaches the server: from the project's private network,
+    through a tunnel opened with access to the project, or through a TCP Proxy left on.
   - The image's base images and uv are pinned by tag, not by digest.
   - Old example passwords stay in the repository's history. A config holding one is still
     accepted by a library at home; a site refuses a reader password shorter than 24 characters.
