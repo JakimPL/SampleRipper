@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from contextlib import AbstractAsyncContextManager
 
 import pytest
 
+from samplecore import background
 from samplecore.background import running_beside
 
 
@@ -58,10 +60,18 @@ def test_a_block_entered_in_one_task_ends_in_another() -> None:
     assert ticking.canceled
 
 
-def test_work_that_failed_raises_its_error_as_the_block_ends() -> None:
+def test_work_that_fails_is_logged_and_the_block_still_ends_cleanly(caplog: pytest.LogCaptureFixture) -> None:
+    """A server closing after its work failed still closes everything after it."""
+    closed: list[bool] = []
+
     async def scenario() -> None:
         async with running_beside(_failing):
             await asyncio.sleep(0)
+            await asyncio.sleep(0)
+        closed.append(True)
 
-    with pytest.raises(LookupError, match="the work broke"):
+    with caplog.at_level(logging.ERROR, logger=background.__name__):
         asyncio.run(scenario())
+
+    assert closed == [True]
+    assert any("the work broke" in str(record.exc_info[1]) for record in caplog.records if record.exc_info)

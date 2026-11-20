@@ -1,30 +1,35 @@
 from __future__ import annotations
 
-import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import Connection, text
+from sqlalchemy.exc import OperationalError
 from trackmod.core.samples.depth import BitDepth
 
 from samplecore.models.channels import ChannelLayout
+from samplecore.models.cloud import SampleCloudCoordinate
 from samplecore.models.sample import Sample
 from samplecore.models.service_role import ServiceRole
 from samplecore.models.spectral import SampleSpectralFeature
 from samplecore.spectral_distance import SpectralVectors
 from samplecore.storage.curation import CURATION_SCHEMA
+from samplecore.storage.repositories.cloud import PostgresCloudCoordinateRepository
 from samplecore.storage.repositories.sample import PostgresSampleRepository
 from samplecore.storage.repositories.spectral import PostgresSampleSpectralFeatureRepository
 from sampleserver.app import API_PREFIX, create_app
+from sampleserver.routers import cloud as cloud_router
+from sampleserver.routers.cloud import SampleCloudPoint
 from tests.sampleserver.conftest import INFERENCE_URL, LOCAL_CLIENT, LOCAL_ORIGIN, LOCAL_SERVER
 
 UNUSED_DATABASE_URL: Final[str] = "postgresql+psycopg://unused/unused"
 READING_METHODS: Final[frozenset[str]] = frozenset({"GET", "HEAD"})
-STARTUP_WAIT_SECONDS: Final[float] = 10.0
-POLL_SECONDS: Final[float] = 0.05
+FIRST_HASH: Final[str] = "a" * 64
+SECOND_HASH: Final[str] = "b" * 64
 
 
 def test_get_connection_opens_a_real_read_only_connection_to_the_configured_database(
@@ -51,59 +56,81 @@ def test_get_connection_opens_a_real_read_only_connection_to_the_configured_data
     assert response.json()["module_count"] == 0
 
 
-def test_the_spectral_vectors_are_read_as_the_app_starts_and_serve_the_first_search(
-    connection: Connection, _database_url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    for sample_hash, vector in (("a" * 64, (0.0, 0.0)), ("b" * 64, (3.0, 4.0))):
-        PostgresSampleRepository(connection).upsert(
-            Sample(hash=sample_hash, depth=BitDepth.SIXTEEN, channels=ChannelLayout.MONO, frames=8)
-        )
-        PostgresSampleSpectralFeatureRepository(connection).upsert(
-            SampleSpectralFeature(sample_hash=sample_hash, vector=vector, computed_at=datetime.now(UTC))
-        )
-    connection.commit()
-    reads: list[SpectralVectors] = []
-    read_vectors = PostgresSampleSpectralFeatureRepository.vectors
-
-    def counted_read(repository: PostgresSampleSpectralFeatureRepository) -> SpectralVectors:
-        reads.append(read_vectors(repository))
-        return reads[-1]
-
-    monkeypatch.setattr(PostgresSampleSpectralFeatureRepository, "vectors", counted_read)
-    application = create_app(
-        _database_url,
-        tmp_path,
+def _reader_app(database_url: str, library_root: Path) -> FastAPI:
+    return create_app(
+        database_url,
+        library_root,
         INFERENCE_URL,
         role=ServiceRole.READER,
         server=LOCAL_SERVER,
         sample_directories=(),
         frontend_directory=None,
     )
-    with TestClient(application, base_url=LOCAL_ORIGIN, client=LOCAL_CLIENT) as client:
-        deadline = time.monotonic() + STARTUP_WAIT_SECONDS
-        while not reads and time.monotonic() < deadline:
-            time.sleep(POLL_SECONDS)
-        response = client.get(f"{API_PREFIX}/samples/{'a' * 64}/similar")
-
-    assert response.status_code == 200
-    assert [neighbor["hash"] for neighbor in response.json()] == ["b" * 64]
-    assert len(reads) == 1
 
 
-def test_an_app_whose_catalog_is_unreachable_as_it_starts_still_starts(tmp_path: Path) -> None:
-    application = create_app(
-        UNUSED_DATABASE_URL,
-        tmp_path,
-        INFERENCE_URL,
-        role=ServiceRole.READER,
-        server=LOCAL_SERVER,
-        sample_directories=(),
-        frontend_directory=None,
-    )
-    with TestClient(application, base_url=LOCAL_ORIGIN, client=LOCAL_CLIENT) as client:
-        response = client.get(f"{API_PREFIX}/curation/access")
+class TestAnAppAnsweringItsFirstVisitor:
+    """An app prepares its whole-catalog answers before it answers anyone, so its first visitor is served from memory."""
 
-    assert response.status_code == 200
+    @pytest.fixture
+    def embedded_samples(self, connection: Connection) -> None:
+        """Two samples, each with a spectral vector and a place in the cloud."""
+        now = datetime.now(UTC)
+        for sample_hash, vector in ((FIRST_HASH, (0.0, 0.0)), (SECOND_HASH, (3.0, 4.0))):
+            PostgresSampleRepository(connection).upsert(
+                Sample(hash=sample_hash, depth=BitDepth.SIXTEEN, channels=ChannelLayout.MONO, frames=8)
+            )
+            PostgresSampleSpectralFeatureRepository(connection).upsert(
+                SampleSpectralFeature(sample_hash=sample_hash, vector=vector, computed_at=now)
+            )
+            PostgresCloudCoordinateRepository(connection).upsert(
+                SampleCloudCoordinate(sample_hash=sample_hash, x=vector[0], y=vector[1], computed_at=now)
+            )
+        connection.commit()
+
+    def test_the_first_search_for_similar_samples_finds_the_vectors_read(
+        self, embedded_samples: None, _database_url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        reads: list[SpectralVectors] = []
+        read_vectors = PostgresSampleSpectralFeatureRepository.vectors
+
+        def counted_read(repository: PostgresSampleSpectralFeatureRepository) -> SpectralVectors:
+            reads.append(read_vectors(repository))
+            return reads[-1]
+
+        monkeypatch.setattr(PostgresSampleSpectralFeatureRepository, "vectors", counted_read)
+        with TestClient(_reader_app(_database_url, tmp_path), base_url=LOCAL_ORIGIN, client=LOCAL_CLIENT) as client:
+            read_before_answering = len(reads)
+            response = client.get(f"{API_PREFIX}/samples/{FIRST_HASH}/similar")
+
+        assert read_before_answering == 1
+        assert [neighbor["hash"] for neighbor in response.json()] == [SECOND_HASH]
+        assert len(reads) == 1
+
+    def test_the_first_cloud_is_the_one_built_before_answering(
+        self, embedded_samples: None, _database_url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        builds: list[int] = []
+        build_points = cloud_router._cloud_points  # pylint: disable=protected-access
+
+        def counted_build(connection: Connection) -> tuple[SampleCloudPoint, ...]:
+            builds.append(1)
+            return build_points(connection)
+
+        monkeypatch.setattr(cloud_router, "_cloud_points", counted_build)
+        with TestClient(_reader_app(_database_url, tmp_path), base_url=LOCAL_ORIGIN, client=LOCAL_CLIENT) as client:
+            built_before_answering = len(builds)
+            response = client.get(f"{API_PREFIX}/cloud")
+
+        assert built_before_answering == 1
+        assert sorted(point["sample_hash"] for point in response.json()) == [FIRST_HASH, SECOND_HASH]
+        assert len(builds) == 1
+
+
+def test_an_app_whose_catalog_is_unreachable_answers_no_one(tmp_path: Path) -> None:
+    """A server that cannot prepare its whole catalog fails its start, so nobody is answered with part of it."""
+    with pytest.raises(OperationalError):
+        with TestClient(_reader_app(UNUSED_DATABASE_URL, tmp_path), base_url=LOCAL_ORIGIN, client=LOCAL_CLIENT):
+            pass
 
 
 def test_a_response_past_a_kilobyte_goes_out_gzipped_when_the_caller_accepts_it(

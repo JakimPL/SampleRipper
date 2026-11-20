@@ -28,9 +28,20 @@ class RevisionedJsonCache:
     def body(self, revision: Hashable, build: Callable[[], bytes], *, gzipped: bool) -> bytes:
         """The answer at this revision, built afresh when the revision moved, in the encoding the caller takes."""
         with self._lock:
-            if self._body is None or self._gzipped is None or self._revision != revision:
-                self._body = build()
-                self._gzipped = gzip.compress(self._body, CACHED_COMPRESSION_LEVEL)
-                self._revision = revision
+            body, compressed = self._answer(revision, build)
+            return compressed if gzipped else body
 
-            return self._gzipped if gzipped else self._body
+    def prepare(self, revision: Hashable, build: Callable[[], bytes]) -> None:
+        """Hold the answer at this revision, building it unless it is held already, for a server about to answer anyone."""
+        with self._lock:
+            self._answer(revision, build)
+
+    def _answer(self, revision: Hashable, build: Callable[[], bytes]) -> tuple[bytes, bytes]:
+        if self._body is None or self._gzipped is None or self._revision != revision:
+            self._body = None
+            self._gzipped = None
+            body = build()
+            self._gzipped = gzip.compress(body, CACHED_COMPRESSION_LEVEL)
+            self._body = body
+            self._revision = revision
+        return self._body, self._gzipped

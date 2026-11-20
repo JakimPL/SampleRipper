@@ -23,13 +23,7 @@ from samplecore.storage.database import (
 )
 from sampleserver.app import API_PREFIX, create_app
 from sampleserver.headers import EVERY_RESPONSE_HEADERS, PAGE_CONTENT_SECURITY_POLICY, STRICT_TRANSPORT_SECURITY
-from tests.sampleserver.conftest import (
-    INFERENCE_URL,
-    LOCAL_CLIENT,
-    LOCAL_ORIGIN,
-    LOCAL_SERVER,
-    wait_for_the_startup_read,
-)
+from tests.sampleserver.conftest import INFERENCE_URL, LOCAL_CLIENT, LOCAL_ORIGIN, LOCAL_SERVER
 
 INDEX_MARKUP: Final[str] = "<!doctype html><title>SampleRipper</title>"
 MILLISECONDS_PER_SECOND: Final[int] = 1000
@@ -129,7 +123,6 @@ def test_the_pool_has_its_connection_back_before_an_answer_goes_out(served_app: 
     """A caller reading an answer slowly holds none of the pool while it reads."""
     noting = ConnectionsAtResponseStart(served_app)
     with TestClient(noting, base_url=LOCAL_ORIGIN, client=LOCAL_CLIENT) as client:
-        wait_for_the_startup_read(served_app)
         for path in ("/samples", "/stats", "/cloud", "/modules"):
             client.get(f"{API_PREFIX}{path}")
 
@@ -139,7 +132,6 @@ def test_the_pool_has_its_connection_back_before_an_answer_goes_out(served_app: 
 def test_a_request_reads_the_catalog_through_one_connection(served_app: FastAPI) -> None:
     """The listing's route and the dependency naming the shown scoring share the route's connection."""
     with TestClient(served_app, base_url=LOCAL_ORIGIN, client=LOCAL_CLIENT) as client:
-        wait_for_the_startup_read(served_app)
         checkouts: list[object] = []
         event.listen(served_app.state.engine, "checkout", lambda *arguments: checkouts.append(arguments))
         client.get(f"{API_PREFIX}/samples")

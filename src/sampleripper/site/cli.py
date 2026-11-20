@@ -13,7 +13,7 @@ from sqlalchemy.exc import OperationalError
 
 from samplecore.cli_parsing import command_parser
 from samplecore.cli_support import bootstrap_cli
-from samplecore.config import InferenceConfig, LibraryConfig, resolve_config_path
+from samplecore.config import LibraryConfig, resolve_config_path
 from samplecore.exit_status import ExitStatus
 from samplecore.storage.cluster.provisioning import headline, is_connection_failure, server_message
 from sampleripper.children import ChildProcess
@@ -29,14 +29,14 @@ _logger = logging.getLogger(__name__)
 
 @dataclass
 class _RendererWatch:
-    """What the watching thread found wrong with the renderer, which it notes before stopping the site.
+    """Whether the renderer ended while the site served, which the watching thread notes before stopping the site.
 
     ``stopping`` is set once the site stops on its own, so the renderer it stops then is not taken
     for one that failed.
     """
 
     stopping: threading.Event = field(default_factory=threading.Event)
-    failures: list[str] = field(default_factory=list)
+    ended_with: list[int] = field(default_factory=list)
 
 
 def main(argv: list[str], *, prog: str) -> None:
@@ -45,11 +45,9 @@ def main(argv: list[str], *, prog: str) -> None:
     Everything a site may not do is refused before anything starts (`sampleripper.site.admission`),
     and the reader's role is checked the way `sampleripper serve` checks it. A site without its audio
     yet starts and says so, since a platform's volume is filled through the running site
-    (`site_warnings`). The renderer starts as a child on the loopback address, and the site serves
-    at once while it warms, so a platform waking the site answers its first visitor in seconds; a
-    morph asked for before the renderer answers is refused as one asked of a renderer that is away.
-    A renderer that ends, or stays silent past `READY_SECONDS`, ends the site with status 1, so the
-    platform running it starts both again; a site stopping stops its renderer.
+    (`site_warnings`). The renderer runs as a child on the loopback address, and the site serves once it answers. A renderer that ends while
+    the site serves ends the site with status 1, so the platform running it starts both again; a site
+    stopping stops its renderer.
 
     Raises:
         SystemExit: the site may not start as configured (3), the catalog cannot be reached at the
@@ -71,15 +69,17 @@ def main(argv: list[str], *, prog: str) -> None:
     renderer = site_renderer(config.inference, environment=os.environ, config_path=resolve_config_path())
     renderer.start()
     watch = _RendererWatch()
-    threading.Thread(
-        target=_stop_the_site_when_the_renderer_fails, args=(renderer, config.inference, watch), daemon=True
-    ).start()
     try:
+        wait_until_answering(renderer, config.inference)
+        threading.Thread(target=_stop_the_site_when_it_ends, args=(renderer, watch), daemon=True).start()
         run_server(host=arguments.host, port=port, reload=False, workers=None)
+    except RendererDidNotStartError as error:
+        _logger.error("%s", error)
+        sys.exit(ExitStatus.FAILED)
     finally:
         watch.stopping.set()
         renderer.stop()
-    if watch.failures:
+    if watch.ended_with:
         sys.exit(ExitStatus.FAILED)
 
 
@@ -98,25 +98,13 @@ def _admit_reader_naming_the_address(config: LibraryConfig) -> None:
         sys.exit(ExitStatus.FAILED)
 
 
-def _stop_the_site_when_the_renderer_fails(
-    renderer: ChildProcess, inference: InferenceConfig, watch: _RendererWatch
-) -> None:
-    """Wait for the renderer to answer and then to end, stopping the server when it fails at either."""
-    try:
-        wait_until_answering(renderer, inference)
-    except RendererDidNotStartError as error:
-        _note_failure(watch, str(error))
-        return
+def _stop_the_site_when_it_ends(renderer: ChildProcess, watch: _RendererWatch) -> None:
+    """Wait for the renderer to end, then stop the server."""
     status = renderer.wait()
-    _note_failure(watch, RENDERER_ENDED.format(status=status))
-
-
-def _note_failure(watch: _RendererWatch, failure: str) -> None:
-    """Note what went wrong with the renderer and stop the server, unless the site is stopping on its own."""
     if watch.stopping.is_set():
         return
-    watch.failures.append(failure)
-    _logger.error("%s", failure)
+    watch.ended_with.append(status)
+    _logger.error("%s", RENDERER_ENDED.format(status=status))
     stop_the_server()
 
 

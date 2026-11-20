@@ -199,9 +199,8 @@ in use.
    It should print `200` and a time under 10 seconds. If it takes longer, or prints `502`, turn
    Serverless off again.
 
-When the site wakes, the first page takes a few seconds. The morph renderer needs a few seconds
-more, and a morph asked for in that moment says the renderer is unavailable and works when asked
-again. The cloud and the list of similar samples take a moment the first time after each wake.
+When the site wakes, the visitor who woke it waits while it starts: the site answers once its
+morph renderer is ready and its cloud is loaded, so everything works from the first page on.
 
 If the site never goes to sleep, something keeps it busy: answering anyone who visits it every
 few minutes, a search engine's crawler included, keeps it awake. Its Metrics tab shows whether

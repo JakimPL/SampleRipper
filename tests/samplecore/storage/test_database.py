@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Iterator
+from contextlib import closing
 from datetime import UTC, datetime
 
+import numpy as np
 import pytest
 from sqlalchemy import Connection, func, inspect, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import DBAPIError, IntegrityError
+from trackmod.core.samples.depth import BitDepth
 
+from samplecore.models.channels import ChannelLayout
+from samplecore.models.sample import Sample
 from samplecore.models.tracker import TrackerFormat
 from samplecore.storage.curation import CURATION_SCHEMA
 from samplecore.storage.database import (
@@ -22,6 +28,8 @@ from samplecore.storage.database import (
     module,
     named_lock_key,
 )
+from samplecore.storage.repositories.sample import PostgresSampleRepository
+from samplecore.storage.repositories.spectral import PostgresSampleSpectralFeatureRepository
 
 LOCK_RELEASE_DEADLINE_SECONDS = 10.0
 EXPECTED_TABLES = frozenset(
@@ -183,3 +191,54 @@ def test_a_named_lock_is_free_again_once_the_connection_holding_it_closes(
         assert time.monotonic() < deadline, "the lock stayed held after its connection closed"
         time.sleep(0.05)
     connection.execute(select(func.pg_advisory_unlock(named_lock_key("sampleripper-held-step"))))
+
+
+TEXT_VECTOR_HASH = "a" * 64
+TEXT_VECTOR = (0.1, -2.5, 3.0e-7, 1234.5678)
+
+
+@pytest.fixture
+def catalog_storing_text_vectors(fresh_database_url: str) -> str:
+    """A catalog whose spectral vectors are JSON text, as one written before they were single-precision bytes."""
+    with closing(connect(fresh_database_url)) as connection:
+        connection.execute(text("ALTER TABLE sample_spectral_feature ALTER COLUMN vector TYPE varchar"))
+        PostgresSampleRepository(connection).upsert(
+            Sample(hash=TEXT_VECTOR_HASH, depth=BitDepth.SIXTEEN, channels=ChannelLayout.MONO, frames=8)
+        )
+        connection.execute(
+            text("INSERT INTO sample_spectral_feature (sample_hash, vector, computed_at) VALUES (:hash, :vector, :at)"),
+            {"hash": TEXT_VECTOR_HASH, "vector": json.dumps(TEXT_VECTOR), "at": datetime.now(UTC)},
+        )
+        connection.commit()
+    return fresh_database_url
+
+
+class TestACatalogWrittenWithTextVectors:
+    """Preparing a catalog whose spectral vectors are JSON text converts them, once, to what every reader expects."""
+
+    def test_its_vectors_keep_their_values_in_single_precision(self, catalog_storing_text_vectors: str) -> None:
+        with closing(connect(catalog_storing_text_vectors)) as connection:
+            stored = PostgresSampleSpectralFeatureRepository(connection).get(TEXT_VECTOR_HASH)
+
+        assert stored is not None
+        assert stored.vector == tuple(np.asarray(TEXT_VECTOR, dtype=np.float32).tolist())
+
+    def test_its_vectors_are_kept_out_of_line(self, catalog_storing_text_vectors: str) -> None:
+        with closing(connect(catalog_storing_text_vectors)) as connection:
+            storage = connection.execute(
+                text(
+                    "SELECT attstorage FROM pg_attribute "
+                    "WHERE attrelid = 'sample_spectral_feature'::regclass AND attname = 'vector'"
+                )
+            ).scalar_one()
+
+        assert storage == "e"
+
+    def test_a_catalog_prepared_again_reads_the_same_vectors(self, catalog_storing_text_vectors: str) -> None:
+        with closing(connect(catalog_storing_text_vectors)):
+            pass
+        with closing(connect(catalog_storing_text_vectors)) as connection:
+            vectors = PostgresSampleSpectralFeatureRepository(connection).vectors()
+
+        assert vectors.hashes == (TEXT_VECTOR_HASH,)
+        assert tuple(vectors.matrix[0].tolist()) == tuple(np.asarray(TEXT_VECTOR, dtype=np.float32).tolist())

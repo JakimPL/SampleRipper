@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import time
 from collections.abc import Iterator
 from contextlib import nullcontext
 from pathlib import Path
@@ -39,8 +38,6 @@ PUBLIC_SERVER: Final[ServerConfig] = ServerConfig(exposure=Exposure.PUBLIC, visi
 SITE_VISITORS_TABLE: Final[str] = "[server.visitors]\n" + "".join(
     f"{name} = {json.dumps(value)}\n" for name, value in SITE_VISITORS.model_dump().items()
 )
-STARTUP_READ_SECONDS: Final[float] = 10.0
-POLL_SECONDS: Final[float] = 0.02
 # The folders beside the library the tests catalog sample files in, which the served app reads.
 SAMPLE_DIRECTORY_NAMES: Final[tuple[str, ...]] = ("packs", "vanished pack")
 
@@ -109,14 +106,3 @@ def _seeded_app(
     application.dependency_overrides[get_connection_opener] = lambda: lambda: nullcontext(connection)
     application.dependency_overrides[get_curation_connection] = override_get_connection
     return application
-
-
-def wait_for_the_startup_read(application: FastAPI) -> None:
-    """Wait until the spectral vectors read as the app starts hand their connection back to the pool.
-
-    A test counting the pool's connections then counts its own requests' alone.
-    """
-    deadline = time.monotonic() + STARTUP_READ_SECONDS
-    while application.state.engine.pool.checkedin() == 0:
-        assert time.monotonic() < deadline, "the app's startup read kept its connection"
-        time.sleep(POLL_SECONDS)

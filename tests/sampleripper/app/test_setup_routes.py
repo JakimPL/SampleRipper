@@ -100,6 +100,15 @@ def test_an_application_opens_the_library_its_config_names(configured: TestClien
     assert configured.get("/api/stats").json()["sample_count"] == 0
 
 
+def test_a_page_asking_while_the_library_opens_is_answered_once_it_is_open(configured: TestClient) -> None:
+    """The application opens a browser as its server starts, so the page's first questions come while the library opens."""
+    answer = configured.get("/api/stats")
+
+    assert answer.status_code == 200
+    assert answer.json()["sample_count"] == 0
+    assert configured.get("/api/setup/state").json()["status"] == LibraryStatus.READY
+
+
 def test_the_application_names_its_installation(unconfigured: TestClient) -> None:
     answer = unconfigured.get("/api/setup/installation").json()
 

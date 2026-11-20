@@ -567,7 +567,9 @@ the built frontend. The `Launcher` owns what the library needs:
   such as its procedural language, from its program folder as it needs them.
 - **Catalog API.** Once the config validates and the database answers, the launcher builds
   `sampleserver.app.create_app` in process and runs its lifespan; `CatalogRoute` forwards every
-  `/api` path outside the setup routes to it, and answers 503 while the library is closed.
+  `/api` path outside the setup routes to it. A request arriving while the library opens waits for
+  it (`Launcher.opened_catalog`), since the application opens a browser before the library is open
+  and the page asks at once, and one arriving while no library is open or opening is answered 503.
 - **Renderer and builds.** `morph serve` runs as a child process, on the configured `[inference]`
   address or, when another program holds that port, on a free one of the same host
   (`samplecore.ports`), which the catalog API then dials. A build runs `sampleripper
@@ -730,12 +732,12 @@ warning as the site starts, since a platform's volume is filled through the runn
 site serves its catalog, every sample answers "not found" and `GET /api/health` reports
 `audio_present` false until the objects arrive, which the site reads with no restart. The renderer starts as a child with no
 database connection in its environment and one thread per numerical library, its output joining the
-site's, and the site serves at once while the renderer warms, which takes a couple of seconds from
-the image's saved code: a platform waking a sleeping site answers its first visitor in seconds, and
-a morph asked for before the renderer answers is refused with 503, as one asked of a renderer that
-is away. A renderer that ends, or answers nothing within `READY_SECONDS`, ends the site with status
-1, so the platform starts both again. The API's start loads no signal-processing library, which
-keeps it under a second.
+site's, and the site serves once the renderer answers, which takes a couple of seconds from the
+image's saved code. A renderer that ends while the site serves ends the site with status 1, so the
+platform starts both again. The API's imports load no signal-processing library, which keeps them
+under a second, and the API prepares its whole-catalog answers before it listens (see
+[Deployment](#deployment)), so a site that answers anyone answers with its renderer warm and its
+cloud in memory.
 
 `[server.visitors]` limits a library served to anyone, and no other exposure takes it
 (`sampleserver.visitors`). A visitor is the address the platform's edge names in
@@ -949,13 +951,22 @@ count and total in one grouped query rather than building a model per sample to 
 vectors are stored as the bytes of their single-precision values
 (`samplecore.storage.vector_bytes`), kept out of line so the table's own rows stay small, and are
 held per application in `SpectralVectorCache`, a single-precision matrix of about a quarter of a
-gigabyte for 127,588 samples of 512 values. The app reads them as it starts, beside its first
-requests: the rows arrive a few thousand at a time and each goes straight into a matrix sized up
-front, so the read holds the matrix and one chunk of rows, and takes a fraction of a second of
-parsing. The cache reads them again only when the table's own revision moves, so a search costs
-one cheap query. A search multiplies in single precision and assembles its distances in double
-precision. `scripts/migrate_spectral_vectors.py` converts a catalog written while the vectors were
-JSON text, a library's own or, with `--publication`, a site's.
+gigabyte for 127,588 samples of 512 values. The rows arrive a few thousand at a time and each goes
+straight into a matrix sized up front, so the read holds the matrix and one chunk of rows, and
+takes a fraction of a second of parsing. The cache reads them again only when the table's own
+revision moves, so a search costs one cheap query. A search multiplies in single precision and
+assembles its distances in double precision. A catalog written while the vectors were JSON text
+has them converted, in place and once, wherever its owner prepares it
+(`samplecore.storage.database.store_text_vectors_as_bytes`, called by `create_schema`): the
+SampleRipper app opening its library, a pipeline command, and a publication preparing the site's
+database.
+
+A served app prepares the answers a first visitor waits on before it answers anyone
+(`sampleserver.readiness`): it reads the spectral vectors and builds the cloud's points, the
+categories on show and their tags into their caches, side by side, at the revisions their routes
+read, so the first cloud and the first search are served from memory. Uvicorn listens only once
+this is done, and the SampleRipper app reports its library open only then. A catalog that cannot
+be read fails the start, so nobody is answered with part of it.
 
 Postgres supports genuine concurrent readers *and* writers against the same database, unlike this
 project's previous engine (DuckDB), which excluded every other connection -- read-only included --
