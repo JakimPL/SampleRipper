@@ -837,9 +837,12 @@ health check reads `/api/health` there. A platform bills the memory a container 
 processes hand what they free back to the system through `samplecore.allocator`: the API every
 30 seconds (`sampleserver.memory`), the renderer after each render or filter it computes. The
 container then holds what the two processes keep: the API's spectral matrix and cached answers,
-and the renderer's caches. `railway.json` builds the `Dockerfile` on
-Railway, checks `/api/health` as a deployment starts, restarts a site that ends with a failure, and
-rebuilds only when something the image holds changes. `docs/deploying.md` walks a person through it.
+and the renderer's caches. `.railway/railway.ts`, Railway's Infrastructure as Code, which
+`railway config apply` writes to the project, has Railway build the `Dockerfile`, check
+`/api/health` as a deployment starts, restart a site that ends with a failure, rebuild only when
+something the image holds changes, and mount the site's volume at `/library`. Its named partial
+manages the site's service and volume alone, and the Postgres service stays as the project created
+it. `docs/deploying.md` walks a person through it.
 
 The inference process (`sampleripper morph serve`) installs the `morph` extra alone, reads the library
 root and the sample directories its configuration lists, renders under the settings `morph.yaml` in

@@ -39,6 +39,7 @@ annotations.jsonl
 labels.jsonl
 
 frontend/node_modules/
+.railway/node_modules/
 
 Thumbs.db
 .DS_Store

@@ -21,9 +21,20 @@ several gigabytes, so you need Railway's Pro plan.
 1. **Create a project** in Railway, and add a **PostgreSQL** database to it. Then run `railway link`
    in the repository's folder and choose the project, so the `railway` commands in this guide reach
    it.
-2. **Add the site.** Add a new service to the project from this repository on GitHub. Railway reads
-   `railway.json` and builds the `Dockerfile`.
-3. **Give the site a volume** mounted at `/library`. The site's audio lives there.
+2. **Add the site.** Add a new service to the project from this repository on GitHub, and give it a
+   volume mounted at `/library`. The site's audio lives there.
+3. **Apply the site's settings.** `.railway/railway.ts` holds them: the `Dockerfile` build, the
+   health check, the restart policy, the volume and the domain. Put your own names in it, for the
+   service, the GitHub repository, the volume and its region, and the domain. Then run:
+
+   ```sh
+   npm ci --prefix .railway
+   railway config plan
+   railway config apply
+   ```
+
+   `plan` only reads Railway and lists what `apply` would change. Apply a plan only when it keeps
+   the volume, since the volume holds the site's audio.
 4. **Create the reader's password.** The site reads your catalog as a database user that can't
    change anything, and that user's password must be generated rather than made up:
 
@@ -165,6 +176,10 @@ refuses to start. So publish first, then update:
    can't bridge that gap.
 4. **Roll back if the new site doesn't start.** Pick the previous deployment in the Deployments tab
    and roll back to it, then read the failed deployment's log.
+
+**Changing the site's settings.** Settings in `.railway/railway.ts` reach Railway when you run
+`railway config apply`, separately from pushing code. After editing the file, run
+`railway config plan` to see the changes, then `railway config apply`.
 
 ## Check it once it runs
 

@@ -25,6 +25,7 @@ docker/*.env
 **/roles.json
 **/cluster.json
 frontend/node_modules
+.railway
 build
 bin
 dist
