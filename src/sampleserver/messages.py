@@ -12,3 +12,10 @@ HOST_BEYOND_EXPOSURE: Final[str] = (
     "This config serves the library on this computer only, so it listens on 127.0.0.1. To let other devices "
     'on your network open it, set exposure = "network" under [server].'
 )
+
+# What a served app says in its log as it starts.
+
+SPECTRAL_VECTORS_UNREAD: Final[str] = (
+    "The spectral vectors could not be read as the server started ({reason}); the first search for similar "
+    "samples reads them."
+)

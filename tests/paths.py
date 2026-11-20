@@ -10,6 +10,7 @@ BUILD_DEV_LIBRARY_SCRIPT: Final[Path] = SCRIPTS_DIRECTORY / "build_dev_library.p
 RENDER_ICONS_SCRIPT: Final[Path] = SCRIPTS_DIRECTORY / "render_icons.py"
 WHEEL_PINS_SCRIPT: Final[Path] = SCRIPTS_DIRECTORY / "wheel_pins.py"
 BUILD_APP_SCRIPT: Final[Path] = SCRIPTS_DIRECTORY / "build_app.py"
+MIGRATE_SPECTRAL_VECTORS_SCRIPT: Final[Path] = SCRIPTS_DIRECTORY / "migrate_spectral_vectors.py"
 FAVICON: Final[Path] = REPOSITORY_DIRECTORY / "frontend" / "public" / "favicon.svg"
 ICONS_DIRECTORY: Final[Path] = REPOSITORY_DIRECTORY / "frontend" / "public" / "icons"
 CHECKED_COMMITS_SCRIPT: Final[Path] = REPOSITORY_DIRECTORY / "scripts" / "checked_commits.py"

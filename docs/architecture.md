@@ -926,9 +926,16 @@ scaled up from a per-sample one. A whole-catalog reader scans a table outright i
 every hash it wants (`names_and_rates_for_every_sample` beside `names_and_rates_by_hash`), since a
 hundred thousand bound parameters cost Postgres more than reading every row there is. The statistics
 count and total in one grouped query rather than building a model per sample to sum. The spectral
-vectors, which are stored as text and take a couple of seconds to parse, are held per application in
-`SpectralVectorCache` and re-read only when the table's own revision moves, so a search costs one
-cheap query rather than a fresh parse of the whole embedding.
+vectors are stored as the bytes of their single-precision values
+(`samplecore.storage.vector_bytes`), kept out of line so the table's own rows stay small, and are
+held per application in `SpectralVectorCache`, a single-precision matrix of about a quarter of a
+gigabyte for 127,588 samples of 512 values. The app reads them as it starts, beside its first
+requests: the rows arrive a few thousand at a time and each goes straight into a matrix sized up
+front, so the read holds the matrix and one chunk of rows, and takes a fraction of a second of
+parsing. The cache reads them again only when the table's own revision moves, so a search costs
+one cheap query. A search multiplies in single precision and assembles its distances in double
+precision. `scripts/migrate_spectral_vectors.py` converts a catalog written while the vectors were
+JSON text, a library's own or, with `--publication`, a site's.
 
 Postgres supports genuine concurrent readers *and* writers against the same database, unlike this
 project's previous engine (DuckDB), which excluded every other connection -- read-only included --

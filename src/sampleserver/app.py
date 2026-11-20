@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from functools import partial
 from pathlib import Path
 from typing import Final
 
@@ -12,6 +13,7 @@ from samplecore.config import ServerConfig
 from samplecore.models.service_role import ServiceRole
 from samplecore.storage.database import SERVED_POOL_OVERFLOW, create_pooled_engine
 from sampleserver.admission import AdmittedRequestsOnly
+from sampleserver.background import running_beside
 from sampleserver.connections import CatalogConnections
 from sampleserver.frontend import FrontendMount
 from sampleserver.headers import SecurityHeaders
@@ -79,20 +81,23 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
-        """Open the catalog's pool and the inference client before the first request.
+        """Open the catalog's pool and the inference client before the first request, and read the spectral vectors.
 
         The app creates nothing: its role may read and, for a curator, write labels, so the schema
         it reads is prepared beforehand by the catalog's owner. The pool and the inference client
         live as long as the app, so their connections are reused across requests, and both are
         closed when the app stops. Every request reaches the pool through one `CatalogConnections`,
-        admitting as many at once as the pool holds connections.
+        admitting as many at once as the pool holds connections. The spectral vectors are read
+        beside the first requests, so a search for similar samples finds them in memory.
         """
         engine = create_pooled_engine(application.state.database_url, pool_size=READ_POOL_SIZE)
+        connections = CatalogConnections(engine, capacity=READ_POOL_SIZE + SERVED_POOL_OVERFLOW)
         application.state.engine = engine
-        application.state.connections = CatalogConnections(engine, capacity=READ_POOL_SIZE + SERVED_POOL_OVERFLOW)
+        application.state.connections = connections
         application.state.inference_client = build_inference_client(application.state.inference_url)
         try:
-            yield
+            async with running_beside(partial(application.state.spectral_vectors.load, connections)):
+                yield
         finally:
             await application.state.inference_client.aclose()
             application.state.engine.dispose()
