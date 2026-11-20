@@ -32,11 +32,14 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=frontend /build/frontend /app/frontend
 COPY docker/site.toml /app/config.toml
+# glibc otherwise opens an allocator arena per thread, up to eight per core the host has; two arenas
+# keep what the server's worker threads free in few places, where it is handed back to the system.
 ENV PATH="/app/.venv/bin:${PATH}" \
     SAMPLERIPPER_CONFIG=/app/config.toml \
     SAMPLERIPPER_FRONTEND_DIRECTORY=/app/frontend \
     WEB_CONCURRENCY=1 \
     NUMBA_CACHE_DIR=/tmp/numba \
+    MALLOC_ARENA_MAX=2 \
     PYTHONUNBUFFERED=1
 USER sampleripper
 

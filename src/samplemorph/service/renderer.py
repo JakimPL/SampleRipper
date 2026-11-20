@@ -10,6 +10,7 @@ from typing import IO, Final
 import numpy as np
 from numpy.typing import NDArray
 
+from samplecore.allocator import release_free_memory
 from samplecore.models.morph import MORPH_WEIGHT_STEPS, HeardMorphPoint, MorphPair, MorphServiceStatus
 from samplecore.models.sample_file import SampleFileLocation
 from samplecore.models.sample_pcm import SamplePCM
@@ -47,9 +48,10 @@ class MorphRenderer:
     A pair's two ends are prepared once, in the frame of the rate the pair is heard at, and kept
     per pair, so a slider over one pair prepares both ends once and then costs one render per
     weight; renders are cached per point, so a weight asked for twice is served from memory. Both
-    caches are bounded by the bytes they hold. One lock serializes rendering, since a synthesis
-    already spreads over every core and two at once would only contend; the caches have a lock of
-    their own, so a render already made is served while another is being made.
+    caches are bounded by the bytes they hold. One lock serializes rendering, so one render's
+    working arrays are held at a time; the caches have a lock of their own, so a render already
+    made is served while another is being made. The memory a render worked in is handed back to the
+    system once it is done (`samplecore.allocator`), so the process holds its caches and little else.
 
     Audio is rendered through the route the process serves and a filter is read under the route
     filters are built from, so a process whose renders glide hands over the filter between a pair all
@@ -155,7 +157,9 @@ class MorphRenderer:
             rendered = wav_bytes(waveform, rate_hz=rate_hz)
             with self._cache_lock:
                 self._renders.put(point, rendered)
-            return rendered
+            del waveform
+        release_free_memory()
+        return rendered
 
     def response(self, pair: MorphPair) -> bytes:
         """The bytes of the filter between two samples, which applies at every weight between them.
@@ -261,7 +265,9 @@ class MorphRenderer:
             written = response_payload(response)
             with self._cache_lock:
                 self._responses.put(key, written)
-            return written
+            del first, second, response
+        release_free_memory()
+        return written
 
     def _pair_rate(self, first_rate_hz: float, second_rate_hz: float) -> float:
         """The rate two sounds are heard at together, once their rates are known to lie within the limits.

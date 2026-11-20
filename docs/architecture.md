@@ -821,8 +821,13 @@ site's config, `docker/site.toml`, at `/app/config.toml`: `library_root` is `/li
 platform mounts the volume holding the published audio, the renderer listens on the loopback
 address, the exposure is `public` and `[server.visitors]` sizes the limits. It holds no credential:
 the platform names the reader's connection in `SAMPLERIPPER_SERVER_DATABASE_URL`. Its environment
-runs one process (`WEB_CONCURRENCY=1`), and its command is `site --host 0.0.0.0`, on the port
-`$PORT` names; the health check reads `/api/health` there. `railway.json` builds the `Dockerfile` on
+runs one process (`WEB_CONCURRENCY=1`) and holds glibc to two allocator arenas
+(`MALLOC_ARENA_MAX=2`), and its command is `site --host 0.0.0.0`, on the port `$PORT` names; the
+health check reads `/api/health` there. A platform bills the memory a container holds, so both
+processes hand what they free back to the system through `samplecore.allocator`: the API every
+30 seconds (`sampleserver.memory`), the renderer after each render or filter it computes. The
+container then holds what the two processes keep: the API's spectral matrix and cached answers,
+and the renderer's caches. `railway.json` builds the `Dockerfile` on
 Railway, checks `/api/health` as a deployment starts, restarts a site that ends with a failure, and
 rebuilds only when something the image holds changes. `docs/deploying.md` walks a person through it.
 

@@ -10,6 +10,7 @@ from numpy.typing import NDArray
 
 from samplecore.models.morph import HeardMorphPoint, MorphPair
 from samplemorph.routes.envelope import PreparedPair
+from samplemorph.service import renderer as renderer_module
 from samplemorph.service.renderer import RenderBoundsError, load_renderer
 from samplemorph.service.settings import MAXIMUM_RENDER_FRAMES, RenderLimits, ServiceSettings
 from tests.samplemorph.service.conftest import StoredLibrary
@@ -135,3 +136,39 @@ def test_identical_points_asked_for_at_once_render_once(settings: ServiceSetting
 
     assert len(calls) == 1
     assert len(set(rendered)) == 1
+
+
+def test_a_render_hands_its_working_memory_back_once_it_is_made(
+    settings: ServiceSettings, library: StoredLibrary, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    renderer = load_renderer(settings)
+    releases: list[int] = []
+    monkeypatch.setattr(renderer_module, "release_free_memory", lambda: releases.append(1))
+    point = HeardMorphPoint(
+        first=library.hashes[0],
+        second=library.hashes[1],
+        weight=0.25,
+        first_rate_hz=FIRST_RATE_HZ,
+        second_rate_hz=FIRST_RATE_HZ,
+    )
+
+    renderer.render(point)
+    renderer.render(point)
+
+    assert len(releases) == 1
+
+
+def test_a_filter_hands_its_working_memory_back_once_it_is_built(
+    settings: ServiceSettings, library: StoredLibrary, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    renderer = load_renderer(settings)
+    releases: list[int] = []
+    monkeypatch.setattr(renderer_module, "release_free_memory", lambda: releases.append(1))
+    pair = MorphPair(
+        first=library.hashes[0], second=library.hashes[1], first_rate_hz=FIRST_RATE_HZ, second_rate_hz=FIRST_RATE_HZ
+    )
+
+    renderer.response(pair)
+    renderer.response(pair)
+
+    assert len(releases) == 1

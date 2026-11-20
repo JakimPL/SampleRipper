@@ -18,6 +18,7 @@ from sampleserver.connections import CatalogConnections
 from sampleserver.frontend import FrontendMount
 from sampleserver.headers import SecurityHeaders
 from sampleserver.inference_client import build_inference_client
+from sampleserver.memory import release_free_memory_periodically
 from sampleserver.policy import ServingPolicy
 from sampleserver.response_cache import RevisionedJsonCache
 from sampleserver.routers import cloud, curation, health, modules, morph, samples, stats
@@ -88,7 +89,8 @@ def create_app(
         live as long as the app, so their connections are reused across requests, and both are
         closed when the app stops. Every request reaches the pool through one `CatalogConnections`,
         admitting as many at once as the pool holds connections. The spectral vectors are read
-        beside the first requests, so a search for similar samples finds them in memory.
+        beside the first requests, so a search for similar samples finds them in memory, and what
+        the app frees is handed back to the system as it runs (`sampleserver.memory`).
         """
         engine = create_pooled_engine(application.state.database_url, pool_size=READ_POOL_SIZE)
         connections = CatalogConnections(engine, capacity=READ_POOL_SIZE + SERVED_POOL_OVERFLOW)
@@ -96,7 +98,9 @@ def create_app(
         application.state.connections = connections
         application.state.inference_client = build_inference_client(application.state.inference_url)
         try:
-            async with running_beside(partial(application.state.spectral_vectors.load, connections)):
+            async with running_beside(
+                partial(application.state.spectral_vectors.load, connections), release_free_memory_periodically
+            ):
                 yield
         finally:
             await application.state.inference_client.aclose()
